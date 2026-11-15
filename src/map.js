@@ -50,12 +50,15 @@ function resize() {
   if (!canvas || !ctx) return;
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  width = Math.max(1, rect.width);
-  height = Math.max(1, rect.height);
+  width = Math.max(1, rect.width || canvas.clientWidth || 320);
+  height = Math.max(1, rect.height || canvas.clientHeight || 320);
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawMap();
+}
+export function resizeMap() {
+  resize();
 }
 function toScreen(point) { return { x: (point.x + camera.x) * camera.zoom + width / 2, y: (point.y + camera.y) * camera.zoom + height / 2 }; }
 function toWorld(point) { return { x: (point.x - width / 2) / camera.zoom - camera.x, y: (point.y - height / 2) / camera.zoom - camera.y }; }
@@ -96,7 +99,6 @@ function drawMap() {
   ctx.lineWidth = 1;
   for (let x = -WORLD.width / 2; x <= WORLD.width / 2; x += 40) { ctx.beginPath(); ctx.moveTo(x, -WORLD.height / 2); ctx.lineTo(x, WORLD.height / 2); ctx.stroke(); }
   for (let y = -WORLD.height / 2; y <= WORLD.height / 2; y += 40) { ctx.beginPath(); ctx.moveTo(-WORLD.width / 2, y); ctx.lineTo(WORLD.width / 2, y); ctx.stroke(); }
-  // Calm Belts encuadran el corredor de la Grand Line.
   ctx.fillStyle = COLORS.belt;
   ctx.fillRect(-WORLD.width / 2, -115, WORLD.width, 48);
   ctx.fillRect(-WORLD.width / 2, 67, WORLD.width, 48);
@@ -105,7 +107,6 @@ function drawMap() {
   ctx.strokeRect(-WORLD.width / 2, -115, WORLD.width, 48);
   ctx.strokeRect(-WORLD.width / 2, 67, WORLD.width, 48);
   ctx.setLineDash([]);
-  // La Red Line cruza verticalmente el mundo y la Reverse Mountain es su cruce con la ruta.
   ctx.fillStyle = COLORS.red;
   ctx.fillRect(-22, -WORLD.height / 2, 44, WORLD.height);
   ctx.fillStyle = "#d77559";
@@ -114,7 +115,6 @@ function drawMap() {
   ctx.fillRect(-WORLD.width / 2, -28, WORLD.width, 56);
   ctx.fillStyle = "#b5e3d4";
   ctx.fillRect(-WORLD.width / 2, -3, WORLD.width, 6);
-  // Cuatro mares y dos tramos de la Grand Line.
   ctx.font = "bold 18px monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -235,6 +235,9 @@ export function initMap() {
   document.getElementById("map-reset-view")?.addEventListener("click", () => { camera = { x: 0, y: 0, zoom: 1 }; drawMap(); });
   window.addEventListener("resize", resize);
   resize();
+}
+export function initWorldMap() {
+  return initMap();
 }
 export function renderMap(character) {
   initMap();

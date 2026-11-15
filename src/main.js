@@ -6,6 +6,7 @@ import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui.js";
+import { initWorldMap, renderMap, resizeMap } from "./map.js";
 
 let character = loadGame();
 let timerId = null;
@@ -14,7 +15,14 @@ const byId = (id) => document.getElementById(id);
 const listen = (element, type, handler, options) => {
   if (element) element.addEventListener(type, handler, options);
 };
-function paint() { if (character) renderGame(character); }
+function paint() {
+  if (!character) return;
+  renderGame(character);
+  // renderGame reveals the game container before the canvas measures its size.
+  initWorldMap();
+  resizeMap();
+  renderMap(character);
+}
 function scheduleTick() {
   clearTimeout(timerId);
   if (!character || character.status === "dead" || character.autonomy?.paused) return;
@@ -39,6 +47,11 @@ if (character) {
   if (character.status !== "dead") scheduleTick();
 } else showSetup();
 
+listen(window, "resize", () => {
+  if (!character) return;
+  resizeMap();
+  renderMap(character);
+});
 listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = {
