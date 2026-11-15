@@ -16,22 +16,57 @@ export function showGame() {
   byId("game-screen").hidden = false;
   byId("reset-button").hidden = false;
 }
-function closeDialog(id) {
-  const dialog = byId(id);
-  if (dialog?.open) dialog.close();
-}
+function closeDialog(id) { const dialog = byId(id); if (dialog?.open) dialog.close(); }
 function renderList(list, entries, emptyText, toText) {
   if (!list) return;
   list.replaceChildren();
+  if (!entries.length) { const item = document.createElement("li"); item.textContent = emptyText; list.append(item); return; }
+  entries.forEach((entry) => { const item = document.createElement("li"); item.textContent = toText(entry); list.append(item); });
+}
+function categoryFor(message) {
+  const text = String(message).toLocaleLowerCase("es");
+  if (/victoria|derrota|combate|pelea|captur|ataque|haki/.test(text)) return { label: "[COMBATE]", className: "combat" };
+  if (/recompensa|berries|berries|renombre|cartel|reliquia|botín|botin/.test(text)) return { label: "[RECOMPENSA]", className: "reward" };
+  if (/evento|noticia|facción|faccion|marina|cazarrecompensas|piratas rivales/.test(text)) return { label: "[EVENTO]", className: "event" };
+  return { label: "[SISTEMA]", className: "system" };
+}
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function appendHighlightedText(container, message, characterName) {
+  const tokens = ["฿\\s*[\\d.,]+(?:\\s*BERRIES)?", "[\\d.,]+\\s*Berries"];
+  if (characterName) tokens.push(escapeRegExp(characterName));
+  const pattern = new RegExp(`(${tokens.join("|")})`, "gi");
+  let cursor = 0;
+  for (const match of message.matchAll(pattern)) {
+    if (match.index > cursor) container.append(document.createTextNode(message.slice(cursor, match.index)));
+    const strong = document.createElement("strong");
+    strong.className = "log-highlight";
+    strong.textContent = match[0];
+    container.append(strong);
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < message.length) container.append(document.createTextNode(message.slice(cursor)));
+}
+function renderTerminalLog(list, entries, characterName) {
+  if (!list) return;
+  list.replaceChildren();
   if (!entries.length) {
-    const item = document.createElement("li");
-    item.textContent = emptyText;
-    list.append(item);
+    const empty = document.createElement("li");
+    empty.textContent = "La bitácora aún está en blanco.";
+    list.append(empty);
     return;
   }
   entries.forEach((entry) => {
     const item = document.createElement("li");
-    item.textContent = toText(entry);
+    const timestamp = document.createElement("time");
+    timestamp.className = "log-time";
+    timestamp.dateTime = entry.time ?? "";
+    timestamp.textContent = `${time(entry.time)} `;
+    const category = categoryFor(entry.message);
+    const tag = document.createElement("strong");
+    tag.className = `log-tag ${category.className}`;
+    tag.textContent = category.label;
+    item.append(timestamp, tag, document.createTextNode(" "));
+    appendHighlightedText(item, String(entry.message ?? ""), characterName);
     list.append(item);
   });
 }
@@ -42,6 +77,8 @@ export function renderGame(character) {
   const lineage = character.lineage ?? { family: character.name, generation: 1, legacyChest: [] };
   const soulCard = character.soulCard ?? { dream: "Libertad", traits: { pros: [], cons: [] } };
   const traits = [...(soulCard.traits?.pros ?? []), ...(soulCard.traits?.cons ?? [])];
+  const dead = character.status === "dead";
+  const paused = Boolean(character.autonomy?.paused) || dead;
   byId("character-name-display").textContent = character.name ?? "Aventurero";
   byId("level-badge").textContent = `Nivel ${character.level ?? 1} · Gen. ${lineage.generation ?? 1}`;
   byId("faction-display").textContent = `${character.faction ?? "Pirata"} · ${character.rank ?? "Novato"}`;
@@ -67,8 +104,15 @@ export function renderGame(character) {
   byId("ingenuity-value").textContent = stats.ingenuity ?? 0;
   byId("xp-display").textContent = `Renombre: ${number(character.reputation)} · Capturas: ${character.captures ?? 0} · XP: ${character.experience ?? 0}/${(character.level ?? 1) * 100}`;
 
-  const dead = character.status === "dead";
-  const paused = Boolean(character.autonomy?.paused) || dead;
+  const day = Number(world.day) || 0;
+  const tick = Number(character.autonomy?.tickCount) || 0;
+  const hour = String(Math.floor(tick % 24)).padStart(2, "0");
+  const minute = String(Math.floor((tick * 5) % 60)).padStart(2, "0");
+  byId("game-clock").textContent = `Día ${day + 1} · ${hour}:${minute}`;
+  const headerStatus = byId("header-avatar-status");
+  headerStatus.textContent = dead ? "● Avatar caído" : paused ? "● Avatar en pausa" : "● Avatar activo";
+  headerStatus.classList.toggle("paused", paused && !dead);
+  headerStatus.classList.toggle("dead", dead);
   byId("autonomy-status").textContent = dead ? "☠ En el Panteón" : paused ? "⏸ En pausa" : "● Activa";
   byId("autonomy-status").classList.toggle("badge-live", !paused);
   byId("pause-button").textContent = paused ? "Reanudar avatar" : "Pausar avatar";
@@ -79,13 +123,16 @@ export function renderGame(character) {
   byId("whisper-input").disabled = dead;
   byId("whisper-form").querySelector("button[type=submit]").disabled = dead;
 
-  renderList(byId("event-log"), character.log ?? [], "La bitácora aún está en blanco.", (entry) => `${time(entry.time)} — ${entry.message}`);
+  renderTerminalLog(byId("event-log"), character.log ?? [], character.name);
   byId("world-era").textContent = world.era ?? "Era de los Grandes Descubrimientos";
   byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
   const pantheon = world.pantheon ?? [];
   renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `☠ ${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
   renderList(byId("pantheon-modal-list"), pantheon, "Aún no hay leyendas registradas.", (legend) => `☠ ${legend.name} · ${legend.family} · Gen. ${legend.generation} · ${legend.faction} · ${legend.cause} · ${number(legend.reputation)} renombre`);
   renderList(byId("news-list"), world.news ?? [], "El mar aguarda sus primeras noticias.", (entry) => entry.text ?? String(entry));
+  const treasures = lineage.legacyChest ?? [];
+  byId("treasure-count").textContent = String(treasures.length);
+  renderList(byId("treasure-list"), treasures, "El cofre espera su primera reliquia.", (item) => `✦ ${item}`);
 
   const mission = character.mission ?? { title: "Explorar el mar", island: character.location?.island ?? "Mar abierto", enemy: "piratas rivales", status: "active", completed: 0 };
   byId("mission-title").textContent = mission.status === "complete" ? `✅ ${mission.title} · completada` : `🎯 ${mission.title}`;
@@ -218,6 +265,11 @@ export function initWizard() {
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
     }
     updateWizardSummary();
+  });
+  byId("quick-action")?.addEventListener("click", () => {
+    if (byId("game-screen").hidden) return;
+    byId("chat-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+    byId("whisper-input").focus({ preventScroll: true });
   });
   showWizardStep(0);
   updateTraitButtons();
