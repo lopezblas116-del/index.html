@@ -1,95 +1,67 @@
 import {
-  SAVE_KEY,
-  autonomousTick,
-  createCharacter,
-  loadGame,
-  saveGame,
-  sendWhisper,
-  setAutonomyPaused
+  SAVE_KEY, autonomousTick, createCharacter, createHeir,
+  loadGame, saveGame, sendWhisper, setAutonomyPaused
 } from "./game.js";
 import { initWizard, renderGame, showSetup } from "./ui.js";
 
 let character = loadGame();
 let timerId = null;
-const MIN_TICK_MS = 5000;
-const MAX_TICK_MS = 10000;
-
-function scheduleNextTick() {
-  window.clearTimeout(timerId);
-  if (!character || character.autonomy.paused) return;
-  const delay = MIN_TICK_MS + Math.random() * (MAX_TICK_MS - MIN_TICK_MS);
-  timerId = window.setTimeout(() => {
-    if (!character || character.autonomy.paused) return;
+const nextDelay = () => 5000 + Math.random() * 5000;
+function scheduleTick() {
+  clearTimeout(timerId);
+  if (!character || character.status === "dead" || character.autonomy.paused) return;
+  timerId = setTimeout(() => {
+    if (!character || character.status === "dead" || character.autonomy.paused) return;
     autonomousTick(character);
     saveGame(character);
     renderGame(character);
-    scheduleNextTick();
-  }, delay);
+    scheduleTick();
+  }, nextDelay());
 }
-
-function persistAndRender({ reschedule = false } = {}) {
+function persistRender(reschedule = false) {
   if (!character) return;
   saveGame(character);
   renderGame(character);
-  if (reschedule) scheduleNextTick();
+  if (reschedule) scheduleTick();
 }
-
 if (character) {
   renderGame(character);
-  scheduleNextTick();
-} else {
-  showSetup();
-  initWizard();
-}
+  if (character.status !== "dead") scheduleTick();
+} else { showSetup(); initWizard(); }
 
 document.getElementById("character-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  const formData = new FormData(event.currentTarget);
-  const faction = String(formData.get("faction") ?? "Pirata");
-  const originSea = String(formData.get("originSea") ?? "East Blue");
-  const dream = String(formData.get("dream") ?? "Libertad");
-  const primary = String(formData.get("traitPrimary") ?? "Valiente");
-  const secondary = String(formData.get("traitSecondary") ?? "Astuto");
-  const displayName = String(formData.get("name") ?? "Anónimo").trim();
-  const handle = String(formData.get("handle") ?? "@usuario").trim();
+  const data = new FormData(event.currentTarget);
+  const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
+  if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   character = createCharacter({
-    name: displayName,
-    username: handle,
-    faction,
-    originSea,
-    dream,
-    traits: [primary, secondary],
-    appearance: {
-      skin: String(formData.get("skin") ?? "Clara"),
-      hair: String(formData.get("hair") ?? "Negro"),
-      accessory: String(formData.get("accessory") ?? "Bandana")
-    }
+    name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"),
+    faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"),
+    dream: String(data.get("dream") || "Libertad"), traits,
+    appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") }
   });
-  persistAndRender({ reschedule: true });
+  persistRender(true);
 });
-
 document.getElementById("whisper-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!character) return;
-  const input = document.getElementById("whisper-input");
-  sendWhisper(character, input.value);
-  input.value = "";
-  persistAndRender();
-  input.focus();
+  event.preventDefault(); if (!character) return;
+  const input = document.getElementById("whisper-input"); sendWhisper(character, input.value); input.value = ""; persistRender(); input.focus();
 });
-
 document.getElementById("pause-button").addEventListener("click", () => {
-  if (!character) return;
-  setAutonomyPaused(character, !character.autonomy.paused);
-  persistAndRender({ reschedule: true });
+  if (!character || character.status === "dead") return;
+  setAutonomyPaused(character, !character.autonomy.paused); persistRender(true);
 });
-
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-create-heir]")) return;
+  if (!character || character.status !== "dead") return;
+  const successor = createHeir(character);
+  if (!successor) return;
+  character = successor;
+  saveGame(character);
+  renderGame(character);
+  scheduleTick();
+});
 document.getElementById("reset-button").addEventListener("click", () => {
-  if (!window.confirm("¿Empezar una nueva partida? Se borrará el progreso guardado en este navegador.")) return;
-  window.clearTimeout(timerId);
-  localStorage.removeItem(SAVE_KEY);
-  character = null;
-  document.getElementById("character-form").reset();
-  showSetup();
-  initWizard();
+  if (!window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) return;
+  clearTimeout(timerId); localStorage.removeItem(SAVE_KEY); character = null;
+  document.getElementById("character-form").reset(); showSetup(); initWizard();
 });
