@@ -19,102 +19,10 @@
     </header>
 
     <section id="setup-screen" class="panel setup-panel">
-      <p class="eyebrow">Tu aventura comienza aquí</p>
-      <h2>Crea un alma libre</h2>
-      <p class="muted">El avatar decide su rumbo. Tú puedes enviarle susurros, pero no siempre te hará caso.</p>
-      <form id="character-form" class="setup-form">
-        <label>Nombre
-          <input id="character-name" name="name" maxlength="24" placeholder="Ej. Luffy" required>
-        </label>
-        <label>Bando
-          <select name="faction">
-            <option value="Pirata">Pirata</option><option value="Marina">Marina</option>
-            <option value="Cazarrecompensas">Cazarrecompensas</option><option value="Revolucionario">Revolucionario</option>
-          </select>
-        </label>
-        <label>Mar de origen
-          <select name="originSea">
-            <option>East Blue</option><option>West Blue</option><option>North Blue</option><option>South Blue</option>
-          </select>
-        </label>
-        <label>Sueño / rumbo de la Tarjeta del Alma
-          <select name="dream">
-            <option value="Libertad">Libertad</option><option value="Poder">Poder</option>
-            <option value="Riqueza">Riqueza</option><option value="Explorar">Explorar el mundo</option>
-          </select>
-        </label>
-        <label>Rasgo predominante
-          <select name="trait">
-            <option value="Valiente">Valiente</option><option value="Impulsivo">Impulsivo</option>
-            <option value="Astuto">Astuto</option><option value="Prudente">Prudente</option>
-            <option value="Rebelde">Rebelde</option>
-          </select>
-        </label>
-        <button class="button button-primary" type="submit">Dar vida al avatar</button>
-      </form>
-    </section>
-
-    <section id="game-screen" hidden>
-      <div class="game-grid">
-        <aside class="panel character-panel">
-          <div class="section-heading">
-            <div><p class="eyebrow">Tarjeta del Alma</p><h2 id="character-name-display">—</h2></div>
-            <span id="level-badge" class="badge">Nivel 1</span>
-          </div>
-          <dl class="character-details">
-            <div><dt>Bando / rango</dt><dd id="faction-display">—</dd></div>
-            <div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div>
-            <div><dt>Ubicación</dt><dd id="location-display">—</dd></div>
-            <div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div>
-            <div><dt>Sueño</dt><dd id="dream-display">—</dd></div>
-            <div><dt>Rasgo</dt><dd id="traits-display">—</dd></div>
-            <div><dt>Akuma no Mi</dt><dd id="fruit-display">—</dd></div>
-            <div><dt>Haki</dt><dd id="haki-display">—</dd></div>
-            <div><dt>Recompensa</dt><dd id="bounty-display">—</dd></div>
-            <div><dt>Berries</dt><dd id="berries-display">—</dd></div>
-          </dl>
-          <div class="stats">
-            <div class="stat-row"><div><span>Salud</span><strong id="health-value">—</strong></div><progress id="health-bar" max="100" value="100"></progress></div>
-            <div class="stat-row"><span>Fuerza</span><strong id="strength-value">—</strong></div>
-            <div class="stat-row"><span>Agilidad</span><strong id="agility-value">—</strong></div>
-            <div class="stat-row"><span>Ingenio</span><strong id="ingenuity-value">—</strong></div>
-          </div>
-          <p id="xp-display" class="muted small-text">—</p>
-        </aside>
-
-        <div class="main-column">
-          <section class="panel autonomy-panel" aria-labelledby="autonomy-heading">
-            <div class="section-heading">
-              <div><p class="eyebrow">El mundo sigue su curso</p><h2 id="autonomy-heading">Autonomía del avatar</h2></div>
-              <span id="autonomy-status" class="badge" role="status">—</span>
-            </div>
-            <div class="autonomy-controls">
-              <div class="sync-readout"><span>Sintonía</span><strong id="sync-value">—</strong></div>
-              <progress id="sync-bar" max="100" value="55" aria-label="Nivel de sintonía"></progress>
-              <p id="rebellion-value" class="muted small-text">—</p>
-              <button id="pause-button" class="button button-primary" type="button">Pausar avatar</button>
-            </div>
-          </section>
-
-          <section class="panel whisper-panel">
-            <p class="eyebrow">Puedes aconsejarle; la decisión es suya</p>
-            <h2>Enviar Susurro al Avatar</h2>
-            <form id="whisper-form" class="whisper-form">
-              <label class="visually-hidden" for="whisper-input">Escribe un susurro para el avatar</label>
-              <input id="whisper-input" name="whisper" maxlength="160" placeholder="Ej. Ve a descansar o busca tesoros…" required>
-              <button class="button button-primary" type="submit">Susurrar</button>
-            </form>
-            <p class="muted small-text">Prueba: descansar, explorar/navegar, entrenar, buscar fruta o tesoros.</p>
-          </section>
-
-          <section class="panel log-panel">
-            <div class="section-heading"><div><p class="eyebrow">En directo</p><h2>Bitácora</h2></div><span class="badge badge-live">● Activa</span></div>
-            <ol id="event-log" class="event-log" aria-live="polite"></ol>
-          </section>
-        </div>
+      <div class="wizard-intro">
+        <p class="eyebrow">Antes de zarpar</p>
+        <h2>Crea la Tarjeta del Alma</h2>
+        <p class="muted">Cinco decisiones darán forma a un avatar autónomo. Podrás susurrarle, pero su carácter y sus sueños guiarán su propio rumbo.</p>
       </div>
-    </section>
-    <footer class="footer"><span>One-Latam RPG · Sandbox autónomo</span><span>Tu historia, tu rumbo.</span></footer>
-  </main>
-</body>
-</html>
+      <nav class="wizard-progress" aria-label="Pasos de creación">
+        <button type="button
