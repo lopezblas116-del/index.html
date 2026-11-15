@@ -11,14 +11,15 @@ let character = loadGame();
 let timerId = null;
 const nextDelay = () => 5000 + Math.random() * 5000;
 const byId = (id) => document.getElementById(id);
-function paint() {
-  if (character) renderGame(character);
-}
+const listen = (element, type, handler, options) => {
+  if (element) element.addEventListener(type, handler, options);
+};
+function paint() { if (character) renderGame(character); }
 function scheduleTick() {
   clearTimeout(timerId);
-  if (!character || character.status === "dead" || character.autonomy.paused) return;
+  if (!character || character.status === "dead" || character.autonomy?.paused) return;
   timerId = setTimeout(() => {
-    if (!character || character.status === "dead" || character.autonomy.paused) return;
+    if (!character || character.status === "dead" || character.autonomy?.paused) return;
     autonomousTick(character);
     saveGame(character);
     paint();
@@ -38,7 +39,7 @@ if (character) {
   if (character.status !== "dead") scheduleTick();
 } else showSetup();
 
-document.addEventListener("onepiece:map-destination", (event) => {
+listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = {
     id: event.detail.id,
@@ -50,14 +51,11 @@ document.addEventListener("onepiece:map-destination", (event) => {
   persistRender();
 });
 
-byId("character-form").addEventListener("submit", (event) => {
+listen(byId("character-form"), "submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
-  if (traits.length !== 2) {
-    window.alert("Selecciona dos rasgos para la Tarjeta del Alma.");
-    return;
-  }
+  if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   character = createCharacter({
     name: String(data.get("name") || "Aventurero"),
     username: String(data.get("handle") || "@usuario"),
@@ -73,47 +71,52 @@ byId("character-form").addEventListener("submit", (event) => {
   });
   persistRender(true);
 });
-
-byId("whisper-form").addEventListener("submit", (event) => {
+listen(byId("whisper-form"), "submit", (event) => {
   event.preventDefault();
   if (!character || character.status === "dead") return;
   const input = byId("whisper-input");
+  if (!input) return;
   sendWhisper(character, input.value);
   input.value = "";
   persistRender();
   input.focus();
 });
-byId("pause-button").addEventListener("click", () => {
+listen(byId("pause-button"), "click", () => {
   if (!character || character.status === "dead") return;
   setAutonomyPaused(character, !character.autonomy.paused);
   persistRender(true);
 });
-byId("heir-form").addEventListener("submit", (event) => {
+listen(byId("heir-form"), "submit", (event) => {
   event.preventDefault();
   if (!character || character.status !== "dead") return;
+  const heirName = byId("heir-name");
+  const heirUsername = byId("heir-username");
   const heir = createHeir(character, {
-    name: byId("heir-name").value.trim() || undefined,
-    username: byId("heir-username").value.trim() || undefined
+    name: heirName?.value.trim() || undefined,
+    username: heirUsername?.value.trim() || undefined
   });
   if (!heir) return;
   character = heir;
-  byId("heir-form").reset();
+  event.currentTarget.reset();
   closeLegacyModal();
   persistRender(true);
 });
-byId("archive-button").addEventListener("click", openPantheon);
-document.querySelector("[data-close-pantheon]").addEventListener("click", closePantheon);
-document.querySelector("[data-close-legacy]").addEventListener("click", closeLegacyModal);
-document.querySelector("[data-open-heir]").addEventListener("click", () => {
+listen(byId("archive-button"), "click", openPantheon);
+const closePantheonButton = document.querySelector("[data-close-pantheon]");
+listen(closePantheonButton, "click", closePantheon);
+const closeLegacyButton = document.querySelector("[data-close-legacy]");
+listen(closeLegacyButton, "click", closeLegacyModal);
+const openHeirButton = document.querySelector("[data-open-heir]");
+listen(openHeirButton, "click", () => {
   const modal = byId("legacy-modal");
-  if (!modal.open) modal.showModal();
+  if (modal && !modal.open) modal.showModal();
 });
-byId("reset-button").addEventListener("click", () => {
+listen(byId("reset-button"), "click", () => {
   if (!window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) return;
   clearTimeout(timerId);
   localStorage.removeItem(SAVE_KEY);
   character = null;
-  byId("character-form").reset();
+  byId("character-form")?.reset();
   closeLegacyModal();
   closePantheon();
   resetWizard();
