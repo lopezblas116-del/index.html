@@ -12,7 +12,7 @@
   <main class="app-shell">
     <header class="masthead">
       <div>
-        <p class="eyebrow">Bitácora de aventuras · Sandbox autónomo</p>
+        <p class="eyebrow">Bitácora de aventuras · Beta 1.0</p>
         <h1>One-Latam <span>RPG</span></h1>
       </div>
       <button id="reset-button" class="button button-quiet" type="button" hidden>Nueva partida</button>
@@ -21,8 +21,291 @@
     <section id="setup-screen" class="panel setup-panel">
       <div class="wizard-intro">
         <p class="eyebrow">Antes de zarpar</p>
-        <h2>Crea la Tarjeta del Alma</h2>
-        <p class="muted">Cinco decisiones darán forma a un avatar autónomo. Podrás susurrarle, pero su carácter y sus sueños guiarán su propio rumbo.</p>
+        <h2>Tarjeta del Alma</h2>
+        <p class="muted">Cinco decisiones definen la personalidad del avatar. Sus sueños, su carácter y tu susurro influirán, pero no siempre obedece.</p>
       </div>
+
       <nav class="wizard-progress" aria-label="Pasos de creación">
-        <button type="button
+        <button class="progress-step active" data-step-nav="1" type="button">1. Apariencia</button>
+        <button class="progress-step" data-step-nav="2" type="button">2. Camino</button>
+        <button class="progress-step" data-step-nav="3" type="button">3. Carácter</button>
+        <button class="progress-step" data-step-nav="4" type="button">4. Sueño</button>
+        <button class="progress-step" data-step-nav="5" type="button">5. Tarjeta</button>
+      </nav>
+
+      <form id="character-form" class="wizard-form">
+        <div class="wizard-step active" data-step="1">
+          <div class="step-header">
+            <p class="eyebrow">Paso 1</p>
+            <h3>Apariencia</h3>
+          </div>
+          <div class="appearance-grid">
+            <label>
+              <span>Nombre del aventurero</span>
+              <input id="character-name" name="name" maxlength="18" placeholder="Ej. Zoro" required>
+            </label>
+            <label>
+              <span>Usuario único</span>
+              <input id="character-handle" name="handle" maxlength="16" placeholder="@tuusuario" value="@lopez" required>
+            </label>
+            <label>
+              <span>Piel</span>
+              <select name="skin">
+                <option value="Clara">Clara</option>
+                <option value="Bronceada">Bronceada</option>
+                <option value="Oscura">Oscura</option>
+              </select>
+            </label>
+            <label>
+              <span>Cabello</span>
+              <select name="hair">
+                <option value="Negro">Negro</option>
+                <option value="Moreno">Moreno</option>
+                <option value="Rubio">Rubio</option>
+                <option value="Rojo">Rojo</option>
+              </select>
+            </label>
+            <label>
+              <span>Accesorio</span>
+              <select name="accessory">
+                <option value="Bandana">Bandana</option>
+                <option value="Aro de metal">Aro de metal</option>
+                <option value="Collar">Collar</option>
+                <option value="Sombrero">Sombrero</option>
+              </select>
+            </label>
+            <label>
+              <span>Mar de origen</span>
+              <select name="originSea">
+                <option value="East Blue">East Blue</option>
+                <option value="West Blue">West Blue</option>
+                <option value="North Blue">North Blue</option>
+                <option value="South Blue">South Blue</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="wizard-step" data-step="2">
+          <div class="step-header">
+            <p class="eyebrow">Paso 2</p>
+            <h3>Camino</h3>
+          </div>
+          <div class="option-list compact" id="faction-list">
+            <label class="option-card selected">
+              <input type="radio" name="faction" value="Pirata" checked>
+              <span>
+                <strong>Pirata</strong>
+                <small>Recompensa en Berries 💰 · busca fama y botín.</small>
+              </span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="faction" value="Marine">
+              <span>
+                <strong>Marine</strong>
+                <small>Rango militar · disciplina y autoridad.</small>
+              </span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="faction" value="Aventurero">
+              <span>
+                <strong>Aventurero</strong>
+                <small>Libre · explora, aprende y sobrevive.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="wizard-step" data-step="3">
+          <div class="step-header">
+            <p class="eyebrow">Paso 3</p>
+            <h3>Carácter</h3>
+          </div>
+          <p class="muted small-text">Elige 2 rasgos principales. Los opuestos se bloquean automáticamente.</p>
+          <div class="trait-grid" id="trait-grid">
+            <button class="trait-card" type="button" data-trait="Valiente" data-opposite="Prudente">
+              <strong>Valiente</strong>
+              <span>Pros: actúa antes de dudar.</span>
+              <span>Contras: ignora riesgos obvios.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Astuto" data-opposite="Impulsivo">
+              <strong>Astuto</strong>
+              <span>Pros: mide oportunidades.</span>
+              <span>Contras: tarda en decidir.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Impulsivo" data-opposite="Prudente">
+              <strong>Impulsivo</strong>
+              <span>Pros: velocidad y acción.</span>
+              <span>Contras: baja estabilidad.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Prudente" data-opposite="Impulsivo">
+              <strong>Prudente</strong>
+              <span>Pros: cuida la salud y el plan.</span>
+              <span>Contras: tarda en arriesgarse.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Agresivo" data-opposite="Honrado">
+              <strong>Agresivo</strong>
+              <span>Pros: fuerza de ataque.</span>
+              <span>Contras: se deja llevar.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Honrado" data-opposite="Rebelde">
+              <strong>Honrado</strong>
+              <span>Pros: sigue principios.</span>
+              <span>Contras: rechaza tratos sucios.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Rebelde" data-opposite="Honrado">
+              <strong>Rebelde</strong>
+              <span>Pros: autonomía radical.</span>
+              <span>Contras: ignora consejos.</span>
+            </button>
+            <button class="trait-card" type="button" data-trait="Leal" data-opposite="Rebelde">
+              <strong>Leal</strong>
+              <span>Pros: se compromete con su bando.</span>
+              <span>Contras: duda ante traiciones.</span>
+            </button>
+          </div>
+          <input type="hidden" name="traitPrimary" value="Valiente">
+          <input type="hidden" name="traitSecondary" value="Astuto">
+        </div>
+
+        <div class="wizard-step" data-step="4">
+          <div class="step-header">
+            <p class="eyebrow">Paso 4</p>
+            <h3>El Sueño</h3>
+          </div>
+          <div class="option-list" id="dream-list">
+            <label class="option-card selected">
+              <input type="radio" name="dream" value="Libertad" checked>
+              <span><strong>Libertad</strong><small>Vivir sin ataduras, navegar sin dueño.</small></span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="dream" value="Poder">
+              <span><strong>Poder</strong><small>Dominar la fuerza, el respeto y la historia.</small></span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="dream" value="Riqueza">
+              <span><strong>Riqueza</strong><small>Recompensas, tesoros y un futuro seguro.</small></span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="dream" value="Fama">
+              <span><strong>Fama</strong><small>Dejar huella en el mundo y ser conocido.</small></span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="dream" value="Lazos">
+              <span><strong>Lazos</strong><small>Proteger a la gente que importa.</small></span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="dream" value="Conocimiento">
+              <span><strong>Conocimiento</strong><small>Entender los secretos del mundo.</small></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="wizard-step" data-step="5">
+          <div class="step-header">
+            <p class="eyebrow">Paso 5</p>
+            <h3>Tarjeta del Alma</h3>
+          </div>
+          <div class="soul-card-preview">
+            <div class="seal">ONE LATAM</div>
+            <div class="summary-grid">
+              <div><span>Nombre</span><strong id="summary-name">—</strong></div>
+              <div><span>Usuario</span><strong id="summary-handle">—</strong></div>
+              <div><span>Camino</span><strong id="summary-faction">—</strong></div>
+              <div><span>Mar</span><strong id="summary-sea">—</strong></div>
+              <div><span>Rasgos</span><strong id="summary-traits">—</strong></div>
+              <div><span>Sueño</span><strong id="summary-dream">—</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wizard-actions">
+          <button id="prev-step" class="button button-quiet" type="button" hidden>Anterior</button>
+          <button id="next-step" class="button button-primary" type="button">Siguiente</button>
+          <button id="submit-step" class="button button-primary" type="submit" hidden>Zarpar al Mar</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="game-screen" hidden>
+      <div class="game-grid">
+        <aside class="panel character-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Tarjeta del Alma</p>
+              <h2 id="character-name-display">—</h2>
+            </div>
+            <span id="level-badge" class="badge">Nivel 1</span>
+          </div>
+
+          <dl class="character-details">
+            <div><dt>Bando / rango</dt><dd id="faction-display">—</dd></div>
+            <div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div>
+            <div><dt>Ubicación</dt><dd id="location-display">—</dd></div>
+            <div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div>
+            <div><dt>Sueño</dt><dd id="dream-display">—</dd></div>
+            <div><dt>Rasgos</dt><dd id="traits-display">—</dd></div>
+            <div><dt>Akuma no Mi</dt><dd id="fruit-display">—</dd></div>
+            <div><dt>Haki</dt><dd id="haki-display">—</dd></div>
+            <div><dt>Recompensa</dt><dd id="bounty-display">—</dd></div>
+            <div><dt>Berries</dt><dd id="berries-display">—</dd></div>
+          </dl>
+
+          <div class="stats">
+            <div class="stat-row"><div><span>Salud</span><strong id="health-value">—</strong></div><progress id="health-bar" max="100" value="100"></progress></div>
+            <div class="stat-row"><span>Fuerza</span><strong id="strength-value">—</strong></div>
+            <div class="stat-row"><span>Agilidad</span><strong id="agility-value">—</strong></div>
+            <div class="stat-row"><span>Ingenio</span><strong id="ingenuity-value">—</strong></div>
+          </div>
+
+          <p id="xp-display" class="muted small-text">—</p>
+        </aside>
+
+        <div class="main-column">
+          <section class="panel autonomy-panel" aria-labelledby="autonomy-heading">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">El mundo sigue su curso</p>
+                <h2 id="autonomy-heading">Autonomía del avatar</h2>
+              </div>
+              <span id="autonomy-status" class="badge" role="status">—</span>
+            </div>
+            <div class="autonomy-controls">
+              <div class="sync-readout"><span>Sintonía</span><strong id="sync-value">—</strong></div>
+              <progress id="sync-bar" max="100" value="55" aria-label="Nivel de sintonía"></progress>
+              <p id="rebellion-value" class="muted small-text">—</p>
+              <button id="pause-button" class="button button-primary" type="button">Pausar avatar</button>
+            </div>
+          </section>
+
+          <section class="panel whisper-panel">
+            <p class="eyebrow">Puedes aconsejarle; la decisión es suya</p>
+            <h2>Enviar Susurro al Avatar</h2>
+            <form id="whisper-form" class="whisper-form">
+              <label class="visually-hidden" for="whisper-input">Susurro</label>
+              <input id="whisper-input" name="whisper" maxlength="160" placeholder="Ej. Ve a descansar, busca una fruta o zarpa a la Grand Line" required>
+              <button class="button button-primary" type="submit">Susurrar</button>
+            </form>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">En directo</p>
+                <h2>Bitácora</h2>
+              </div>
+              <span class="badge badge-live">● Activa</span>
+            </div>
+            <ol id="event-log" class="event-log" aria-live="polite"></ol>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>One-Latam RPG · Sandbox autónomo</span>
+      <span>Tu historia, tu rumbo.</span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -7,7 +7,7 @@ import {
   sendWhisper,
   setAutonomyPaused
 } from "./game.js";
-import { renderGame, showSetup } from "./ui.js";
+import { initWizard, renderGame, showSetup } from "./ui.js";
 
 let character = loadGame();
 let timerId = null;
@@ -39,17 +39,31 @@ if (character) {
   scheduleNextTick();
 } else {
   showSetup();
+  initWizard();
 }
 
 document.getElementById("character-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const formData = new FormData(event.currentTarget);
+  const faction = String(formData.get("faction") ?? "Pirata");
+  const originSea = String(formData.get("originSea") ?? "East Blue");
+  const dream = String(formData.get("dream") ?? "Libertad");
+  const primary = String(formData.get("traitPrimary") ?? "Valiente");
+  const secondary = String(formData.get("traitSecondary") ?? "Astuto");
+  const displayName = String(formData.get("name") ?? "Anónimo").trim();
+  const handle = String(formData.get("handle") ?? "@usuario").trim();
   character = createCharacter({
-    name: String(formData.get("name") ?? ""),
-    faction: String(formData.get("faction") ?? "Pirata"),
-    originSea: String(formData.get("originSea") ?? "East Blue"),
-    dream: String(formData.get("dream") ?? "Libertad"),
-    trait: String(formData.get("trait") ?? "Valiente")
+    name: displayName,
+    username: handle,
+    faction,
+    originSea,
+    dream,
+    traits: [primary, secondary],
+    appearance: {
+      skin: String(formData.get("skin") ?? "Clara"),
+      hair: String(formData.get("hair") ?? "Negro"),
+      accessory: String(formData.get("accessory") ?? "Bandana")
+    }
   });
   persistAndRender({ reschedule: true });
 });
@@ -77,4 +91,5 @@ document.getElementById("reset-button").addEventListener("click", () => {
   character = null;
   document.getElementById("character-form").reset();
   showSetup();
+  initWizard();
 });
