@@ -6,12 +6,17 @@ import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui.js";
+import { renderExpansion } from "./expansion-ui.js";
 
 let character = loadGame();
 let timerId = null;
 const nextDelay = () => 5000 + Math.random() * 5000;
 const byId = (id) => document.getElementById(id);
-
+function paint() {
+  if (!character) return;
+  renderGame(character);
+  renderExpansion(character);
+}
 function scheduleTick() {
   clearTimeout(timerId);
   if (!character || character.status === "dead" || character.autonomy.paused) return;
@@ -19,20 +24,20 @@ function scheduleTick() {
     if (!character || character.status === "dead" || character.autonomy.paused) return;
     autonomousTick(character);
     saveGame(character);
-    renderGame(character);
+    paint();
     scheduleTick();
   }, nextDelay());
 }
 function persistRender(reschedule = false) {
   if (!character) return;
   saveGame(character);
-  renderGame(character);
+  paint();
   if (reschedule) scheduleTick();
 }
 
 initWizard();
 if (character) {
-  renderGame(character);
+  paint();
   if (character.status !== "dead") scheduleTick();
 } else showSetup();
 
@@ -48,15 +53,10 @@ byId("character-form").addEventListener("submit", (event) => {
     originSea: String(data.get("originSea") || "East Blue"),
     dream: String(data.get("dream") || "Libertad"),
     traits,
-    appearance: {
-      skin: String(data.get("skin") || "Clara"),
-      hair: String(data.get("hair") || "Negro"),
-      accessory: String(data.get("accessory") || "Bandana")
-    }
+    appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") }
   });
   persistRender(true);
 });
-
 byId("whisper-form").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!character || character.status === "dead") return;
@@ -66,27 +66,21 @@ byId("whisper-form").addEventListener("submit", (event) => {
   persistRender();
   input.focus();
 });
-
 byId("pause-button").addEventListener("click", () => {
   if (!character || character.status === "dead") return;
   setAutonomyPaused(character, !character.autonomy.paused);
   persistRender(true);
 });
-
 byId("heir-form").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!character || character.status !== "dead") return;
-  const heir = createHeir(character, {
-    name: byId("heir-name").value.trim() || undefined,
-    username: byId("heir-username").value.trim() || undefined
-  });
+  const heir = createHeir(character, { name: byId("heir-name").value.trim() || undefined, username: byId("heir-username").value.trim() || undefined });
   if (!heir) return;
   character = heir;
   byId("heir-form").reset();
   closeLegacyModal();
   persistRender(true);
 });
-
 byId("archive-button").addEventListener("click", openPantheon);
 document.querySelector("[data-close-pantheon]").addEventListener("click", closePantheon);
 document.querySelector("[data-close-legacy]").addEventListener("click", closeLegacyModal);
@@ -94,7 +88,6 @@ document.querySelector("[data-open-heir]").addEventListener("click", () => {
   const modal = byId("legacy-modal");
   if (!modal.open) modal.showModal();
 });
-
 byId("reset-button").addEventListener("click", () => {
   if (!window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) return;
   clearTimeout(timerId);
