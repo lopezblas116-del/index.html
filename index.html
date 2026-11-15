@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17251e">
+  <title>One-Latam RPG — Beta 1.0</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Bitácora de aventuras · Beta 1.0</p>
+        <h1>One-Latam <span>RPG</span></h1>
+      </div>
+      <button id="reset-button" class="button button-quiet" type="button" hidden>
+        Nueva partida
+      </button>
+    </header>
+
+    <section id="setup-screen" class="panel setup-panel">
+      <p class="eyebrow">Tu aventura comienza aquí</p>
+      <h2>Crea tu personaje</h2>
+      <p class="muted">
+        Elige tu bando y tu mar de origen. Tu progreso se guardará en este navegador.
+      </p>
+
+      <form id="character-form" class="setup-form">
+        <label>
+          Nombre
+          <input id="character-name" name="name" maxlength="24"
+            placeholder="Ej. Luffy" required>
+        </label>
+
+        <label>
+          Bando
+          <select id="character-faction" name="faction">
+            <option value="Pirata">Pirata</option>
+            <option value="Marina">Marina</option>
+            <option value="Cazarrecompensas">Cazarrecompensas</option>
+            <option value="Revolucionario">Revolucionario</option>
+          </select>
+        </label>
+
+        <label>
+          Mar de origen
+          <select id="character-sea" name="originSea">
+            <option value="East Blue">East Blue</option>
+            <option value="West Blue">West Blue</option>
+            <option value="North Blue">North Blue</option>
+            <option value="South Blue">South Blue</option>
+          </select>
+        </label>
+
+        <button class="button button-primary" type="submit">Zarpar</button>
+      </form>
+    </section>
+
+    <section id="game-screen" hidden>
+      <div class="game-grid">
+        <aside class="panel character-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Ficha del personaje</p>
+              <h2 id="character-name-display">—</h2>
+            </div>
+            <span id="level-badge" class="badge">Nivel 1</span>
+          </div>
+
+          <dl class="character-details">
+            <div><dt>Bando</dt><dd id="faction-display">—</dd></div>
+            <div><dt>Rango</dt><dd id="rank-display">—</dd></div>
+            <div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div>
+            <div><dt>Ubicación</dt><dd id="location-display">—</dd></div>
+            <div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div>
+            <div><dt>Akuma no Mi</dt><dd id="fruit-display">—</dd></div>
+            <div><dt>Haki</dt><dd id="haki-display">—</dd></div>
+            <div><dt>Recompensa</dt><dd id="bounty-display">—</dd></div>
+            <div><dt>Berries</dt><dd id="berries-display">—</dd></div>
+          </dl>
+
+          <div class="stats">
+            <div class="stat-row">
+              <div><span>Salud</span><strong id="health-value">—</strong></div>
+              <progress id="health-bar" max="100" value="100"></progress>
+            </div>
+            <div class="stat-row"><span>Fuerza</span><strong id="strength-value">—</strong></div>
+            <div class="stat-row"><span>Agilidad</span><strong id="agility-value">—</strong></div>
+            <div class="stat-row"><span>Ingenio</span><strong id="ingenuity-value">—</strong></div>
+          </div>
+
+          <p id="xp-display" class="muted small-text">—</p>
+        </aside>
+
+        <div class="main-column">
+          <section class="panel actions-panel">
+            <p class="eyebrow">¿Cuál será tu siguiente paso?</p>
+            <h2>Acciones</h2>
+            <div class="action-grid">
+              <button class="button action-button" data-action="navigate" type="button">
+                <span class="action-icon" aria-hidden="true">🧭</span>
+                <span><strong>Navegar con Log Pose</strong><small>Explora nuevas rutas</small></span>
+              </button>
+              <button class="button action-button" data-action="train" type="button">
+                <span class="action-icon" aria-hidden="true">⚔️</span>
+                <span><strong>Entrenar Haki / Combate</strong><small>Mejora tus habilidades</small></span>
+              </button>
+              <button class="button action-button" data-action="searchFruit" type="button">
+                <span class="action-icon" aria-hidden="true">🍈</span>
+                <span><strong>Buscar Akuma no Mi</strong><small>La suerte está en el mar</small></span>
+              </button>
+              <button class="button action-button" data-action="rest" type="button">
+                <span class="action-icon" aria-hidden="true">⚓</span>
+                <span><strong>Descansar en Puerto</strong><small>Recupera salud</small></span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">En directo</p>
+                <h2>Bitácora</h2>
+              </div>
+              <span class="badge badge-live">● Activa</span>
+            </div>
+            <ol id="event-log" class="event-log" aria-live="polite"></ol>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>One-Latam RPG · Beta 1.0</span>
+      <span>Tu historia, tu rumbo.</span>
+    </footer>
+  </main>
+</body>
+</html>
