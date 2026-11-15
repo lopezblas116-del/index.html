@@ -16,23 +16,37 @@ export function showGame() {
   byId("game-screen").hidden = false;
   byId("reset-button").hidden = false;
 }
-function closeDialog(id) { const dialog = byId(id); if (dialog?.open) dialog.close(); }
+function closeDialog(id) {
+  const dialog = byId(id);
+  if (dialog?.open) dialog.close();
+}
 function renderList(list, entries, emptyText, toText) {
+  if (!list) return;
   list.replaceChildren();
-  if (!entries.length) { const item = document.createElement("li"); item.textContent = emptyText; list.append(item); return; }
-  entries.forEach((entry) => { const item = document.createElement("li"); item.textContent = toText(entry); list.append(item); });
+  if (!entries.length) {
+    const item = document.createElement("li");
+    item.textContent = emptyText;
+    list.append(item);
+    return;
+  }
+  entries.forEach((entry) => {
+    const item = document.createElement("li");
+    item.textContent = toText(entry);
+    list.append(item);
+  });
 }
 export function renderGame(character) {
+  if (!character) return;
   showGame();
   const world = character.world ?? { day: 0, year: 1, era: "Era de los Grandes Descubrimientos", news: [], pantheon: [] };
   const lineage = character.lineage ?? { family: character.name, generation: 1, legacyChest: [] };
   const soulCard = character.soulCard ?? { dream: "Libertad", traits: { pros: [], cons: [] } };
   const traits = [...(soulCard.traits?.pros ?? []), ...(soulCard.traits?.cons ?? [])];
-  byId("character-name-display").textContent = character.name;
-  byId("level-badge").textContent = `Nivel ${character.level} · Gen. ${lineage.generation ?? 1}`;
-  byId("faction-display").textContent = `${character.faction} · ${character.rank}`;
-  byId("origin-display").textContent = character.originSea;
-  byId("location-display").textContent = `${character.location?.island ?? "Puerto"} · ${character.location?.region ?? character.originSea}`;
+  byId("character-name-display").textContent = character.name ?? "Aventurero";
+  byId("level-badge").textContent = `Nivel ${character.level ?? 1} · Gen. ${lineage.generation ?? 1}`;
+  byId("faction-display").textContent = `${character.faction ?? "Pirata"} · ${character.rank ?? "Novato"}`;
+  byId("origin-display").textContent = character.originSea ?? "East Blue";
+  byId("location-display").textContent = `${character.location?.island ?? "Puerto"} · ${character.location?.region ?? character.originSea ?? "East Blue"}`;
   byId("log-pose-display").textContent = `${character.logPose?.alignment ?? 0}/${character.logPose?.required ?? 3} alineamientos`;
   byId("dream-display").textContent = safe(soulCard.dream);
   byId("traits-display").textContent = traits.join(", ") || "Sin definir";
@@ -44,16 +58,17 @@ export function renderGame(character) {
   if (character.haki?.kenbunshoku) haki.push("Kenbunshoku · Observación");
   if (character.haki?.haoshoku) haki.push("Haoshoku · Conquistador");
   byId("haki-display").textContent = haki.length ? haki.join(", ") : "Sin despertar";
-  const stats = character.stats;
-  byId("health-value").textContent = `${stats.health}/${stats.maxHealth}`;
-  byId("health-bar").max = stats.maxHealth;
-  byId("health-bar").value = stats.health;
-  byId("strength-value").textContent = stats.strength;
-  byId("agility-value").textContent = stats.agility;
-  byId("ingenuity-value").textContent = stats.ingenuity;
-  byId("xp-display").textContent = `Renombre: ${number(character.reputation)} · Capturas: ${character.captures ?? 0} · XP: ${character.experience}/${character.level * 100}`;
+  const stats = character.stats ?? {};
+  byId("health-value").textContent = `${stats.health ?? 0}/${stats.maxHealth ?? 100}`;
+  byId("health-bar").max = stats.maxHealth ?? 100;
+  byId("health-bar").value = stats.health ?? 0;
+  byId("strength-value").textContent = stats.strength ?? 0;
+  byId("agility-value").textContent = stats.agility ?? 0;
+  byId("ingenuity-value").textContent = stats.ingenuity ?? 0;
+  byId("xp-display").textContent = `Renombre: ${number(character.reputation)} · Capturas: ${character.captures ?? 0} · XP: ${character.experience ?? 0}/${(character.level ?? 1) * 100}`;
+
   const dead = character.status === "dead";
-  const paused = character.autonomy?.paused || dead;
+  const paused = Boolean(character.autonomy?.paused) || dead;
   byId("autonomy-status").textContent = dead ? "☠ En el Panteón" : paused ? "⏸ En pausa" : "● Activa";
   byId("autonomy-status").classList.toggle("badge-live", !paused);
   byId("pause-button").textContent = paused ? "Reanudar avatar" : "Pausar avatar";
@@ -63,6 +78,7 @@ export function renderGame(character) {
   byId("rebellion-value").textContent = `Rebeldía: ${character.whisper?.rebellion ?? 45}%`;
   byId("whisper-input").disabled = dead;
   byId("whisper-form").querySelector("button[type=submit]").disabled = dead;
+
   renderList(byId("event-log"), character.log ?? [], "La bitácora aún está en blanco.", (entry) => `${time(entry.time)} — ${entry.message}`);
   byId("world-era").textContent = world.era ?? "Era de los Grandes Descubrimientos";
   byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
@@ -70,6 +86,38 @@ export function renderGame(character) {
   renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `☠ ${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
   renderList(byId("pantheon-modal-list"), pantheon, "Aún no hay leyendas registradas.", (legend) => `☠ ${legend.name} · ${legend.family} · Gen. ${legend.generation} · ${legend.faction} · ${legend.cause} · ${number(legend.reputation)} renombre`);
   renderList(byId("news-list"), world.news ?? [], "El mar aguarda sus primeras noticias.", (entry) => entry.text ?? String(entry));
+
+  const mission = character.mission ?? { title: "Explorar el mar", island: character.location?.island ?? "Mar abierto", enemy: "piratas rivales", status: "active", completed: 0 };
+  byId("mission-title").textContent = mission.status === "complete" ? `✅ ${mission.title} · completada` : `🎯 ${mission.title}`;
+  byId("mission-text").textContent = mission.status === "complete"
+    ? `Has asegurado ${mission.island}. Navega para continuar la ruta. Misiones completadas: ${mission.completed ?? 0}.`
+    : `Isla: ${mission.island} · Objetivo: enfrentarse a ${mission.enemy}. Alinea el Log Pose con ${character.logPose?.required ?? 3} acciones de navegación para iniciar el desafío.`;
+  const route = character.originSea === "East Blue"
+    ? ["Isla Dawn", "Orange Town", "Villa Syrup", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"]
+    : [character.location?.island ?? "Isla inicial", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"];
+  const routeList = byId("expedition-route");
+  routeList.replaceChildren();
+  route.forEach((island, index) => {
+    const item = document.createElement("li");
+    const currentIndex = Number(character.location?.routeIndex) || 0;
+    item.textContent = `${index < currentIndex ? "✓" : index === currentIndex ? "⚓" : "○"} ${island}`;
+    item.classList.toggle("current", index === currentIndex);
+    item.classList.toggle("visited", index < currentIndex);
+    routeList.append(item);
+  });
+  const powers = [];
+  if (character.haki?.busoshoku) powers.push("Haki de Armadura: aumenta el poder de ataque");
+  if (character.haki?.kenbunshoku) powers.push("Haki de Observación: iniciativa y evasión");
+  if (character.haki?.haoshoku) powers.push("Haki del Conquistador: posibilidad de dominar rivales");
+  if (character.fruit) powers.push(`${character.fruit.technique || "Técnica de Akuma no Mi"}: ${character.fruit.name}`);
+  byId("technique-text").textContent = powers.length ? `Técnicas de combate · ${powers.join(" · ")}` : "Técnicas de combate · Entrena para despertar Haki o busca una Akuma no Mi.";
+  const wanted = ["Pirata", "Revolucionario"].includes(character.faction) && Number(character.bounty) > 0;
+  byId("wanted-poster").classList.toggle("not-wanted", !wanted);
+  byId("wanted-name").textContent = character.name ?? "Aventurero";
+  byId("wanted-handle").textContent = character.username ?? "Pirata desconocido";
+  byId("wanted-bounty").textContent = wanted ? `฿ ${number(character.bounty)} BERRIES` : "SIN RECOMPENSA";
+  byId("wanted-note").textContent = wanted ? `Vivo o muerto · ${character.location?.island ?? "Mar abierto"}` : character.faction === "Marine" ? "Marine en servicio · recompensa de captura" : "Las hazañas notorias generan un cartel de búsqueda.";
+
   byId("legacy-panel").hidden = !dead;
   if (dead) {
     const summary = `${character.name} cayó en ${character.location?.region ?? "el mar"}. Generación ${lineage.generation ?? 1} del linaje ${lineage.family ?? character.name}; se conservan ${(lineage.legacyChest ?? []).length} reliquias y parte del renombre.`;
@@ -106,7 +154,10 @@ function showWizardStep(index) {
   const nav = [...document.querySelectorAll(".progress-step")];
   currentStep = Math.max(0, Math.min(steps.length - 1, index));
   steps.forEach((step, i) => step.classList.toggle("active", i === currentStep));
-  nav.forEach((button, i) => { button.classList.toggle("active", i === currentStep); button.setAttribute("aria-current", i === currentStep ? "step" : "false"); });
+  nav.forEach((button, i) => {
+    button.classList.toggle("active", i === currentStep);
+    button.setAttribute("aria-current", i === currentStep ? "step" : "false");
+  });
   byId("prev-step").hidden = currentStep === 0;
   byId("next-step").hidden = currentStep === steps.length - 1;
   byId("submit-step").hidden = currentStep !== steps.length - 1;
@@ -131,7 +182,6 @@ export function initWizard() {
   wizardInitialized = true;
   initMap();
   const form = byId("character-form");
-  selectedTraits = [];
   document.querySelectorAll(".trait-card").forEach((button) => button.addEventListener("click", () => {
     const id = button.dataset.trait;
     if (selectedTraits.includes(id)) selectedTraits = selectedTraits.filter((trait) => trait !== id);
@@ -143,15 +193,24 @@ export function initWizard() {
   }));
   byId("next-step").addEventListener("click", () => {
     if (currentStep === 0) {
-      const name = form.elements.namedItem("name"); const handle = form.elements.namedItem("handle");
+      const name = form.elements.namedItem("name");
+      const handle = form.elements.namedItem("handle");
       if (!name.value.trim()) { name.reportValidity(); return; }
-      if (!/^@[a-zA-Z0-9_]{2,16}$/.test(handle.value.trim())) { handle.setCustomValidity("Usa @ seguido por 2-16 letras, números o guion bajo."); handle.reportValidity(); handle.setCustomValidity(""); return; }
+      if (!/^@[a-zA-Z0-9_]{2,16}$/.test(handle.value.trim())) {
+        handle.setCustomValidity("Usa @ seguido por 2-16 letras, números o guion bajo.");
+        handle.reportValidity();
+        handle.setCustomValidity("");
+        return;
+      }
     }
     if (currentStep === 2 && selectedTraits.length !== 2) { window.alert("Selecciona exactamente dos rasgos."); return; }
     showWizardStep(currentStep + 1);
   });
   byId("prev-step").addEventListener("click", () => showWizardStep(currentStep - 1));
-  document.querySelectorAll(".progress-step").forEach((button) => button.addEventListener("click", () => { const target = Number(button.dataset.stepNav) - 1; if (target <= currentStep) showWizardStep(target); }));
+  document.querySelectorAll(".progress-step").forEach((button) => button.addEventListener("click", () => {
+    const target = Number(button.dataset.stepNav) - 1;
+    if (target <= currentStep) showWizardStep(target);
+  }));
   form.addEventListener("input", updateWizardSummary);
   form.addEventListener("change", (event) => {
     if (event.target.matches('input[name="faction"], input[name="dream"]')) {

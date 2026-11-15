@@ -41,20 +41,5 @@
   <dialog id="pantheon-dialog" class="panel overlay-dialog"><div class="section-heading"><h2>Panteón de Leyendas</h2><button class="button button-secondary" type="button" data-close-pantheon>Cerrar</button></div><ul id="pantheon-modal-list"></ul></dialog>
   <footer class="footer"><span>One-Latam RPG · Sandbox autónomo</span><span>Tu historia, tu rumbo.</span></footer>
 </main>
-<script type="module">
-  import { saveGame } from "./src/game.js";
-  document.addEventListener("onepiece:map-destination", (event) => {
-    const key = "one-latam-rpg-beta-1";
-    try {
-      const character = JSON.parse(localStorage.getItem(key) || "null");
-      if (!character) return;
-      character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
-      localStorage.setItem(key, JSON.stringify(character));
-      document.getElementById("map-destination").textContent = `Rumbo fijado: ${event.detail.name} · ${event.detail.sea}.`;
-      // Mantener la partida viva con el destino seleccionado; main.js recibe el evento también.
-      window.dispatchEvent(new CustomEvent("onepiece:destination-saved", { detail: character.navigationTarget }));
-    } catch { /* el mapa sigue funcionando aunque el guardado local esté bloqueado */ }
-  });
-</script>
 </body>
 </html>
