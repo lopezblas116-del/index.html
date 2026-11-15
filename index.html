@@ -4,111 +4,57 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1329">
-  <meta name="description" content="Sandbox RPG autónomo de aventuras marítimas.">
+  <meta name="description" content="RPG autónomo de aventuras marítimas con mapa mundi interactivo.">
   <title>One-Latam RPG — Bitácora del Mar</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/main.js"></script>
 </head>
 <body>
-  <main class="app-shell">
-    <header class="masthead">
-      <div class="brand-lockup"><span class="brand-mark" aria-hidden="true">⚓</span><div><p class="eyebrow">Bitácora de aventuras · Beta 1.0</p><h1>One-Latam <span>RPG</span></h1></div></div>
-      <button id="reset-button" class="button button-secondary" type="button" hidden>Nueva partida</button>
-    </header>
-
-    <section id="setup-screen" class="panel setup-panel">
-      <div class="wizard-intro"><p class="eyebrow">Antes de zarpar</p><h2>Forja tu Tarjeta del Alma</h2><p class="muted">Cinco decisiones darán forma a un avatar autónomo. Su sueño y su carácter marcarán el rumbo.</p></div>
-      <nav class="wizard-progress" aria-label="Pasos de creación">
-        <button class="progress-step active" data-step-nav="1" type="button"><span class="step-number">1</span><span class="step-label">Apariencia</span><span class="step-check" aria-hidden="true">✓</span></button>
-        <button class="progress-step" data-step-nav="2" type="button"><span class="step-number">2</span><span class="step-label">Camino</span><span class="step-check" aria-hidden="true">✓</span></button>
-        <button class="progress-step" data-step-nav="3" type="button"><span class="step-number">3</span><span class="step-label">Carácter</span><span class="step-check" aria-hidden="true">✓</span></button>
-        <button class="progress-step" data-step-nav="4" type="button"><span class="step-number">4</span><span class="step-label">Sueño</span><span class="step-check" aria-hidden="true">✓</span></button>
-        <button class="progress-step" data-step-nav="5" type="button"><span class="step-number">5</span><span class="step-label">Tarjeta del Alma</span><span class="step-check" aria-hidden="true">✓</span></button>
-      </nav>
-
-      <form id="character-form" class="wizard-form">
-        <div class="wizard-step active" data-step="1">
-          <div class="step-header"><p class="eyebrow">Paso 1 / 5</p><h3>Apariencia</h3><p class="muted small-text">Diseña el rostro que navegará tu historia.</p></div>
-          <div class="avatar-editor">
-            <div class="pixel-avatar-frame" aria-label="Vista previa pixel art del avatar"><div class="avatar-halo"></div><div class="pixel-avatar" aria-hidden="true"><i class="pixel-hair"></i><i class="pixel-face"></i><i class="pixel-eye eye-left"></i><i class="pixel-eye eye-right"></i><i class="pixel-mouth"></i><i class="pixel-shirt"></i><i class="pixel-accessory">✦</i></div></div>
-            <span class="avatar-caption">CAPITÁN EN CONSTRUCCIÓN</span>
-          </div>
-          <div class="appearance-grid">
-            <label><span>Nombre del aventurero</span><input id="character-name" name="name" maxlength="24" placeholder="Ej. Zoro" required></label>
-            <label><span>Usuario único</span><input id="character-handle" name="handle" maxlength="17" placeholder="@tuusuario" required></label>
-            <label><span>Piel</span><select name="skin"><option>Clara</option><option>Bronceada</option><option>Oscura</option></select></label>
-            <label><span>Cabello</span><select name="hair"><option>Negro</option><option>Moreno</option><option>Rubio</option><option>Rojo</option></select></label>
-            <label><span>Accesorio</span><select name="accessory"><option>Bandana</option><option>Aro de metal</option><option>Collar</option><option>Sombrero</option></select></label>
-            <label><span>Mar de origen</span><select name="originSea"><option>East Blue</option><option>West Blue</option><option>North Blue</option><option>South Blue</option></select></label>
-          </div>
-        </div>
-
-        <div class="wizard-step" data-step="2"><div class="step-header"><p class="eyebrow">Paso 2 / 5</p><h3>Camino</h3><p class="muted small-text">Elige el estandarte bajo el que vivirá.</p></div>
-          <div class="option-list compact" id="faction-list">
-            <label class="option-card selected"><input type="radio" name="faction" value="Pirata" checked><span class="option-icon">☠</span><span><strong>Pirata</strong><small>Recompensa en Berries 💰 · fama y botín.</small></span></label>
-            <label class="option-card"><input type="radio" name="faction" value="Marine"><span class="option-icon">⚓</span><span><strong>Marine</strong><small>Rango militar · justicia y disciplina.</small></span></label>
-            <label class="option-card"><input type="radio" name="faction" value="Aventurero"><span class="option-icon">🧭</span><span><strong>Aventurero</strong><small>Libre · explora y sobrevive a su manera.</small></span></label>
-          </div>
-        </div>
-
-        <div class="wizard-step" data-step="3"><div class="step-header"><p class="eyebrow">Paso 3 / 5</p><h3>Carácter</h3><p class="muted small-text">Elige exactamente 2 rasgos. Algunos temperamentos se excluyen entre sí.</p></div>
-          <div class="trait-grid" id="trait-grid">
-            <button class="trait-card" type="button" data-trait="Valiente"><strong>Valiente</strong><span>Enfrenta el peligro</span></button><button class="trait-card" type="button" data-trait="Astuto"><strong>Astuto</strong><span>Descubre oportunidades</span></button>
-            <button class="trait-card" type="button" data-trait="Impulsivo"><strong>Impulsivo</strong><span>Actúa sin demora</span></button><button class="trait-card" type="button" data-trait="Prudente"><strong>Prudente</strong><span>Protege sus recursos</span></button>
-            <button class="trait-card" type="button" data-trait="Agresivo"><strong>Agresivo</strong><span>Golpea con fuerza</span></button><button class="trait-card" type="button" data-trait="Honrado"><strong>Honrado</strong><span>Sigue sus principios</span></button>
-            <button class="trait-card" type="button" data-trait="Rebelde"><strong>Rebelde</strong><span>Rechaza las órdenes</span></button><button class="trait-card" type="button" data-trait="Leal"><strong>Leal</strong><span>Protege a los suyos</span></button>
-          </div>
-          <p id="trait-selection-hint" class="muted small-text" aria-live="polite">0 de 2 rasgos elegidos.</p>
-          <details id="trait-details" class="trait-details"><summary>Ventajas y desventajas de tus rasgos</summary><div id="trait-pros" class="trait-pros"></div><div id="trait-cons" class="trait-cons"></div></details>
-          <input type="hidden" name="traitPrimary" value=""><input type="hidden" name="traitSecondary" value="">
-        </div>
-
-        <div class="wizard-step" data-step="4"><div class="step-header"><p class="eyebrow">Paso 4 / 5</p><h3>El Sueño</h3><p class="muted small-text">Una brújula para las decisiones autónomas del avatar.</p></div>
-          <div class="dream-compass"><div class="compass-ring"><span class="compass-north">N</span><span class="compass-needle">✦</span><span class="compass-center">☠</span><span class="compass-south">S</span></div>
-            <div class="dream-options" id="dream-list">
-              <label class="dream-option selected"><input type="radio" name="dream" value="Libertad" checked><span>🕊 Libertad</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Poder"><span>⚔ Poder</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Destrucción"><span>🔥 Destrucción</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Riqueza"><span>💰 Riqueza</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Fama"><span>⭐ Fama</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Lazos"><span>🤝 Lazos</span></label>
-              <label class="dream-option"><input type="radio" name="dream" value="Conocimiento"><span>📜 Conocimiento</span></label>
-            </div>
-          </div>
-        </div>
-
-        <div class="wizard-step" data-step="5"><div class="step-header"><p class="eyebrow">Paso 5 / 5</p><h3>Tarjeta del Alma</h3><p class="muted small-text">El pergamino que conservará el legado de tu linaje.</p></div>
-          <article class="soul-card-preview"><div class="parchment-top"><span>☠ TARJETA DEL ALMA ☠</span><span class="wanted-stamp">WANTED<br>SOUL</span></div>
-            <div class="soul-card-avatar"><div class="pixel-avatar-frame parchment-avatar"><div class="pixel-avatar" aria-hidden="true"><i class="pixel-hair"></i><i class="pixel-face"></i><i class="pixel-eye eye-left"></i><i class="pixel-eye eye-right"></i><i class="pixel-mouth"></i><i class="pixel-shirt"></i><i class="pixel-accessory">✦</i></div></div></div>
-            <div class="soul-card-name"><strong id="summary-name">—</strong><span id="summary-handle">—</span></div>
-            <div class="summary-grid"><div><span>Camino</span><strong id="summary-faction">—</strong></div><div><span>Mar de origen</span><strong id="summary-sea">—</strong></div><div><span>Rasgos</span><strong id="summary-traits">—</strong></div><div><span>Sueño</span><strong id="summary-dream">—</strong></div></div>
-            <div class="locked-insignias"><span>Insignias de leyenda</span><div><b title="Se desbloquea con logros">🔒 Navegante</b><b title="Se desbloquea con logros">🔒 Haki</b><b title="Se desbloquea con logros">🔒 Linaje</b></div></div>
-            <p class="parchment-footer">El mar no decide tu destino. Solo revela tu carácter.</p>
-          </article>
-        </div>
-        <div class="wizard-actions"><button id="prev-step" class="button button-secondary" type="button" hidden>← Anterior</button><button id="next-step" class="button button-primary" type="button">Siguiente →</button><button id="submit-step" class="button button-primary launch-button" type="submit" hidden>Zarpar &gt;</button></div>
-      </form>
-    </section>
-
-    <section id="game-screen" hidden>
-      <div class="game-grid">
-        <aside class="panel character-panel"><div class="section-heading"><div><p class="eyebrow">Tarjeta del Alma</p><h2 id="character-name-display">—</h2></div><span id="level-badge" class="badge">Nivel 1</span></div>
-          <dl class="character-details"><div><dt>Bando / rango</dt><dd id="faction-display">—</dd></div><div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div><div><dt>Ubicación</dt><dd id="location-display">—</dd></div><div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div><div><dt>Sueño</dt><dd id="dream-display">—</dd></div><div><dt>Rasgos</dt><dd id="traits-display">—</dd></div><div><dt>Akuma no Mi</dt><dd id="fruit-display">—</dd></div><div><dt>Haki</dt><dd id="haki-display">—</dd></div><div><dt>Recompensa</dt><dd id="bounty-display">—</dd></div><div><dt>Berries</dt><dd id="berries-display">—</dd></div></dl>
-          <div class="stats"><div class="stat-row"><div><span>Salud</span><strong id="health-value">—</strong></div><progress id="health-bar" max="100" value="100"></progress></div><div class="stat-row"><span>Fuerza</span><strong id="strength-value">—</strong></div><div class="stat-row"><span>Agilidad</span><strong id="agility-value">—</strong></div><div class="stat-row"><span>Ingenio</span><strong id="ingenuity-value">—</strong></div></div><p id="xp-display" class="muted small-text">—</p>
-        </aside>
-        <div class="main-column">
-          <section class="panel autonomy-panel" aria-labelledby="autonomy-heading"><div class="section-heading"><div><p class="eyebrow">El mundo sigue su curso</p><h2 id="autonomy-heading">Autonomía del avatar</h2></div><span id="autonomy-status" class="badge" role="status">—</span></div><div class="autonomy-controls"><div class="sync-readout"><span>Sintonía</span><strong id="sync-value">—</strong></div><progress id="sync-bar" max="100" value="55" aria-label="Sintonía"></progress><p id="rebellion-value" class="muted small-text">—</p><button id="pause-button" class="button button-primary" type="button">Pausar avatar</button></div></section>
-          <section class="panel whisper-panel"><p class="eyebrow">Puedes aconsejarle; su carácter decide</p><h2>Enviar Susurro al Avatar</h2><form id="whisper-form" class="whisper-form"><label class="visually-hidden" for="whisper-input">Susurro al avatar</label><input id="whisper-input" name="whisper" maxlength="160" placeholder="Ej. Descansa, entrena Haki o navega a la Grand Line" required><button class="button button-primary" type="submit">Susurrar</button></form></section>
-          <section class="panel log-panel"><div class="section-heading"><div><p class="eyebrow">En directo</p><h2>Bitácora</h2></div><span class="badge badge-live">● Activa</span></div><ol id="event-log" class="event-log" aria-live="polite"></ol></section>
-          <section id="world-panel" class="panel world-panel"><div class="section-heading"><div><p class="eyebrow">Diario del Mar</p><h2>Reloj de Eras</h2></div><span id="world-era" class="badge">—</span></div><p id="world-clock" class="muted small-text">—</p><h3 class="subheading">Noticias del Mar</h3><ol id="news-list" class="event-log" aria-live="polite"></ol><h3 class="subheading">Panteón de Leyendas</h3><ol id="pantheon-list" class="event-log"></ol><button id="archive-button" class="button button-secondary" type="button">Abrir Panteón completo</button></section>
-          <section id="legacy-panel" class="panel legacy-panel dead-state" hidden><p class="eyebrow">Permadeath · El linaje continúa</p><h2>El avatar ha caído</h2><p id="death-summary" class="muted"></p><button class="button button-primary" data-open-heir type="button">Elegir heredero / discípulo</button></section>
-        </div>
-      </div>
-    </section>
-
-    <dialog id="legacy-modal" class="panel overlay-dialog" aria-labelledby="legacy-modal-title"><p class="eyebrow">Panteón de Leyendas · Continuidad del linaje</p><h2 id="legacy-modal-title">Elige quién heredará el rumbo</h2><p id="death-summary-modal" class="muted">La historia del linaje continúa.</p><form id="heir-form" class="legacy-form"><label>Nombre del heredero<input id="heir-name" name="name" maxlength="24" placeholder="Dejar vacío para generar uno"></label><label>Usuario del heredero<input id="heir-username" name="username" maxlength="17" placeholder="@nuevoheredero"></label><div class="dialog-actions"><button class="button button-primary" type="submit">Continuar el linaje</button><button class="button button-secondary" data-close-legacy type="button">Cerrar</button></div></form></dialog>
-    <dialog id="pantheon-dialog" class="panel overlay-dialog" aria-labelledby="pantheon-title"><div class="section-heading"><div><p class="eyebrow">Memoria del mundo</p><h2 id="pantheon-title">Panteón de Leyendas</h2></div><button class="button button-secondary" data-close-pantheon type="button">Cerrar</button></div><ol id="pantheon-modal-list" class="event-log"></ol></dialog>
-    <footer class="footer"><span>One-Latam RPG · Sandbox autónomo</span><span>Tu historia, tu rumbo.</span></footer>
-  </main>
+<main class="app-shell">
+  <header class="masthead"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true">⚓</span><div><p class="eyebrow">Bitácora de aventuras · Beta</p><h1>One-Latam <span>RPG</span></h1></div></div><button id="reset-button" class="button button-secondary" type="button" hidden>Nueva partida</button></header>
+  <section id="setup-screen" class="panel setup-panel">
+    <div class="wizard-intro"><p class="eyebrow">Antes de zarpar</p><h2>Forja tu Tarjeta del Alma</h2><p class="muted">Crea un avatar autónomo y explora los mares. Cinco decisiones darán forma a su viaje.</p></div>
+    <nav class="wizard-progress" aria-label="Pasos de creación"><button class="progress-step active" data-step-nav="1" type="button"><span class="step-number">1</span><span class="step-label">Apariencia</span></button><button class="progress-step" data-step-nav="2" type="button"><span class="step-number">2</span><span class="step-label">Camino</span></button><button class="progress-step" data-step-nav="3" type="button"><span class="step-number">3</span><span class="step-label">Carácter</span></button><button class="progress-step" data-step-nav="4" type="button"><span class="step-number">4</span><span class="step-label">Sueño</span></button><button class="progress-step" data-step-nav="5" type="button"><span class="step-number">5</span><span class="step-label">Tarjeta</span></button></nav>
+    <form id="character-form" class="wizard-form">
+      <div class="wizard-step active"><div class="step-header"><p class="eyebrow">Paso 1 / 5</p><h3>Apariencia y origen</h3></div><div class="appearance-grid"><label>Nombre del aventurero<input name="name" maxlength="24" placeholder="Ej. Luffy" required></label><label>Usuario<input name="handle" maxlength="17" placeholder="@tuusuario" required></label><label>Piel<select name="skin"><option>Clara</option><option>Bronceada</option><option>Oscura</option></select></label><label>Cabello<select name="hair"><option>Negro</option><option>Moreno</option><option>Rubio</option><option>Rojo</option></select></label><label>Accesorio<select name="accessory"><option>Bandana</option><option>Aro de metal</option><option>Collar</option><option>Sombrero</option></select></label><label>Mar de origen<select name="originSea"><option>East Blue</option><option>West Blue</option><option>North Blue</option><option>South Blue</option></select></label></div></div>
+      <div class="wizard-step"><div class="step-header"><p class="eyebrow">Paso 2 / 5</p><h3>Elige tu camino</h3></div><div class="option-list compact" id="faction-list"><label class="option-card selected"><input type="radio" name="faction" value="Pirata" checked><span class="option-icon">☠</span><span><strong>Pirata</strong><small>Recompensa en Berries</small></span></label><label class="option-card"><input type="radio" name="faction" value="Marine"><span class="option-icon">⚓</span><span><strong>Marine</strong><small>Justicia y disciplina</small></span></label><label class="option-card"><input type="radio" name="faction" value="Aventurero"><span class="option-icon">🧭</span><span><strong>Aventurero</strong><small>Explora a tu manera</small></span></label></div></div>
+      <div class="wizard-step"><div class="step-header"><p class="eyebrow">Paso 3 / 5</p><h3>Elige exactamente dos rasgos</h3></div><div class="trait-grid"><button class="trait-card" type="button" data-trait="Valiente"><strong>Valiente</strong><span>Enfrenta el peligro</span></button><button class="trait-card" type="button" data-trait="Astuto"><strong>Astuto</strong><span>Busca oportunidades</span></button><button class="trait-card" type="button" data-trait="Impulsivo"><strong>Impulsivo</strong><span>Actúa sin demora</span></button><button class="trait-card" type="button" data-trait="Prudente"><strong>Prudente</strong><span>Cuida a la tripulación</span></button><button class="trait-card" type="button" data-trait="Agresivo"><strong>Agresivo</strong><span>Golpea con fuerza</span></button><button class="trait-card" type="button" data-trait="Honrado"><strong>Honrado</strong><span>Sigue su código</span></button><button class="trait-card" type="button" data-trait="Rebelde"><strong>Rebelde</strong><span>Rechaza las órdenes</span></button><button class="trait-card" type="button" data-trait="Leal"><strong>Leal</strong><span>Protege a sus amigos</span></button></div><input type="hidden" name="traitPrimary"><input type="hidden" name="traitSecondary"></div>
+      <div class="wizard-step"><div class="step-header"><p class="eyebrow">Paso 4 / 5</p><h3>El sueño que guía tu rumbo</h3></div><div class="option-list compact" id="dream-list"><label class="option-card selected"><input type="radio" name="dream" value="Libertad" checked><span>🕊 Libertad</span></label><label class="option-card"><input type="radio" name="dream" value="Poder"><span>⚔ Poder</span></label><label class="option-card"><input type="radio" name="dream" value="Riqueza"><span>💰 Riqueza</span></label><label class="option-card"><input type="radio" name="dream" value="Fama"><span>⭐ Fama</span></label><label class="option-card"><input type="radio" name="dream" value="Lazos"><span>🤝 Lazos</span></label><label class="option-card"><input type="radio" name="dream" value="Conocimiento"><span>📜 Conocimiento</span></label><label class="option-card"><input type="radio" name="dream" value="Destrucción"><span>🔥 Destrucción</span></label></div></div>
+      <div class="wizard-step"><div class="step-header"><p class="eyebrow">Paso 5 / 5</p><h3>Tarjeta del Alma</h3></div><article class="soul-card-preview"><div class="parchment-top"><span>☠ TARJETA DEL ALMA ☠</span><span class="wanted-stamp">WANTED<br>SOUL</span></div><div class="soul-card-name"><strong id="summary-name">Aventurero</strong><span id="summary-handle">@usuario</span></div><div class="summary-grid"><div><span>Camino</span><strong id="summary-faction">Pirata</strong></div><div><span>Mar</span><strong id="summary-sea">East Blue</strong></div><div><span>Rasgos</span><strong id="summary-traits">Elige dos rasgos</strong></div><div><span>Sueño</span><strong id="summary-dream">Libertad</strong></div></div></article></div>
+      <div class="wizard-actions"><button id="prev-step" class="button button-secondary" type="button" hidden>← Anterior</button><button id="next-step" class="button button-primary" type="button">Siguiente →</button><button id="submit-step" class="button button-primary launch-button" type="submit" hidden>¡Zarpar!</button></div>
+    </form>
+  </section>
+  <section id="game-screen" hidden><div class="game-grid">
+    <aside class="panel character-panel"><div class="section-heading"><div><p class="eyebrow">Tarjeta del Alma</p><h2 id="character-name-display">—</h2></div><span id="level-badge" class="badge">Nivel 1</span></div><dl class="character-details"><div><dt>Bando / rango</dt><dd id="faction-display">—</dd></div><div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div><div><dt>Ubicación</dt><dd id="location-display">—</dd></div><div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div><div><dt>Sueño / rasgos</dt><dd id="dream-display">—</dd></div><div><dt>Rasgos</dt><dd id="traits-display">—</dd></div><div><dt>Akuma no Mi</dt><dd id="fruit-display">—</dd></div><div><dt>Recompensa</dt><dd id="bounty-display">฿ 0</dd></div><div><dt>Provisiones</dt><dd id="berries-display">฿ 0</dd></div><div><dt>Haki</dt><dd id="haki-display">—</dd></div></dl><div class="stats"><div class="stat-row"><div><span>Salud</span><strong id="health-value">—</strong></div><progress id="health-bar" max="100" value="100"></progress></div><div>Fuerza <strong id="strength-value">—</strong></div><div>Agilidad <strong id="agility-value">—</strong></div><div>Ingenio <strong id="ingenuity-value">—</strong></div><p id="xp-display">—</p></div></aside>
+    <div class="main-column">
+      <section class="panel map-panel" aria-labelledby="map-heading"><div class="section-heading"><div><p class="eyebrow">Navegación cenital · Grand Line</p><h2 id="map-heading">Mapa Mundi</h2></div><button id="map-reset-view" class="button button-secondary" type="button">Centrar mapa</button></div><p class="muted small-text">Arrastra para recorrer · rueda o pellizco para zoom · selecciona una isla para fijar rumbo.</p><canvas id="world-map" class="world-map" aria-label="Mapa top-down interactivo de los cuatro mares, la Red Line y la Grand Line"></canvas><p id="map-destination" class="map-destination" aria-live="polite">Selecciona una isla para fijar el rumbo del Log Pose.</p><div class="map-legend"><span>🟩 Islas</span><span>🟥 Red Line</span><span>〰 Grand Line</span><span>⛵ Avatar</span></div></section>
+      <section class="panel autonomy-panel"><div class="section-heading"><div><p class="eyebrow">El mundo sigue su curso</p><h2>Autonomía del Avatar</h2></div><span id="autonomy-status" class="badge badge-live">● Activa</span></div><div class="autonomy-controls"><button id="pause-button" class="button button-secondary" type="button">Pausar avatar</button><button id="archive-button" class="button button-secondary" type="button">Panteón</button></div></section>
+      <section class="panel whisper-panel"><p class="eyebrow">Puedes aconsejarle; su carácter decide</p><h2>Enviar Susurro al Avatar</h2><div class="sync-readout"><strong id="sync-value">55%</strong><span id="rebellion-value">Rebeldía: 45%</span></div><progress id="sync-bar" max="100" value="55"></progress><form id="whisper-form" class="whisper-form"><label class="visually-hidden" for="whisper-input">Susurro</label><input id="whisper-input" maxlength="160" placeholder="Explora, entrena, busca fruta…"><button class="button button-primary" type="submit">Enviar</button></form></section>
+      <section class="panel mission-panel"><p class="eyebrow">Bitácora de misiones</p><h2>Expedición</h2><h3 id="mission-title" class="mission-title">Misión</h3><p id="mission-text" class="muted">Aventura en curso.</p><ol id="expedition-route" class="expedition-route"></ol><p id="technique-text" class="technique-text">Técnicas</p></section>
+      <section id="wanted-poster" class="panel wanted-panel"><p class="eyebrow">Oficina de Prensa · Cartel de recompensa</p><h2>SE BUSCA</h2><p id="wanted-name" class="wanted-name">—</p><p id="wanted-handle" class="wanted-handle">—</p><p id="wanted-bounty" class="wanted-bounty">SIN RECOMPENSA</p><p id="wanted-note" class="wanted-note">—</p></section>
+      <section class="panel log-panel"><div class="section-heading"><div><p class="eyebrow">En directo</p><h2>Bitácora</h2></div><span class="badge badge-live">● Activa</span></div><ol id="event-log" class="event-log"></ol></section>
+      <section class="panel world-panel"><div class="section-heading"><div><p class="eyebrow">Diario del Mar</p><h2>Reloj de Eras</h2></div><span id="world-era" class="badge">—</span></div><p id="world-clock"></p><h3 class="subheading">Noticias</h3><ul id="news-list"></ul><h3 class="subheading">Leyendas</h3><ul id="pantheon-list"></ul></section>
+      <section id="legacy-panel" class="panel legacy-panel dead-state" hidden><p class="eyebrow">Permadeath · El linaje continúa</p><h2>El avatar ha caído</h2><p id="death-summary"></p><button class="button button-primary" type="button" data-open-heir>Crear heredero</button></section>
+    </div>
+  </div></section>
+  <dialog id="legacy-modal" class="panel overlay-dialog"><p class="eyebrow">Panteón de Leyendas · Continuidad del linaje</p><h2>El avatar ha caído</h2><p id="death-summary-modal"></p><form id="heir-form" class="legacy-form"><label>Nombre del heredero<input id="heir-name" maxlength="24"></label><label>Usuario<input id="heir-username" maxlength="17"></label><button class="button button-primary" type="submit">Continuar linaje</button></form><button class="button button-secondary" type="button" data-close-legacy>Cerrar</button></dialog>
+  <dialog id="pantheon-dialog" class="panel overlay-dialog"><div class="section-heading"><h2>Panteón de Leyendas</h2><button class="button button-secondary" type="button" data-close-pantheon>Cerrar</button></div><ul id="pantheon-modal-list"></ul></dialog>
+  <footer class="footer"><span>One-Latam RPG · Sandbox autónomo</span><span>Tu historia, tu rumbo.</span></footer>
+</main>
+<script type="module">
+  import { saveGame } from "./src/game.js";
+  document.addEventListener("onepiece:map-destination", (event) => {
+    const key = "one-latam-rpg-beta-1";
+    try {
+      const character = JSON.parse(localStorage.getItem(key) || "null");
+      if (!character) return;
+      character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
+      localStorage.setItem(key, JSON.stringify(character));
+      document.getElementById("map-destination").textContent = `Rumbo fijado: ${event.detail.name} · ${event.detail.sea}.`;
+      // Mantener la partida viva con el destino seleccionado; main.js recibe el evento también.
+      window.dispatchEvent(new CustomEvent("onepiece:destination-saved", { detail: character.navigationTarget }));
+    } catch { /* el mapa sigue funcionando aunque el guardado local esté bloqueado */ }
+  });
+</script>
 </body>
 </html>
