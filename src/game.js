@@ -10,6 +10,7 @@ import missionData from "./data/missions_data.json" with { type: "json" };
 import { PULSE_MS, STORAGE_KEYS } from "./config.js";
 import { readStorage, writeJSON } from "./storage_adapter.js";
 import { advanceClock, MINUTES_PER_PULSE } from "./time_engine.js";
+import { advanceGM } from "./gm_engine.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -45,6 +46,11 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
   const family = displayName.split(/\s+/).at(-1) || displayName;
   const route = routeFor(originSea);
   const spawn = getMapIslands({}).find((island) => island.name === route[0]);
+  const avatarConfig = {
+    skin: appearance.skin || "Clara", hair: appearance.hair || "Negro",
+    accessory: appearance.accessory || "Bandana", eyes: appearance.eyes || "Marrón",
+    outfit: appearance.outfit || "Rojo"
+  };
   return {
     version: 3,
     id: globalThis.crypto?.randomUUID?.() ?? `captain-${Date.now()}`,
@@ -53,7 +59,9 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     story: String(story).trim().slice(0, 240),
     faction: normalizedFaction,
     originSea,
-    appearance: { skin: appearance.skin || "Clara", hair: appearance.hair || "Negro", accessory: appearance.accessory || "Bandana" },
+    appearance: { ...avatarConfig },
+    avatarConfig,
+    avatarActivity: "idle",
     location: { region: originSea, island: route[0], routeIndex: 0 },
     mapPosition: spawn ? { x: spawn.x, y: spawn.y } : undefined,
     logPose: { alignment: 0, required: 3 },
@@ -85,6 +93,14 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
 function normalize(character) {
   if (!character || !character.stats) return null;
   character.version = 3;
+  const avatar = { ...(character.appearance || {}), ...(character.avatarConfig || {}) };
+  character.avatarConfig = {
+    skin: avatar.skin || "Clara", hair: avatar.hair || "Negro",
+    accessory: avatar.accessory || "Bandana", eyes: avatar.eyes || "Marrón",
+    outfit: avatar.outfit || "Rojo"
+  };
+  character.appearance = { ...character.avatarConfig };
+  character.avatarActivity ??= "idle";
   character.faction = character.faction === "Marina" ? "Marine" : character.faction;
   character.autonomy ??= { mode: "active", paused: false, tickCount: 0 };
   character.autonomy.paused ??= character.autonomy.mode === "paused";
@@ -397,10 +413,12 @@ export function performAction(character, action, { availableFruitIds } = {}) {
     ? searchFruit(character, availableFruitIds)
     : handlers[action] ? handlers[action](character) : "Acción desconocida.";
   addLog(character, message);
+  character.avatarActivity = action === "rest" ? "resting" : action === "navigate" ? "navigating" : "idle";
   if (action === "navigate") {
     const arrived = !character.location.atSea && (previousIsland !== character.location.island || previousAtSea);
     if (character.status !== "dead" && (arrived || character.location.atSea)) {
       const encounter = seaEncounter(character);
+      if (encounter) character.avatarActivity = "combat";
       if (encounter?.dead) checkDeath(character, encounter.enemy);
     }
     if (character.status !== "dead") {
@@ -449,6 +467,7 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
   character.autonomy.tickCount += 1;
   const newDay = advanceClock(character.world, ERAS);
+  advanceGM(character);
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);

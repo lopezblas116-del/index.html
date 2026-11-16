@@ -462,14 +462,15 @@ function updateWizardSummary() {
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
-  const portrait = byId("wizard-portrait")?.getContext("2d");
-  if (portrait) {
-    portrait.clearRect(0, 0, 32, 32);
-    drawPixelAvatar(portrait, {
-      skin: form.elements.namedItem("skin")?.value,
-      hair: form.elements.namedItem("hair")?.value,
-      accessory: form.elements.namedItem("accessory")?.value
-    });
+  const avatarConfig = Object.fromEntries(["skin", "eyes", "hair", "outfit", "accessory"].map((key) => [key, form.elements.namedItem(key)?.value]));
+  for (const id of ["wizard-avatar-preview", "wizard-portrait"]) {
+    const canvas = byId(id), ctx = canvas?.getContext("2d");
+    if (!ctx) continue;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#0b1329";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const scale = canvas.width / 128 * 2.3;
+    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 16 * scale, y: canvas.height * .06, scale, fullBody: true });
   }
 }
 function showWizardStep(index) {

@@ -20,6 +20,7 @@ import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantP
 import { removeStorage } from "./storage_adapter.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
 import { sendConsciousnessWhisper } from "./chat_engine.js";
+import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, transmitLocalGMMessage } from "./gm_engine.js";
 
 let character = loadGame();
 const network = createNetwork();
@@ -208,7 +209,8 @@ listen(byId("character-form"), "submit", (event) => {
   const data = new FormData(event.currentTarget);
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
+  const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;
@@ -297,4 +299,26 @@ listen(document, "onepiece:hud-politics", (event) => {
   }
   persistRender(true);
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-gm-broadcast", (event) => {
+  if (!isLocalGMAvailable(character)) return;
+  const result = transmitLocalGMMessage(event.detail?.text);
+  if (result.ok) {
+    character.log.unshift({ time: new Date().toISOString(), message: "[GM] Comunicado guardado en el Chat local; no se envió al servidor." });
+    persistRender();
+  }
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.ok ? "Comunicado publicado solo en el Chat local." : result.message } }));
+});
+listen(document, "onepiece:hud-gm-event", (event) => {
+  if (!isLocalGMAvailable(character)) return;
+  const result = applyGMEvent(character, event.detail?.type, "manual");
+  if (!result) return;
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: "Evento GM aplicado a esta partida local." } }));
+});
+listen(document, "onepiece:hud-gm-bounty", (event) => {
+  if (!isLocalGMAvailable(character)) return;
+  const result = adjustLocalBounty(character, event.detail?.value);
+  if (result.ok) persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.ok ? "Recompensa local actualizada." : result.message } }));
 });

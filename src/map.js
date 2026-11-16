@@ -40,6 +40,14 @@ function prepareIslands(character) {
 export function getMapIslands(character) {
   return prepareIslands(character).map((island) => ({ ...island, ...islandDetails(island) }));
 }
+export function avatarScenePosition(islandId, avatarId, activity = "idle") {
+  if (activity === "tavern") return { x: 109, y: 130 };
+  if (activity === "resting") return { x: 487, y: 325 };
+  if (activity === "combat") return { x: 320, y: 228 };
+  let seed = 0;
+  for (const char of `${islandId}:${avatarId}`) seed = (seed * 31 + char.charCodeAt(0)) >>> 0;
+  return { x: 212 + seed % 212, y: 224 + (seed >>> 8) % 35 };
+}
 export function newsLocation(entry, character) {
   if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };
   const point = entry.coordinates;

@@ -1,3 +1,5 @@
+import { avatarScenePosition } from "./map.js";
+
 const PALETTES = {
   green: { sky: ["#8cc7d1", "#659fae"], mountain: "#577e74", land: "#6d9d5a", light: "#add17c", earth: "#77523d" },
   sky: { sky: ["#b6e3ed", "#6aa8ca"], mountain: "#c5e1e3", land: "#91bd72", light: "#d0e7aa", earth: "#b1d3d4" },
@@ -31,73 +33,85 @@ export function npcAppearanceFor(text) {
   return NPC_PORTRAITS.find((entry) => entry.pattern.test(String(text ?? "")))?.appearance ?? null;
 }
 
-export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
-  const { x = 0, y = 0, scale = 1, fullBody = false } = options;
+function avatarLayers(appearance, options) {
+  const { x, y, scale, fullBody, action, frame } = options;
   const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Azul: "#639fa8" })[appearance.skin] || "#e4b991";
   const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8" })[appearance.hair] || "#1c1b22";
-  const coat = ({ makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" })[appearance.portrait] || "#c65f4c";
-  const pixel = (px, py, w, h, color) => box(ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
+  const coats = { makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" };
+  const coat = coats[appearance.portrait] || ({ Azul: "#355f82", Rojo: "#9b443a", Verde: "#46735a", Negro: "#343a48", Marrón: "#79513b" })[appearance.outfit] || "#c65f4c";
+  const eyes = ({ Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf" })[appearance.eyes] || "#0b1329";
+  const pixel = (px, py, w, h, color) => box(options.ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
 
-  pixel(11, 22, 10, 9, coat);
-  pixel(12, 30, 8, 2, "#f4b41a");
-  pixel(10, 31, 12, 1, "#49382d");
-  if (fullBody) {
-    pixel(9, 23, 3, 10, skin);
-    pixel(21, 23, 3, 10, skin);
-    pixel(11, 32, 10, 6, "#35455c");
-    pixel(11, 38, 4, 5, "#3b2822");
-    pixel(18, 38, 4, 5, "#3b2822");
-  }
-  pixel(12, 10, 9, 12, skin);
-  pixel(11, 8, 11, 4, hair);
-  pixel(9, 11, 4, 7, hair);
-  pixel(20, 10, 4, 5, hair);
-  pixel(13, 14, 2, 2, "#0b1329");
-  pixel(18, 14, 2, 2, "#0b1329");
-  pixel(15, 19, 3, 1, "#a14a36");
+  const body = () => {
+    pixel(11, 22, 10, 9, coat);
+    pixel(12, 30, 8, 2, "#f4b41a");
+    pixel(10, 31, 12, 1, "#49382d");
+    if (fullBody) {
+      const step = action === "navigating" && frame % 2 ? 2 : 0;
+      pixel(9, 23, 3, 10, skin);
+      pixel(21, 23, 3, 10, skin);
+      pixel(11 + step, 32, 4, 6, "#35455c");
+      pixel(18 - step, 32, 4, 6, "#35455c");
+      pixel(11 + step, 38, 4, 5, "#3b2822");
+      pixel(18 - step, 38, 4, 5, "#3b2822");
+    }
+  };
+  const face = () => {
+    pixel(12, 10, 9, 12, skin);
+    pixel(13, 14, 2, 2, eyes);
+    pixel(18, 14, 2, 2, eyes);
+    pixel(15, 19, 3, 1, "#a14a36");
+  };
+  const hairLayer = () => {
+    pixel(11, 8, 11, 4, hair);
+    pixel(9, 11, 4, 7, hair);
+    pixel(20, 10, 4, 5, hair);
+    if (appearance.portrait === "makino") {
+      pixel(9, 15, 3, 8, hair); pixel(20, 15, 3, 8, hair); pixel(11, 20, 2, 2, "#f4b41a");
+    } else if (appearance.portrait === "zeff") {
+      pixel(10, 3, 13, 6, "#f4efdf"); pixel(9, 8, 15, 2, "#d4ccb9"); pixel(13, 19, 7, 3, hair);
+    } else if (appearance.portrait === "morgan") {
+      pixel(8, 21, 5, 4, "#c9ad67"); pixel(20, 21, 5, 4, "#c9ad67"); pixel(16, 20, 5, 2, "#8b9695");
+    }
+  };
+  const outfit = () => {
+    pixel(12, 23, 8, 7, coat);
+    if (appearance.portrait === "arlong") {
+      pixel(14, 17, 7, 2, "#93c3c4"); pixel(20, 17, 4, 2, skin); pixel(14, 20, 6, 2, "#e6ded1");
+    } else if (appearance.portrait === "smoker") {
+      pixel(10, 21, 4, 5, "#e7e6d8"); pixel(20, 21, 4, 5, "#e7e6d8"); pixel(18, 19, 6, 1, "#7b5142");
+    }
+  };
+  const accessories = () => {
+    if (appearance.accessory === "Bandana") { pixel(10, 9, 13, 3, "#c84237"); pixel(21, 10, 5, 2, "#c84237"); }
+    else if (appearance.accessory === "Sombrero") { pixel(8, 9, 18, 2, "#8b6038"); pixel(12, 5, 10, 4, "#c79a54"); }
+    else if (appearance.accessory === "Aro de metal") pixel(21, 17, 2, 3, "#e1c46d");
+    else if (appearance.accessory === "Collar") { pixel(14, 22, 6, 2, "#e1c46d"); pixel(16, 24, 2, 3, "#f4b41a"); }
+    if (appearance.glasses) { pixel(11, 14, 5, 2, "#26394b"); pixel(18, 14, 5, 2, "#26394b"); pixel(16, 14, 2, 1, "#d5b66e"); }
+    if (appearance.eyepatch) { pixel(17, 13, 4, 4, "#211c1a"); pixel(17, 12, 5, 1, "#3b3028"); }
+    if (action === "combat") { pixel(25, 12, 2, 19, "#d7dce0"); pixel(23, 13, 6, 2, "#b58b3a"); pixel(25, 30, 2, 6, "#694732"); }
+    if (action === "tavern") { pixel(24, 23, 5, 6, "#bd8641"); pixel(25, 21, 3, 2, "#f3d37a"); }
+    if (action === "resting" && frame % 4 === 0) { pixel(23, 7, 3, 2, "#e8d9ad"); pixel(27, 3, 3, 2, "#e8d9ad"); }
+  };
+  return [body, face, hairLayer, outfit, accessories];
+}
 
-  if (appearance.accessory === "Bandana") {
-    pixel(10, 9, 13, 3, "#c84237");
-    pixel(21, 10, 5, 2, "#c84237");
-  } else if (appearance.accessory === "Sombrero") {
-    pixel(8, 9, 18, 2, "#8b6038");
-    pixel(12, 5, 10, 4, "#c79a54");
-  } else if (appearance.accessory === "Aro de metal") {
-    pixel(21, 17, 2, 3, "#e1c46d");
-  } else if (appearance.accessory === "Collar") {
-    pixel(14, 22, 6, 2, "#e1c46d");
-    pixel(16, 24, 2, 3, "#f4b41a");
-  }
-  if (appearance.glasses) {
-    pixel(11, 14, 5, 2, "#26394b");
-    pixel(18, 14, 5, 2, "#26394b");
-    pixel(16, 14, 2, 1, "#d5b66e");
-  }
-  if (appearance.eyepatch) {
-    pixel(17, 13, 4, 4, "#211c1a");
-    pixel(17, 12, 5, 1, "#3b3028");
-  }
-  if (appearance.portrait === "makino") {
-    pixel(9, 15, 3, 8, hair);
-    pixel(20, 15, 3, 8, hair);
-    pixel(11, 20, 2, 2, "#f4b41a");
-  } else if (appearance.portrait === "morgan") {
-    pixel(8, 21, 5, 4, "#c9ad67");
-    pixel(20, 21, 5, 4, "#c9ad67");
-    pixel(16, 20, 5, 2, "#8b9695");
-  } else if (appearance.portrait === "zeff") {
-    pixel(10, 3, 13, 6, "#f4efdf");
-    pixel(9, 8, 15, 2, "#d4ccb9");
-    pixel(13, 19, 7, 3, hair);
-  } else if (appearance.portrait === "arlong") {
-    pixel(14, 17, 7, 2, "#93c3c4");
-    pixel(20, 17, 4, 2, skin);
-    pixel(14, 20, 6, 2, "#e6ded1");
-  } else if (appearance.portrait === "smoker") {
-    pixel(10, 21, 4, 5, "#e7e6d8");
-    pixel(20, 21, 4, 5, "#e7e6d8");
-    pixel(18, 19, 6, 1, "#7b5142");
-  }
+export function avatarAction(character) {
+  if (!character || character.status === "dead") return "resting";
+  if (character.location?.atSea) return "navigating";
+  const action = character.avatarActivity;
+  return ["tavern", "combat", "resting"].includes(action) ? action : "idle";
+}
+
+export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
+  const state = {
+    ctx, x: options.x ?? 0, y: options.y ?? 0, scale: options.scale ?? 1,
+    fullBody: Boolean(options.fullBody), action: options.action || "idle",
+    frame: Math.floor((options.time ?? 0) / 350) % 4
+  };
+  const bob = state.action === "resting" ? 0 : state.frame % 2;
+  state.y += bob * state.scale;
+  for (const layer of avatarLayers(appearance, state)) layer();
 }
 
 export const ISLAND_SCENE_WIDTH = 640;
@@ -226,8 +240,12 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     }
   });
   if (character) {
-    box(ctx, 275, 260, 31, 6, "rgba(0,0,0,.25)");
-    drawPixelAvatar(ctx, character.appearance, { x: 267, y: 211, scale: 1.15, fullBody: true });
+    const action = avatarAction(character);
+    const position = avatarScenePosition(island.id, character.id, action);
+    box(ctx, position.x - 7, position.y + 35, 31, 6, "rgba(0,0,0,.25)");
+    drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
+      x: position.x - 15, y: position.y - 38, scale: 1.15, fullBody: true, action, time: now
+    });
   }
 }
 

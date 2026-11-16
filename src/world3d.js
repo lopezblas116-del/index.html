@@ -1,7 +1,7 @@
 import { getMapIslands } from "./map.js";
 import { routeFor } from "./game.js";
 import { islandDetails } from "./islands_data.js";
-import { drawIslandSceneContext, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { avatarAction, drawIslandSceneContext, drawPixelAvatar, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -14,6 +14,7 @@ let canvas, ctx, character, width = 0, height = 0, radius = 0;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
 let zoomFocus = null, zoomAnchor = null;
+let lastFollowFrame = 0;
 const ISLAND_ZOOM = 2.2;
 export const GLOBAL_MAP = "GLOBAL_MAP";
 export const ISLAND_VIEW = "ISLAND_VIEW";
@@ -270,6 +271,11 @@ function drawBoat(point, destination) {
   pixel(-3, -8, 2, 2, "#e8d9ad");
   pixel(1, -5, 4, 7, "#f1e4be");
   pixel(1, -9, 4, 2, "#f4b41a");
+  if (character?.location?.atSea && character.status !== "dead") {
+    drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
+      x: -4, y: -13, scale: .28, action: avatarAction(character), time: performance.now()
+    });
+  }
   ctx.restore();
 }
 function drawSeaLabel(point, label) {
@@ -441,7 +447,7 @@ function islandFrame(island, progress = 1, now = 0, sceneRect = null) {
   ctx.restore();
 }
 function sceneKey(island) {
-  return JSON.stringify([island.id, atIsland(island), character?.appearance]);
+  return JSON.stringify([island.id, atIsland(island), character?.avatarConfig || character?.appearance, character?.avatarActivity]);
 }
 function renderLocalIsland(now = performance.now()) {
   if (!localIsland) return;
@@ -449,7 +455,9 @@ function renderLocalIsland(now = performance.now()) {
   localRenderKey = sceneKey(localIsland);
 }
 function animateIsland() {
-  return Boolean(localIsland?.npcs?.length && !document.body?.classList?.contains("reduced-motion"));
+  const residents = Boolean(localIsland?.npcs?.length);
+  const avatar = Boolean(atIsland(localIsland) && character?.status === "alive");
+  return Boolean((residents || avatar) && !document.body?.classList?.contains("reduced-motion"));
 }
 function suspendTransition() {
   if (transition && transition.suspendedAt == null) transition.suspendedAt = performance.now();
@@ -519,6 +527,15 @@ function animate(now) {
     boatPosition = { x: (animation.from.x + dx * eased + WIDTH) % WIDTH, y: animation.from.y + (animation.to.y - animation.from.y) * eased };
     if (t >= 1) animation = null;
   }
+  if (character?.location?.atSea && boatPosition && shouldAnimateRoute()) {
+    const elapsed = lastFollowFrame ? Math.min(100, now - lastFollowFrame) : 16;
+    const focus = radians(boatPosition);
+    const delta = Math.atan2(Math.sin(focus.lon - longitude), Math.cos(focus.lon - longitude));
+    const blend = 1 - Math.exp(-elapsed / 650);
+    longitude += delta * blend;
+    latitude += (focus.lat - latitude) * blend;
+  }
+  lastFollowFrame = now;
   dashOffset = (dashOffset + .45) % 24;
   render(now);
   if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();

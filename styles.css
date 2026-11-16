@@ -403,3 +403,10 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .island-heading button,.island-hotspot{font:600 14px/1.2 system-ui,sans-serif}
 #one-hud .one-hud-form textarea{font:inherit}
 #one-hud .one-hud-contract h3{font:700 14px/1.35 system-ui,sans-serif}
+.avatar-editor-preview{grid-column:1/-1;display:grid;justify-items:center;gap:6px;padding:12px;border:1px solid rgba(244,180,26,.28);border-radius:10px;background:#0b1329;color:#aab8ca}
+.avatar-editor-preview canvas{width:128px;height:128px;image-rendering:pixelated}
+#modal-admin-gm .one-hud-warning{border-radius:8px}
+#modal-admin-gm .one-hud-contracts{display:flex;flex-wrap:wrap}
+#modal-admin-gm .one-hud-contracts h3{flex-basis:100%}
+#modal-admin-gm .one-hud-contracts button{flex:1 1 190px}
+#modal-admin-gm .one-hud-form input{min-height:48px;color:#fff;border:1px solid rgba(244,180,26,.45);border-radius:8px;background:#0b1329}

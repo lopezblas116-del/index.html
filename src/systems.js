@@ -36,6 +36,14 @@ export function ensureAdvancedSystems(character) {
   character.soulCard ??= { dream: "Libertad", traits: { pros: [], cons: [] } };
   character.soulCard.alignment ??= "Libertad";
   character.soulCard.hiddenTalent ??= ["Cartografía", "Instinto de Tormenta", "Oído Antiguo"][hash(character.id ?? character.name) % 3];
+  const avatar = { ...(character.appearance || {}), ...(character.avatarConfig || {}) };
+  character.avatarConfig = {
+    skin: avatar.skin || "Clara", hair: avatar.hair || "Negro",
+    accessory: avatar.accessory || "Bandana", eyes: avatar.eyes || "Marrón",
+    outfit: avatar.outfit || "Rojo"
+  };
+  character.appearance = { ...character.avatarConfig };
+  character.avatarActivity ??= "idle";
   ensureAncientLanguage(character);
   return character;
 }
@@ -164,6 +172,7 @@ export function tavernAction(character, visitorId, action) {
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para invitar una ronda.` };
     character.berries -= cost;
     visitor.loyalty = clamp(visitor.loyalty + 20);
+    character.avatarActivity = "tavern";
     character.log.unshift({ time: new Date().toISOString(), message: `🍻 Invitas una ronda a ${visitor.name}; su lealtad sube a ${visitor.loyalty}%.` });
     return { ok: true, message: `${visitor.name} agradece la ronda. Lealtad: ${visitor.loyalty}%.` };
   }
@@ -173,6 +182,7 @@ export function tavernAction(character, visitorId, action) {
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para formalizar el reclutamiento.` };
     character.berries -= cost;
     character.crew.push({ visitorId: visitor.id, name: visitor.name, role: visitor.role, trait: visitor.trait, loyalty: visitor.loyalty, attributes: visitor.attributes, port: character.tavern.port });
+    character.avatarActivity = "tavern";
     character.log.unshift({ time: new Date().toISOString(), message: `⚓ ${visitor.name} se une a la tripulación como ${visitor.role}.` });
     return { ok: true, message: `¡${visitor.name} se unió a la tripulación!` };
   }
@@ -186,7 +196,9 @@ export function advanceAdvancedSystems(character, { action = "", previousIsland 
   const moved = previousIsland !== character.location?.island;
   const climate = climateFor(character);
   travel.climate = climate;
-  travel.weather = climate === "grand-line" && Math.random() < 0.28 ? "storm" : "clear";
+  const now = (Number(character.world?.day) || 0) * 1440 + (Number(character.world?.minuteOfDay) || 0);
+  const gmStorm = now < (Number(character.world?.gm?.stormUntil) || 0);
+  travel.weather = gmStorm || (climate === "grand-line" && Math.random() < 0.28) ? "storm" : "clear";
   travel.speedMultiplier = climate === "calm-belt" ? 0.5 : 1;
   travel.docked = !character.location?.atSea;
   if (moved) travel.logPoseCharge = 0;
