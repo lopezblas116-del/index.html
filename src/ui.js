@@ -1,4 +1,5 @@
-import { initMap, newsLocation, renderMap, resizeMap } from "./map.js";
+import { newsLocation } from "./map.js";
+import { initMap, renderMap, resizeMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 
 const byId = (id) => document.getElementById(id);
@@ -47,7 +48,7 @@ export function renderPsychology(container, character, selection, onSuggest) {
   container.append(card);
 }
 
-export function renderNewspaper(container, character, onInvestigate) {
+export function renderNewspaper(container, character, onInvestigate, onSuggest) {
   const world = character.world ?? {};
   const sections = [
     { label: "Crónica de la Era", items: world.news ?? [], empty: "No hay crónicas todavía." },
@@ -90,8 +91,15 @@ export function renderNewspaper(container, character, onInvestigate) {
       if (location) investigate.addEventListener("click", () => onInvestigate(location));
       detail.append(coordinates, investigate);
       if (location) {
+        const suggest = document.createElement("button");
+        suggest.type = "button";
+        suggest.className = "one-hud-action";
+        suggest.textContent = "🗣️ Sugerir Redirección de Rumbo";
+        suggest.disabled = character.status === "dead";
+        suggest.addEventListener("click", () => onSuggest(location));
+        detail.append(suggest);
         const note = document.createElement("p");
-        note.textContent = "Marca la zona en el mapa; la expedición autónoma sigue su ruta actual.";
+        note.textContent = "Marca la zona en el globo; después puedes sugerir un cambio de rumbo.";
         detail.append(note);
       }
       details.append(summary, detail);
@@ -311,7 +319,7 @@ export function renderGame(character) {
     if (modal && !modal.open) modal.showModal();
   } else closeDialog("legacy-modal");
   const destination = character.navigationTarget;
-  if (byId("map-destination")) byId("map-destination").textContent = destination ? `Rumbo fijado: ${destination.name} · ${destination.sea}.` : "Selecciona una isla para fijar el rumbo del Log Pose.";
+  if (byId("map-destination")) byId("map-destination").textContent = destination ? `Zona seleccionada: ${destination.name} · ${destination.sea || "mar abierto"}.` : "Selecciona una zona para sugerir un rumbo.";
   renderMap(character);
 }
 
@@ -333,7 +341,8 @@ function updateWizardSummary() {
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
     "summary-sea": form.elements.namedItem("originSea")?.value || "East Blue",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
-    "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad"
+    "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
+    "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
 }
@@ -408,8 +417,8 @@ export function initWizard() {
   });
   form.addEventListener("input", updateWizardSummary);
   form.addEventListener("change", (event) => {
-    if (event.target.matches('input[name="faction"], input[name="dream"]')) {
-      const list = event.target.name === "faction" ? "faction-list" : "dream-list";
+    if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
+      const list = `${event.target.name}-list`;
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
     }
     updateWizardSummary();
@@ -427,7 +436,7 @@ export function resetWizard() {
   const form = byId("character-form");
   form?.reset();
   document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
-  document.querySelectorAll("#faction-list .option-card, #dream-list .option-card").forEach((card) => {
+  document.querySelectorAll("#faction-list .option-card, #dream-list .option-card, #alignment-list .option-card").forEach((card) => {
     card.classList.toggle("selected", Boolean(card.querySelector('input[type="radio"]')?.checked));
   });
   showWizardStep(0);

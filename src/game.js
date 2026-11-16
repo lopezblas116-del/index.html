@@ -1,5 +1,7 @@
-import { generateTreasureMap } from "./systems.js";
+import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, updateCrewLoyalty } from "./systems.js";
 import { resolvePortSuggestions } from "./block1.js";
+import { seaEncounter } from "./combat_economy.js";
+import { getMapIslands } from "./map.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -34,6 +36,7 @@ const MISSION_NAMES = [
   "Proteger la aldea", "Recuperar el mapa de navegación", "Defender el astillero", "Escoltar el barco restaurante", "Liberar la isla", "El asalto de Loguetown", "Cruzar la Reverse Mountain", "Entrar al Paraíso", "Conquistar el Nuevo Mundo"
 ];
 const ENEMIES = ["piratas rivales", "Marines", "Cazarrecompensas", "agentes del Gobierno", "una banda local"];
+const TRAITS = ["Valiente", "Astuto", "Impulsivo", "Prudente", "Agresivo", "Honrado", "Rebelde", "Leal"];
 export const SAVE_KEY = "one-latam-rpg-beta-1";
 const rand = (max) => Math.floor(Math.random() * max);
 const pick = (items) => items[rand(items.length)];
@@ -46,9 +49,10 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
+  const randomTraits = TRAITS.filter((entry) => !chosenTraits.includes(entry));
   const normalizedFaction = faction === "Marina" ? "Marine" : faction;
   const family = displayName.split(/\s+/).at(-1) || displayName;
   const route = routeFor(originSea);
@@ -74,7 +78,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     level: 1,
     experience: 0,
     stats: { health: 100, maxHealth: 100, strength: 5, agility: 5, ingenuity: 5 },
-    soulCard: { dream, traits: { pros: chosenTraits, cons: [] } },
+    soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [pick(randomTraits)] } },
     lineage: { family, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 },
     autonomy: { mode: "active", paused: false, tickCount: 0 },
     whisper: { affinity: 55, rebellion: 45 },
@@ -105,7 +109,7 @@ function normalize(character) {
   const route = routeFor(character.originSea);
   character.location ??= { region: character.originSea, island: route[0], routeIndex: 0 };
   character.location.routeIndex = clamp(Number(character.location.routeIndex) || 0, 0, route.length - 1);
-  character.location.island = route[character.location.routeIndex] ?? character.location.island ?? route[0];
+  if (!character.location.detour) character.location.island = route[character.location.routeIndex] ?? character.location.island ?? route[0];
   character.logPose ??= { alignment: 0, required: 3 };
   character.logPose.required = Math.max(1, Number(character.logPose.required) || 3);
   character.logPose.alignment = clamp(Number(character.logPose.alignment) || 0, 0, character.logPose.required - 1);
@@ -169,6 +173,10 @@ function addReputation(character, base, reason = "acción destacada") {
   if (["Pirata", "Revolucionario"].includes(character.faction)) {
     const oldBounty = character.bounty;
     character.bounty += amount;
+    if (character.bounty !== oldBounty) {
+      character.world.news.unshift({ type: "bounty", text: `📜 SE BUSCA · ${character.name} · Recompensa: ฿${character.bounty} Berries.`, day: character.world.day, location: character.location.atSea ? undefined : character.location.island });
+      character.world.news = character.world.news.slice(0, 60);
+    }
     if (Math.floor(oldBounty / 100000) < Math.floor(character.bounty / 100000)) addLog(character, `📜 ¡Nuevo cartel SE BUSCA! La recompensa de ${character.name} sube a ฿${formatNum(character.bounty)} por ${reason}.`);
   }
   return amount;
@@ -180,7 +188,8 @@ function checkDeath(character, cause) {
   character.autonomy.paused = true;
   character.autonomy.mode = "paused";
   generateTreasureMap(character, "muerte");
-  character.world.pantheon.unshift({ id: character.id, name: character.name, username: character.username, family: character.lineage.family, generation: character.lineage.generation, faction: character.faction, level: character.level, bounty: character.bounty, reputation: character.reputation, dream: character.soulCard.dream, cause, achievements: [`Nivel ${character.level}`, character.location.island, ...(character.fruit ? [`Portador de ${character.fruit.name}`] : [])], time: new Date().toISOString() });
+  if (character.systems.discoveries?.length && !character.systems.testament) draftTestament(character);
+  character.world.pantheon.unshift({ id: character.id, name: character.name, username: character.username, family: character.lineage.family, generation: character.lineage.generation, faction: character.faction, level: character.level, bounty: character.bounty, reputation: character.reputation, dream: character.soulCard.dream, cause, location: character.location.atSea ? undefined : character.location.island, achievements: [`Nivel ${character.level}`, character.location.island, ...(character.fruit ? [`Portador de ${character.fruit.name}`] : [])], time: new Date().toISOString() });
   character.world.pantheon = character.world.pantheon.slice(0, 30);
   addLog(character, `☠ ${character.name} ha caído (${cause}). Su nombre entra en el Panteón de Leyendas; su linaje continúa.`);
   return true;
@@ -250,6 +259,34 @@ function completeMission(character) {
 }
 function navigate(character) {
   const route = routeFor(character.originSea);
+  if (character.redirectTarget) {
+    const target = character.redirectTarget;
+    delete character.redirectTarget;
+    character.mapPosition = { x: target.x, y: target.y };
+    const island = getMapIslands(character).find((place) => Math.hypot(place.x - target.x, place.y - target.y) < 2);
+    if (!island) {
+      character.location.atSea = true;
+      return `La carabela explora mar abierto en X:${Math.round(target.x)} Y:${Math.round(target.y)}.`;
+    }
+    const routeIndex = route.indexOf(island.name);
+    character.location.island = island.name;
+    character.location.region = island.sea;
+    character.location.atSea = false;
+    character.location.detour = routeIndex < 0;
+    if (routeIndex >= 0) {
+      character.location.routeIndex = routeIndex;
+      character.mission = { ...missionFor(character, routeIndex), completed: character.mission?.completed || 0 };
+    }
+    return `La carabela arriba a ${island.name} tras desviar su rumbo.`;
+  }
+  if (character.location.atSea || character.location.detour) {
+    character.location.island = route[character.location.routeIndex];
+    character.location.atSea = false;
+    character.location.detour = false;
+    const port = getMapIslands(character).find((island) => island.name === character.location.island);
+    if (port) character.mapPosition = { x: port.x, y: port.y };
+    return `La carabela regresa a ${character.location.island} y retoma su expedición.`;
+  }
   const mission = character.mission;
   if (mission?.status === "active") {
     character.logPose.alignment += character.travel?.speedMultiplier === 0.5 ? 0.5 : 1;
@@ -263,6 +300,8 @@ function navigate(character) {
   const next = character.location.routeIndex + 1;
   character.location.routeIndex = next;
   character.location.island = route[next];
+  const position = getMapIslands(character).find((island) => island.name === character.location.island);
+  if (position) character.mapPosition = { x: position.x, y: position.y };
   character.location.region = next < route.indexOf("Reverse Mountain") || route.indexOf("Reverse Mountain") < 0 ? character.originSea : next <= route.indexOf("Reverse Mountain") ? "Grand Line — Reverse Mountain" : next === route.length - 1 ? "Grand Line — Nuevo Mundo" : "Grand Line — Paraíso";
   character.mission = { ...missionFor(character, next), completed: mission?.completed || 0 };
   addLog(character, `⛵ Llegada a ${character.location.island}. Nueva misión: «${character.mission.title}».`);
@@ -301,9 +340,20 @@ export function performAction(character, action) {
   if (character.status === "dead") return "El avatar está en el Panteón; crea un heredero para continuar.";
   const handlers = { navigate, train, searchFruit, rest };
   const previousIsland = character.location?.island;
+  const previousAtSea = Boolean(character.location?.atSea);
   const message = handlers[action] ? handlers[action](character) : "Acción desconocida.";
   addLog(character, message);
-  if (action === "navigate") resolvePortSuggestions(character, previousIsland);
+  if (action === "navigate") {
+    const arrived = !character.location.atSea && (previousIsland !== character.location.island || previousAtSea);
+    if (character.status !== "dead" && (arrived || character.location.atSea)) {
+      const encounter = seaEncounter(character);
+      if (encounter?.dead) checkDeath(character, encounter.enemy);
+    }
+    if (character.status !== "dead") discoverAtSea(character);
+    resolvePortSuggestions(character, previousIsland);
+    if (arrived) updateCrewLoyalty(character, true);
+  }
+  advanceAdvancedSystems(character, { action, previousIsland });
   return message;
 }
 function factionEvent(character) {
@@ -332,7 +382,7 @@ export function autonomousTick(character) {
   const action = decideAction(character);
   addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
   const message = performAction(character, action);
-  if (Math.random() < 0.12) addReputation(character, 1000, "rumores en el periódico");
+  if (character.status !== "dead" && Math.random() < 0.12) addReputation(character, 1000, "rumores en el periódico");
   return { action, message };
 }
 function decideAction(character) {
@@ -386,12 +436,12 @@ export function setAutonomyPaused(character, paused) {
 export function createHeir(predecessor, { name, username } = {}) {
   if (predecessor.status !== "dead") return null;
   const family = predecessor.lineage.family || predecessor.name;
-  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, originSea: predecessor.originSea, dream: predecessor.soulCard.dream, traits: predecessor.soulCard.traits.pros.slice(0, 2), appearance: predecessor.appearance });
+  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, originSea: predecessor.originSea, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: predecessor.soulCard.traits.pros.slice(0, 2), appearance: predecessor.appearance });
   heir.lineage = { family, generation: predecessor.lineage.generation + 1, inheritedFrom: predecessor.id, legacyChest: [...predecessor.lineage.legacyChest], inheritedReputation: Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3) };
   heir.reputation = heir.lineage.inheritedReputation;
   heir.bounty = heir.faction === "Pirata" ? heir.lineage.inheritedReputation : 0;
   heir.world = predecessor.world;
-  heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], dangerMapCreated: false };
+  heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], discoveries: [...(predecessor.systems?.discoveries ?? [])], dangerMapCreated: false };
   heir.crew = [...(predecessor.crew ?? [])];
   heir.world.day += 1;
   heir.log = [...predecessor.log.slice(0, 25)];

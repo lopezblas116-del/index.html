@@ -17,7 +17,13 @@ const FIXED_ISLANDS = [
   { id: "ohara", name: "Isla Ohara", x: 200, y: 80, sea: "West Blue" },
   { id: "flevance", name: "Isla Flevance", x: 970, y: 80, sea: "North Blue" },
   { id: "torino", name: "Isla Torino", x: 970, y: 680, sea: "South Blue" },
-  { id: "kano", name: "Isla Kano", x: 200, y: 680, sea: "South Blue" }
+  { id: "kano", name: "Isla Kano", x: 200, y: 680, sea: "South Blue" },
+  { id: "minion", name: "Isla Minion", x: 1015, y: 120, sea: "North Blue" },
+  { id: "swallow", name: "Isla Swallow", x: 1035, y: 155, sea: "North Blue" },
+  { id: "baterilla", name: "Baterilla", x: 1020, y: 610, sea: "South Blue" },
+  { id: "karate", name: "Isla Karate", x: 930, y: 620, sea: "South Blue" },
+  { id: "paradise", name: "Paraíso", x: 720, y: 365, sea: "Paraíso" },
+  { id: "new-world", name: "Nuevo Mundo", x: 1020, y: 370, sea: "Nuevo Mundo" }
 ];
 const DYNAMIC_ISLANDS = [
   { id: "weatheria", name: "Weatheria", x: 410, y: 145, sea: "East Blue" },
@@ -41,6 +47,10 @@ function seededIndex(seed, limit) { let value = 0; for (const char of String(see
 function prepareIslands(character) {
   const offset = seededIndex(character?.id, DYNAMIC_ISLANDS.length);
   islands = [...FIXED_ISLANDS, ...DYNAMIC_ISLANDS.map((island, index) => ({ ...island, x: island.x + ((offset + index) % 3 - 1) * 22, y: island.y + ((offset * (index + 1)) % 3 - 1) * 18 }))];
+}
+export function getMapIslands(character) {
+  prepareIslands(character);
+  return islands.map((island) => ({ ...island }));
 }
 export function newsLocation(entry, character) {
   if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };

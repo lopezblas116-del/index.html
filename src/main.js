@@ -6,13 +6,14 @@ import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui.js";
-import { focusMap, initWorldMap, renderMap, resizeMap } from "./map.js";
+import { focusMap, initWorldMap, renderMap, resizeMap } from "./world3d.js";
 import { initHud, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
-  advanceAdvancedSystems, draftTestament, ensureAdvancedSystems,
-  setClimateZone, tavernAction
+  draftTestament, ensureAdvancedSystems,
+  setClimateZone, suggestNavigation, tavernAction
 } from "./systems.js";
+import { trade } from "./combat_economy.js";
 
 let character = loadGame();
 let timerId = null;
@@ -34,9 +35,7 @@ function scheduleTick() {
   if (!character || character.status === "dead" || character.autonomy?.paused) return;
   timerId = setTimeout(() => {
     if (!character || character.status === "dead" || character.autonomy?.paused) return;
-    const previousIsland = character.location?.island;
-    const tick = autonomousTick(character);
-    advanceAdvancedSystems(character, { action: tick?.action, previousIsland });
+    autonomousTick(character);
     saveGame(character);
     paint();
     scheduleTick();
@@ -65,7 +64,7 @@ listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
   persistRender();
-  if (event.detail.name === character.location?.island) document.dispatchEvent(new CustomEvent("onepiece:open-tavern"));
+  if (!character.location?.atSea && event.detail.name === character.location?.island) document.dispatchEvent(new CustomEvent("onepiece:open-tavern"));
 });
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
@@ -77,7 +76,7 @@ listen(byId("character-form"), "submit", (event) => {
   const data = new FormData(event.currentTarget);
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"), dream: String(data.get("dream") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
   ensureBlockOneData(character);
   persistRender(true);
 });
@@ -107,7 +106,7 @@ listen(document, "onepiece:hud-toggle-pause", () => {
   persistRender(true);
 });
 listen(document, "onepiece:hud-tavern-action", (event) => {
-  if (!character || character.status === "dead") return;
+  if (!character || character.status === "dead" || character.location?.atSea) return;
   const result = tavernAction(character, event.detail?.visitorId, event.detail?.action);
   persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
@@ -129,3 +128,19 @@ listen(document, "onepiece:hud-investigate-news", (event) => {
   persistRender();
   focusMap(location);
 });
+listen(document, "onepiece:hud-redirect", (event) => {
+  const location = event.detail?.location;
+  if (!character || character.status === "dead") return;
+  const result = suggestNavigation(character, location);
+  if (result.accepted) character.navigationTarget = { ...location, type: "news" };
+  persistRender();
+  if (result.accepted) focusMap(location);
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-trade", (event) => {
+  if (!character || character.status === "dead") return;
+  const result = trade(character, event.detail?.id, event.detail?.action);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-open-pantheon", openPantheon);

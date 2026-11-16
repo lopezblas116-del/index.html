@@ -1,3 +1,5 @@
+import { getMapIslands } from "./map.js";
+
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const hash = (value) => [...String(value)].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
 const traitsOf = (character) => [...(character?.soulCard?.traits?.pros ?? []), ...(character?.soulCard?.traits?.cons ?? [])];
@@ -29,12 +31,79 @@ export function ensureAdvancedSystems(character) {
   character.nauticalStress.calmBeltDays = Math.max(0, Number(character.nauticalStress.calmBeltDays) || 0);
   character.systems ??= { testament: null, treasureMaps: [], dangerMapCreated: false };
   character.systems.treasureMaps ??= [];
+  character.systems.discoveries ??= [];
+  character.soulCard ??= { dream: "Libertad", traits: { pros: [], cons: [] } };
+  character.soulCard.alignment ??= "Libertad";
+  character.soulCard.hiddenTalent ??= ["Cartografía", "Instinto de Tormenta", "Oído Antiguo"][hash(character.id ?? character.name) % 3];
   return character;
+}
+
+export function suggestNavigation(character, target, random = Math.random) {
+  ensureAdvancedSystems(character);
+  if (character.status === "dead" || !Number.isFinite(target?.x) || !Number.isFinite(target?.y) || target.x < 0 || target.x > 1200 || target.y < 0 || target.y > 760) {
+    return { ok: false, message: "No hay un destino válido para sugerir." };
+  }
+  const traits = traitsOf(character).map((trait) => trait.toLocaleLowerCase("es"));
+  const affinity = character.whisper?.affinity ?? 55;
+  const rebellion = character.whisper?.rebellion ?? 45;
+  const chance = clamp(affinity - Math.max(0, rebellion - 50) + (traits.includes("astuto") ? 10 : 0) - (traits.includes("rebelde") ? 15 : 0), 5, 95);
+  const accepted = random() * 100 < chance;
+  const message = accepted
+    ? `🗣️ ${character.name} acepta desviar el rumbo hacia ${target.name || "mar abierto"}.`
+    : `🗣️ ${character.name} rechaza el cambio de rumbo y sigue su viaje.`;
+  if (accepted) character.redirectTarget = { ...target };
+  character.log.unshift({ time: new Date().toISOString(), message });
+  return { ok: true, accepted, message };
+}
+
+export function discoverAtSea(character, random = Math.random) {
+  ensureAdvancedSystems(character);
+  if (character.status === "dead" || !character.location?.atSea || !character.mapPosition) return null;
+  const discoveries = character.systems.discoveries;
+  const chance = Math.min(0.08, 0.003 + (character.stats.ingenuity || 0) * 0.001 + (character.soulCard.hiddenTalent === "Cartografía" ? 0.01 : 0));
+  if (random() >= chance) return null;
+  const alignment = character.soulCard.alignment;
+  const id = `sea-${alignment.toLocaleLowerCase("es")}`;
+  if (discoveries.some((entry) => entry.id === id)) return null;
+  const item = alignment === "Justicia" ? "Diario de una guardia olvidada" : alignment === "Caos" ? "Fragmento de piedra antigua" : "Mapa de la Era Anterior";
+  const clue = `Las mareas recuerdan ${alignment.toLocaleLowerCase("es")} donde nadie mira. X:${Math.round(character.mapPosition.x)} Y:${Math.round(character.mapPosition.y)}.`;
+  const discovery = { id, item, clue, coordinates: { ...character.mapPosition } };
+  discoveries.push(discovery);
+  character.inventory.items.push(item);
+  character.log.unshift({ time: new Date().toISOString(), message: `[MISTERIO] ${clue}` });
+  character.world.news.unshift({ type: "mystery", text: `[MISTERIO] ${clue}`, coordinates: discovery.coordinates, day: character.world.day });
+  character.world.news = character.world.news.slice(0, 60);
+  if (character.systems.testament) {
+    character.systems.testament.discoveries = [...discoveries];
+    character.systems.testament.text += ` Pista heredada: ${clue}`;
+  }
+  return discovery;
+}
+
+export function updateCrewLoyalty(character, arrived, random = Math.random) {
+  ensureAdvancedSystems(character);
+  if (character.status === "dead") return;
+  for (const member of character.crew) {
+    member.loyalty = clamp(member.loyalty ?? 50);
+    if (random() < 0.12) member.loyalty = clamp(member.loyalty - 5);
+  }
+  if (!arrived) return;
+  character.crew = character.crew.filter((member) => {
+    if (member.loyalty >= 30 || random() >= 0.5) return true;
+    character.log.unshift({ time: new Date().toISOString(), message: `⚠️ ${member.name} abandona la tripulación en ${character.location.island} por falta de lealtad.` });
+    return false;
+  });
 }
 
 export function climateFor(character) {
   if (["normal", "calm-belt", "grand-line"].includes(character?.climateZone)) return character.climateZone;
-  const place = `${character?.climateZone ?? ""} ${character?.navigationTarget?.zone ?? ""} ${character?.location?.region ?? ""} ${character?.navigationTarget?.sea ?? ""}`.toLocaleLowerCase("es");
+  if (character?.location?.atSea && Number.isFinite(character.mapPosition?.y)) {
+    const latitude = Math.abs((0.5 - character.mapPosition.y / 760) * Math.PI);
+    if (latitude >= 0.175 && latitude <= 0.305) return "calm-belt";
+    if (latitude < 0.08) return "grand-line";
+    return "normal";
+  }
+  const place = String(character?.location?.region ?? "").toLocaleLowerCase("es");
   if (/calm belt|franja de calma|calm.?belt/.test(place)) return "calm-belt";
   if (/grand line|para[ií]so|nuevo mundo/.test(place) || Number(character?.location?.routeIndex) >= 6) return "grand-line";
   return "normal";
@@ -69,6 +138,13 @@ export function getTavernCandidates(character) {
       };
     });
   }
+  for (const visitor of character.tavern.visitors) {
+    visitor.attributes ??= {
+      strength: 3 + hash(`${visitor.name}:strength`) % 8,
+      agility: 3 + hash(`${visitor.name}:agility`) % 8,
+      ingenuity: 3 + hash(`${visitor.name}:ingenuity`) % 8
+    };
+  }
   const recruited = new Set(character.crew.map((member) => member.visitorId));
   return character.tavern.visitors.filter((visitor) => !recruited.has(visitor.id));
 }
@@ -90,7 +166,7 @@ export function tavernAction(character, visitorId, action) {
     if (visitor.loyalty < 60) return { ok: false, message: `${visitor.name} necesita al menos 60% de lealtad antes de unirse.` };
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para formalizar el reclutamiento.` };
     character.berries -= cost;
-    character.crew.push({ visitorId: visitor.id, name: visitor.name, role: visitor.role, trait: visitor.trait, loyalty: visitor.loyalty, port: character.tavern.port });
+    character.crew.push({ visitorId: visitor.id, name: visitor.name, role: visitor.role, trait: visitor.trait, loyalty: visitor.loyalty, attributes: visitor.attributes, port: character.tavern.port });
     character.log.unshift({ time: new Date().toISOString(), message: `⚓ ${visitor.name} se une a la tripulación como ${visitor.role}.` });
     return { ok: true, message: `¡${visitor.name} se unió a la tripulación!` };
   }
@@ -106,14 +182,14 @@ export function advanceAdvancedSystems(character, { action = "", previousIsland 
   travel.climate = climate;
   travel.weather = climate === "grand-line" && Math.random() < 0.28 ? "storm" : "clear";
   travel.speedMultiplier = climate === "calm-belt" ? 0.5 : 1;
-  travel.docked = !moved;
+  travel.docked = !character.location?.atSea;
   if (moved) travel.logPoseCharge = 0;
   else if (travel.docked) travel.logPoseCharge = clamp(travel.logPoseCharge + 10);
 
   if (action === "navigate") {
     const multiplier = climate === "calm-belt" ? 2 : 1;
     const provisions = character.inventory ?? (character.inventory = { provisions: 0, water: 0 });
-    const foodUsed = Math.min(Number(provisions.provisions) || 0, multiplier);
+    const foodUsed = Math.min(Number(provisions.provisions) || 0, 1);
     const waterUsed = Math.min(Number(provisions.water) || 0, multiplier);
     provisions.provisions = Math.max(0, (Number(provisions.provisions) || 0) - foodUsed);
     provisions.water = Math.max(0, (Number(provisions.water) || 0) - waterUsed);
@@ -159,26 +235,33 @@ export function draftTestament(character) {
   ensureAdvancedSystems(character);
   const crew = character.crew.length ? character.crew.map((member) => member.name).join(", ") : "su linaje";
   const writtenAt = new Date().toISOString();
-  const text = `Yo, ${character.name}, dejo mi cofre y sus mapas a ${crew}. Que mi linaje continúe el viaje desde ${character.location?.island ?? "el último puerto"}.`;
-  character.systems.testament = { text, writtenAt, beneficiary: crew };
+  const discoveries = [...character.systems.discoveries];
+  const text = `Yo, ${character.name}, dejo mi cofre y sus mapas a ${crew}. Que mi linaje continúe el viaje desde ${character.location?.island ?? "el último puerto"}.${discoveries.map((entry) => ` Pista heredada: ${entry.clue}`).join("")}`;
+  character.systems.testament = { text, writtenAt, beneficiary: crew, discoveries };
   character.log.unshift({ time: writtenAt, message: `📜 ${character.name} redacta su testamento.` });
   return character.systems.testament;
 }
 
 export function generateTreasureMap(character, reason = "herencia") {
   ensureAdvancedSystems(character);
-  if (character.systems.dangerMapCreated) return character.systems.treasureMaps.at(-1) ?? null;
+  if (reason === "muerte" && character.systems.deathMapCreated) return character.systems.treasureMaps.find((entry) => entry.reason === "muerte") ?? null;
+  if (reason !== "muerte" && character.systems.dangerMapCreated) return character.systems.treasureMaps.find((entry) => entry.reason !== "muerte") ?? null;
   const seed = hash(`${character.id}:${character.location?.island}:${character.lineage?.generation}`);
+  const position = character.mapPosition ?? getMapIslands(character).find((island) => island.name === character.location?.island);
+  const x = Number.isFinite(position?.x) ? Math.round(position.x) : 100 + (seed % 900);
+  const y = Number.isFinite(position?.y) ? Math.round(position.y) : 80 + ((seed >>> 7) % 600);
+  const place = character.location?.atSea ? "Mar abierto" : character.location?.island ?? "Mar abierto";
   const map = {
     id: `map-${character.id}-${Date.now()}`,
-    island: character.location?.island ?? "Mar abierto",
-    x: 100 + (seed % 900),
-    y: 80 + ((seed >>> 7) % 600),
+    island: place,
+    x,
+    y,
     reason,
     createdAt: new Date().toISOString(),
-    clue: `Carta de Tesoro Oculto: ${character.location?.island ?? "Mar abierto"} · X:${100 + (seed % 900)} Y:${80 + ((seed >>> 7) % 600)}`
+    clue: `Carta de Tesoro Oculto: ${place} · X:${x} Y:${y}`
   };
   character.systems.dangerMapCreated = true;
+  if (reason === "muerte") character.systems.deathMapCreated = true;
   character.systems.treasureMaps.unshift(map);
   character.world.news.unshift({ type: "treasure-map", text: `🗺 ${map.clue}`, coordinates: { x: map.x, y: map.y }, location: map.island, day: character.world.day || 0 });
   character.world.news = character.world.news.slice(0, 30);

@@ -310,3 +310,12 @@ body.wizard-active .masthead{display:none}
 .news-card summary{cursor:pointer;color:#fff;overflow-wrap:anywhere}
 .news-card[open] summary{color:#f4b41a}
 .news-card-detail p{overflow-wrap:anywhere}
+
+.alignment-field{margin:18px 0 0;padding:12px;border:1px solid rgba(244,180,26,.55);border-radius:8px}
+.alignment-field legend{padding:0 6px;color:#f4b41a;font-weight:bold}
+#one-hud button{min-width:48px;min-height:48px}
+#wizard-container button{min-height:48px}
+#wizard-container .option-card{min-width:48px;min-height:48px}
+.one-hud-contract-actions,.one-hud-climate-zones{display:flex;flex-wrap:wrap;gap:8px}
+.one-hud-redirect{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:calc(76px + env(safe-area-inset-bottom));max-width:min(280px,calc(100vw - 100px));padding:8px 12px;pointer-events:auto}
+#world-map{touch-action:none}
