@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getMapIslands } from "../src/map.js";
 import { ISLAND_DATA } from "../src/islands_data.js";
-import { drawIslandScene, drawIslandSceneContext, drawPixelAvatar } from "../src/island_renderer.js";
+import { drawIslandScene, drawIslandSceneContext, drawPixelAvatar, npcAppearanceFor } from "../src/island_renderer.js";
 
 test("each mapped island has its own stable scene and island-specific options", () => {
   const islands = getMapIslands({ id: "captain" });
@@ -64,6 +64,19 @@ test("full-body sprite adds legs without changing the portrait sprite", () => {
   calls.length = 0;
   drawPixelAvatar(ctx, {});
   assert.ok(!calls.some(([, y]) => y >= 32));
+});
+
+test("known NPC portraits are distinct and island names do not impersonate Arlong", () => {
+  const portraits = ["Makino", "Capitán Morgan", "Zeff", "Arlong", "Capitán Smoker"].map(npcAppearanceFor);
+  assert.deepEqual(portraits.map((portrait) => portrait.portrait), ["makino", "morgan", "zeff", "arlong", "smoker"]);
+  assert.equal(npcAppearanceFor("Rumores de Arlong Park"), null);
+  const pixels = portraits.map((portrait) => {
+    const calls = [];
+    const ctx = { fillRect: (...args) => calls.push([ctx.fillStyle, ...args]) };
+    drawPixelAvatar(ctx, portrait);
+    return JSON.stringify(calls);
+  });
+  assert.equal(new Set(pixels).size, portraits.length);
 });
 
 test("themed NPCs come from island data and walk between frames", () => {

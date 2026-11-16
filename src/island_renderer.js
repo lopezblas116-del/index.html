@@ -19,13 +19,26 @@ function tree(ctx, x, y, color, fruit = false) {
   if (fruit) { box(ctx, x + 6, y + 18, 4, 4, "#f7a43c"); box(ctx, x + 18, y + 12, 4, 4, "#f7a43c"); }
 }
 
+const NPC_PORTRAITS = [
+  { pattern: /\bmakino\b/i, appearance: { portrait: "makino", hair: "Moreno" } },
+  { pattern: /\bmorgan\b/i, appearance: { portrait: "morgan", hair: "Rubio" } },
+  { pattern: /\bzeff\b/i, appearance: { portrait: "zeff", hair: "Rubio" } },
+  { pattern: /\barlong\b(?!\s+park\b)/i, appearance: { portrait: "arlong", hair: "Negro", skin: "Azul" } },
+  { pattern: /\bsmoker\b/i, appearance: { portrait: "smoker", hair: "Gris" } }
+];
+
+export function npcAppearanceFor(text) {
+  return NPC_PORTRAITS.find((entry) => entry.pattern.test(String(text ?? "")))?.appearance ?? null;
+}
+
 export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
   const { x = 0, y = 0, scale = 1, fullBody = false } = options;
-  const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35" })[appearance.skin] || "#e4b991";
-  const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e" })[appearance.hair] || "#1c1b22";
+  const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Azul: "#639fa8" })[appearance.skin] || "#e4b991";
+  const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8" })[appearance.hair] || "#1c1b22";
+  const coat = ({ makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" })[appearance.portrait] || "#c65f4c";
   const pixel = (px, py, w, h, color) => box(ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
 
-  pixel(11, 22, 10, 9, "#c65f4c");
+  pixel(11, 22, 10, 9, coat);
   pixel(12, 30, 8, 2, "#f4b41a");
   pixel(10, 31, 12, 1, "#49382d");
   if (fullBody) {
@@ -63,6 +76,27 @@ export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
   if (appearance.eyepatch) {
     pixel(17, 13, 4, 4, "#211c1a");
     pixel(17, 12, 5, 1, "#3b3028");
+  }
+  if (appearance.portrait === "makino") {
+    pixel(9, 15, 3, 8, hair);
+    pixel(20, 15, 3, 8, hair);
+    pixel(11, 20, 2, 2, "#f4b41a");
+  } else if (appearance.portrait === "morgan") {
+    pixel(8, 21, 5, 4, "#c9ad67");
+    pixel(20, 21, 5, 4, "#c9ad67");
+    pixel(16, 20, 5, 2, "#8b9695");
+  } else if (appearance.portrait === "zeff") {
+    pixel(10, 3, 13, 6, "#f4efdf");
+    pixel(9, 8, 15, 2, "#d4ccb9");
+    pixel(13, 19, 7, 3, hair);
+  } else if (appearance.portrait === "arlong") {
+    pixel(14, 17, 7, 2, "#93c3c4");
+    pixel(20, 17, 4, 2, skin);
+    pixel(14, 20, 6, 2, "#e6ded1");
+  } else if (appearance.portrait === "smoker") {
+    pixel(10, 21, 4, 5, "#e7e6d8");
+    pixel(20, 21, 4, 5, "#e7e6d8");
+    pixel(18, 19, 6, 1, "#7b5142");
   }
 }
 
@@ -183,7 +217,7 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     const x = 170 + index * 190 + Math.sin(now / 1700 + index * 2) * 34;
     const y = 172 + index * 20;
     box(ctx, x + 7, y + 34, 20, 4, "rgba(0,0,0,.25)");
-    drawPixelAvatar(ctx, npc, { x, y, scale: .8, fullBody: true });
+    drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .8, fullBody: true });
     if (ctx.fillText) {
       ctx.fillStyle = "#18263a";
       ctx.font = "bold 10px monospace";

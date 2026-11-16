@@ -2,7 +2,7 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { drawPixelAvatar, ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { drawPixelAvatar, npcAppearanceFor, ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -186,14 +186,16 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       details.className = "news-card";
       const summary = document.createElement("summary");
       const headline = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
-      if (/se busca|bounty/i.test(headline)) {
+      const isPlayer = character.name && headline.includes(character.name);
+      const npcAppearance = section.key === "bounty" || isPlayer ? null : npcAppearanceFor(headline);
+      if (npcAppearance || /se busca|bounty/i.test(headline)) {
         const portrait = document.createElement("canvas");
         portrait.width = 32;
         portrait.height = 32;
         portrait.className = "news-card-portrait";
         portrait.setAttribute("aria-hidden", "true");
         const portraitContext = portrait.getContext("2d");
-        if (portraitContext) drawPixelAvatar(portraitContext);
+        if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}));
         summary.append(portrait, document.createTextNode(headline));
       } else summary.textContent = headline;
       const detail = document.createElement("div");
@@ -460,6 +462,15 @@ function updateWizardSummary() {
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
+  const portrait = byId("wizard-portrait")?.getContext("2d");
+  if (portrait) {
+    portrait.clearRect(0, 0, 32, 32);
+    drawPixelAvatar(portrait, {
+      skin: form.elements.namedItem("skin")?.value,
+      hair: form.elements.namedItem("hair")?.value,
+      accessory: form.elements.namedItem("accessory")?.value
+    });
+  }
 }
 function showWizardStep(index) {
   const steps = [...document.querySelectorAll(".wizard-step")];

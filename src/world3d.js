@@ -87,59 +87,28 @@ function drawRedLineMeridian(lon) {
   traceLine(Array.from({ length: 91 }, (_, i) => ({ lon: lon + halfWidth, lat: -Math.PI / 2 + i * Math.PI / 90 })), "rgba(68,39,39,.7)", Math.max(1, radius * zoom * .01));
 }
 function drawPoint(point, label, icon, color) {
-  drawIslandSprite(point, color, performance.now());
+  drawIslandSprite(point, color);
 }
-function drawIslandSprite(point, color, now) {
+function drawIslandSprite(point, color) {
   const p = projectPoint(point);
   if (!p.visible) return;
   const scale = clamp(0.9 + zoom * 0.34, 0.9, 2.1);
-  const size = 8 * scale;
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.7)";
-  ctx.shadowBlur = 4 * scale;
-  ctx.shadowOffsetY = 2 * scale;
-  ctx.fillStyle = "#b99a61";
-  ctx.beginPath();
-  ctx.moveTo(p.x - size, p.y + size * .1);
-  ctx.lineTo(p.x - size * .55, p.y - size * .52);
-  ctx.lineTo(p.x - size * .05, p.y - size * .72);
-  ctx.lineTo(p.x + size * .58, p.y - size * .48);
-  ctx.lineTo(p.x + size, p.y + size * .06);
-  ctx.lineTo(p.x + size * .45, p.y + size * .68);
-  ctx.lineTo(p.x - size * .4, p.y + size * .75);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = color === "#f4b41a" ? "#c89835" : "#6f9a62";
-  ctx.beginPath();
-  ctx.moveTo(p.x - size * .72, p.y);
-  ctx.lineTo(p.x - size * .34, p.y - size * .43);
-  ctx.lineTo(p.x + size * .25, p.y - size * .47);
-  ctx.lineTo(p.x + size * .72, p.y - size * .05);
-  ctx.lineTo(p.x + size * .32, p.y + size * .45);
-  ctx.lineTo(p.x - size * .38, p.y + size * .48);
-  ctx.closePath();
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-  const trunkX = p.x + size * .13, trunkY = p.y - size * .12;
-  ctx.strokeStyle = "#684a32";
-  ctx.lineWidth = Math.max(1, scale);
-  ctx.beginPath(); ctx.moveTo(trunkX, trunkY + size * .34); ctx.lineTo(trunkX + size * .02, trunkY - size * .45); ctx.stroke();
-  ctx.strokeStyle = "#477a51";
-  ctx.lineWidth = Math.max(1, scale * .8);
-  for (let i = 0; i < 4; i++) {
-    const angle = i * Math.PI / 2 + now / 6000;
-    ctx.beginPath();
-    ctx.moveTo(trunkX, trunkY);
-    ctx.quadraticCurveTo(trunkX + Math.cos(angle) * size * .2, trunkY + Math.sin(angle) * size * .15, trunkX + Math.cos(angle) * size * .58, trunkY + Math.sin(angle) * size * .4);
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#d8c28c";
-  ctx.fillRect(p.x - size * .48, p.y + size * .05, size * .62, Math.max(1, scale));
-  ctx.fillStyle = "#6b4934";
-  ctx.fillRect(p.x - size * .38, p.y - size * .11, size * .2, size * .18);
-  ctx.fillRect(p.x - size * .08, p.y - size * .1, size * .22, size * .17);
+  ctx.translate(p.x, p.y);
+  ctx.scale(scale, scale);
+  const pixel = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
+  pixel(-7, 4, 15, 3, "rgba(0,0,0,.35)");
+  pixel(-6, -2, 12, 8, "#b99a61");
+  pixel(-8, 0, 16, 4, "#cbb17a");
+  pixel(-5, -3, 10, 7, color === "#f4b41a" ? "#c89835" : "#6f9a62");
+  pixel(-3, -4, 6, 2, "#82ab70");
+  pixel(2, -8, 2, 8, "#684a32");
+  pixel(-1, -9, 8, 2, "#477a51");
+  pixel(-3, -7, 4, 2, "#5e9457");
+  pixel(5, -7, 3, 2, "#5e9457");
+  pixel(-6, 1, 7, 2, "#d8c28c");
+  pixel(-5, -1, 3, 2, "#6b4934");
+  pixel(-4, -2, 2, 1, "#b9604d");
   ctx.restore();
 }
 function roundedRect(x, y, w, h, color) {
@@ -285,23 +254,22 @@ function drawBoat(point, destination) {
   ctx.rotate(angle);
   const bob = Math.sin(performance.now() / 360) * 1.15;
   ctx.translate(0, bob);
-  ctx.strokeStyle = "rgba(221,244,238,.78)";
-  ctx.lineWidth = 1.5;
-  for (let i = 0; i < 3; i++) {
-    const offset = (performance.now() / 85 + i * 8) % 18;
-    ctx.globalAlpha = .72 - i * .17;
-    ctx.beginPath(); ctx.moveTo(-2.2 - offset, 6 + i * 2); ctx.quadraticCurveTo(-7 - offset, 8 + i * 2, -11 - offset, 6 + i * 2); ctx.stroke();
+  const pixel = (x, y, w, h, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); };
+  if (shouldAnimateRoute()) {
+    for (let i = 0; i < 3; i++) {
+      const offset = (performance.now() / 120 + i * 5) % 15;
+      pixel(-5 - i * 2, 9 + offset, 3, 2, "rgba(221,244,238,.7)");
+      pixel(3 + i * 2, 11 + offset, 3, 2, "rgba(221,244,238,.55)");
+    }
   }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "#704c36";
-  ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(7, 7); ctx.lineTo(3, 6); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "#e5bd69"; ctx.lineWidth = 1.3;
-  ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 5); ctx.stroke();
-  ctx.fillStyle = "#e8d9ad";
-  ctx.beginPath(); ctx.moveTo(-1, -8); ctx.lineTo(-1, 2); ctx.lineTo(-6, 3); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(1, -7); ctx.lineTo(1, 2); ctx.lineTo(5, 3); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#f4b41a";
-  ctx.beginPath(); ctx.arc(0, -10, 1.6, 0, Math.PI * 2); ctx.fill();
+  pixel(-6, 3, 12, 4, "#704c36");
+  pixel(-4, 7, 8, 2, "#4b342d");
+  pixel(-5, 3, 10, 1, "#c59b58");
+  pixel(-1, -10, 2, 14, "#a17b48");
+  pixel(-5, -6, 4, 8, "#e8d9ad");
+  pixel(-3, -8, 2, 2, "#e8d9ad");
+  pixel(1, -5, 4, 7, "#f1e4be");
+  pixel(1, -9, 4, 2, "#f4b41a");
   ctx.restore();
 }
 function drawSeaLabel(point, label) {
