@@ -1,7 +1,8 @@
 import { newsLocation } from "./map.js";
-import { initMap, renderMap, resizeMap } from "./world3d.js";
+import { ISLAND_VIEW, initMap, renderMap, resizeMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
+import { drawIslandScene } from "./island_scene.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -13,6 +14,73 @@ const safe = (value, fallback = "—") => value ?? fallback;
 const listen = (element, type, handler, options) => {
   if (element) element.addEventListener(type, handler, options);
 };
+
+let islandView = null;
+let islandCharacter = null;
+let islandViewInitialized = false;
+let islandRenderKey = "";
+const isAtIsland = (character, island) => Boolean(character && character.status !== "dead" && !character.captured && !character.location?.atSea && character.location?.island === island.name);
+
+export function initIslandView() {
+  if (islandViewInitialized) return;
+  islandViewInitialized = true;
+  listen(document, "onepiece:camera-state", (event) => {
+    islandView = event.detail.state === ISLAND_VIEW ? event.detail.island : null;
+    islandRenderKey = "";
+    document.body.dataset.cameraState = event.detail.state;
+    const view = byId("island-view");
+    if (view) view.hidden = !islandView;
+    if (islandView) {
+      byId("island-message").textContent = "";
+      renderIslandView(islandCharacter);
+      byId("island-back")?.focus();
+    }
+  });
+  listen(byId("island-back"), "click", returnToGlobalMap);
+}
+
+export function renderIslandView(character) {
+  islandCharacter = character;
+  if (!islandView || !character) return;
+  const present = isAtIsland(character, islandView);
+  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}`;
+  if (key === islandRenderKey) return;
+  islandRenderKey = key;
+  byId("island-title").textContent = islandView.landmark || islandView.name;
+  byId("island-sea").textContent = `${islandView.sea} · ${islandView.biome}`;
+  byId("island-presence").textContent = present
+    ? `${character.name} está en el puerto.`
+    : "Vista previa: el avatar no está atracado aquí. Sugiere el rumbo desde el mapa.";
+  drawIslandScene(byId("island-canvas"), islandView, present ? character : null);
+  const hotspots = byId("island-hotspots");
+  hotspots.replaceChildren();
+  const actions = [
+    { id: "tavern", label: "🍻 Taberna", x: 50, y: 38 },
+    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "⚓ Mercado negro", x: 32, y: 54 }] : []),
+    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "📜 Ruinas", x: 82, y: 42 }] : []),
+    { id: "chest", label: "🧰 Cofre", x: 72, y: 62 }
+  ];
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "island-hotspot";
+    button.style.left = `${action.x}%`;
+    button.style.top = `${action.y}%`;
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      const current = isAtIsland(islandCharacter, islandView);
+      if (action.id !== "chest" && !current) {
+        byId("island-message").textContent = "Este lugar solo se puede visitar cuando el avatar esté atracado en esta isla.";
+      } else if (action.id === "poneglyph") {
+        const knowledge = islandCharacter.ancientLanguage?.knowledge || 0;
+        byId("island-message").textContent = `📜 Las ruinas guardan inscripciones antiguas. Conocimiento actual: ${knowledge}%. Los fragmentos se descubren durante la exploración.`;
+      } else {
+        document.dispatchEvent(new CustomEvent("onepiece:open-island-panel", { detail: { panel: action.id } }));
+      }
+    });
+    hotspots.append(button);
+  }
+}
 
 export function renderPsychology(container, character, selection, onSuggest) {
   const card = document.createElement("section");

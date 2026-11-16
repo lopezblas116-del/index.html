@@ -23,9 +23,20 @@ export const ISLAND_DATA = {
   wano: { biome: "País montañoso", specialty: "weapon", mission: "Liberar Wano", control: "Tirano" },
   onyigashima: { biome: "Isla volcánica", specialty: "weapon", mission: "Enfrentar a los invasores", control: "Tirano" },
   paradise: { biome: "Mar de islas cambiantes", specialty: "water", mission: "Entrar al Paraíso", control: "Marina" },
-  "new-world": { biome: "Mar tempestuoso", specialty: "rum", mission: "Conquistar el Nuevo Mundo", control: "Tirano" }
+  "new-world": { biome: "Mar tempestuoso", specialty: "rum", mission: "Conquistar el Nuevo Mundo", control: "Tirano" },
+  weatheria: { biome: "Isla del cielo y nubes", specialty: "water", mission: "Observar las corrientes del cielo", control: "Marina", architecture: "sky" },
+  karakuri: { biome: "Isla invernal mecánica", specialty: "weapon", mission: "Investigar los mecanismos", control: "Marina" },
+  namakura: { biome: "Bosque de ruinas", specialty: "wood", mission: "Explorar las ruinas", control: "Tirano" },
+  rusty: { biome: "Costa de naufragios", specialty: "wood", mission: "Explorar los restos", control: "Tirano" }
 };
 
 export function islandDetails(island) {
-  return { biome: "Isla desconocida", specialty: null, control: "Marina", ...ISLAND_DATA[island?.id] };
+  const details = { biome: "Isla desconocida", specialty: null, control: "Marina", ...ISLAND_DATA[island?.id] };
+  const seed = [...String(island?.id || "")].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+  const biome = details.biome.toLowerCase();
+  const theme = /cielo|nubes/.test(biome) ? "sky" : /nevad|invernal/.test(biome) ? "snow" : /desierto/.test(biome) ? "desert" : /volcán|tempestuoso/.test(biome) ? "volcanic" : /ciudad|fortaleza|fortificado/.test(biome) ? "stone" : "green";
+  const options = ["tavern"];
+  if (details.auctionHouse) options.push("blackmarket");
+  if (["ohara", "namakura", "wano", "paradise"].includes(island?.id)) options.push("poneglyph");
+  return { ...details, localScene: { theme, seed, architecture: details.architecture || theme, options } };
 }

@@ -3,11 +3,11 @@ import {
   loadGame, resolveAutonomousBranch, resolveBranch, saveGame, sendWhisper, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
-  closeLegacyModal, closePantheon, initWizard, openPantheon,
-  renderGame, resetWizard, showSetup
+  closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
+  renderGame, renderIslandView, resetWizard, showSetup
 } from "./ui.js";
-import { focusMap, initWorldMap, renderMap, resizeMap } from "./world3d.js";
-import { initHud, renderHud, setHudVisible } from "./hud.js";
+import { focusMap, initWorldMap, renderMap, resizeMap, returnToGlobalMap } from "./world3d.js";
+import { initHud, openIslandPanel, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
   draftTestament, ensureAdvancedSystems,
@@ -34,6 +34,7 @@ function paint() {
   initWorldMap();
   resizeMap();
   renderMap(character);
+  renderIslandView(character);
   renderHud(character);
   clearTimeout(branchTimer);
   const pending = character.autonomy?.pendingBranch;
@@ -128,6 +129,8 @@ function persistRender(reschedule = false) {
 
 initWizard();
 initHud();
+initIslandView();
+listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
@@ -156,7 +159,6 @@ listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
   persistRender();
-  if (!character.location?.atSea && event.detail.name === character.location?.island) document.dispatchEvent(new CustomEvent("onepiece:open-tavern"));
 });
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
@@ -189,6 +191,7 @@ listen(document.querySelector("[data-open-heir]"), "click", () => { const modal 
 function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
+  returnToGlobalMap();
   localStorage.removeItem(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();

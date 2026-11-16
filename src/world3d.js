@@ -12,6 +12,10 @@ const radians = (point) => ({
 let canvas, ctx, character, width = 0, height = 0, radius = 0;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
+export const GLOBAL_MAP = "GLOBAL_MAP";
+export const ISLAND_VIEW = "ISLAND_VIEW";
+let cameraState = GLOBAL_MAP, transition = null, savedCamera = null;
+export function getCameraState() { return cameraState; }
 
 function project(lon, lat) {
   const delta = lon - longitude;
@@ -275,6 +279,21 @@ function positionFor(c) {
 }
 function animate(now) {
   frame = null;
+  if (transition) {
+    const t = clamp((now - transition.started) / 650, 0, 1);
+    const eased = t * t * (3 - 2 * t);
+    longitude = transition.fromLon + transition.deltaLon * eased;
+    latitude = transition.fromLat + (transition.toLat - transition.fromLat) * eased;
+    zoom = transition.fromZoom + (transition.toZoom - transition.fromZoom) * eased;
+    render(now);
+    if (t < 1) { scheduleFrame(); return; }
+    const island = transition.island;
+    transition = null;
+    cameraState = ISLAND_VIEW;
+    document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState, island } }));
+    return;
+  }
+  if (cameraState !== GLOBAL_MAP) return;
   if (Math.abs(targetZoom - zoom) > .003) zoom += (targetZoom - zoom) * .22;
   else zoom = targetZoom;
   if (animation && character && !character.autonomy?.paused && character.status !== "dead") {
@@ -303,13 +322,15 @@ function unproject(point) {
   return { x: Math.round((((lon / (2 * Math.PI) + 0.5) % 1 + 1) % 1) * WIDTH), y: Math.round((0.5 - lat / Math.PI) * HEIGHT) };
 }
 function onDown(event) {
-  if (event.button !== undefined && event.button !== 0) return;
+  if (cameraState !== GLOBAL_MAP || transition || (event.button !== undefined && event.button !== 0)) return;
   event.preventDefault();
   const point = screenPoint(event);
   pointers.set(event.pointerId, { start: point, last: point, moved: false });
   canvas.setPointerCapture?.(event.pointerId);
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
+    a.moved = true;
+    b.moved = true;
     pinchStart = { distance: Math.hypot(a.last.x - b.last.x, a.last.y - b.last.y), zoom: targetZoom };
   }
 }
@@ -343,11 +364,40 @@ function onUp(event) {
   const screen = screenPoint(event);
   const point = unproject(screen);
   if (!point) return;
-  const island = islands.find((item) => {
+  let island = null;
+  let closest = Math.max(18, zoom * 11);
+  for (const item of islands) {
     const p = projectPoint(item);
-    return p.visible && Math.hypot(screen.x - p.x, screen.y - p.y) < Math.max(18, zoom * 11);
-  });
+    const distance = Math.hypot(screen.x - p.x, screen.y - p.y);
+    if (p.visible && distance < closest) { island = item; closest = distance; }
+  }
   canvas.dispatchEvent(new CustomEvent("onepiece:map-destination", { bubbles: true, detail: island ?? { ...point, name: "Mar abierto", sea: "Mar abierto" } }));
+  if (island) enterIslandView(island);
+}
+function enterIslandView(island) {
+  if (!character || cameraState !== GLOBAL_MAP || transition) return;
+  savedCamera = { longitude, latitude, zoom: targetZoom };
+  const position = radians(island);
+  const deltaLon = Math.atan2(Math.sin(position.lon - longitude), Math.cos(position.lon - longitude));
+  transition = { island, started: performance.now(), fromLon: longitude, deltaLon, fromLat: latitude, toLat: clamp(position.lat, -1.35, 1.35), fromZoom: zoom, toZoom: Math.max(2.5, zoom) };
+  pointers.clear();
+  pinchStart = null;
+  scheduleFrame();
+}
+export function returnToGlobalMap() {
+  transition = null;
+  pointers.clear();
+  pinchStart = null;
+  cameraState = GLOBAL_MAP;
+  if (savedCamera) {
+    longitude = savedCamera.longitude;
+    latitude = savedCamera.latitude;
+    zoom = targetZoom = savedCamera.zoom;
+    savedCamera = null;
+  }
+  document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
+  render();
+  if (character && (animation || routeDestination() || character.travel?.climate === "calm-belt")) scheduleFrame();
 }
 export function resizeMap() {
   if (!canvas || !ctx) return;
@@ -359,6 +409,7 @@ export function resizeMap() {
   render();
 }
 export function zoomMap(value) {
+  if (cameraState !== GLOBAL_MAP || transition) return;
   targetZoom = clamp(Number(value) || 1, 0.72, 3.2);
   scheduleFrame();
 }
@@ -367,6 +418,7 @@ export function adjustZoom(direction) {
 }
 export function focusMap(point) {
   if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  if (cameraState !== GLOBAL_MAP || transition) returnToGlobalMap();
   const position = radians(point);
   longitude = position.lon;
   latitude = clamp(position.lat, -1.35, 1.35);
@@ -412,5 +464,5 @@ export function renderMap(c) {
     frame = null;
   }
   render();
-  if (routeDestination() || character.travel?.climate === "calm-belt") scheduleFrame();
+  if (cameraState === GLOBAL_MAP && (transition || routeDestination() || character.travel?.climate === "calm-belt")) scheduleFrame();
 }

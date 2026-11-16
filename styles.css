@@ -340,3 +340,22 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .one-hud-branch{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;width:min(380px,calc(100vw - 32px));padding:14px;border:2px solid #f4b41a;border-radius:12px;background:#162238;box-shadow:0 12px 32px #0009;pointer-events:auto}
 .one-hud-branch[hidden]{display:none}
 .one-hud-branch p{margin:0 0 8px}.one-hud-branch button{margin:4px}
+
+#game-container .main-column > #island-view:not([hidden]){display:grid!important}
+#island-view{position:absolute;inset:0;z-index:5;place-items:center;overflow:auto;padding:100px 16px 76px;background:radial-gradient(ellipse at 50% 30%,#24516a,#0b1329 75%);pointer-events:auto}
+.island-view-content{width:min(850px,100%);margin:auto}
+.island-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px;color:#fff}
+.island-heading p{margin:0;color:#d4e4e6;line-height:1.15}
+.island-heading h2{margin:3px 0;color:#f4b41a;font:700 clamp(12px,2vw,18px) 'Press Start 2P',monospace;line-height:1.4}
+.island-heading button,.island-hotspot{min-height:48px;padding:7px 10px;border:2px solid #f4b41a;border-radius:8px;background:#162238;color:#fff;font:700 18px VT323,monospace;cursor:pointer;box-shadow:0 4px 12px #0008}
+.island-heading button:hover,.island-hotspot:hover,.island-hotspot:focus-visible{background:#f4b41a;color:#0b1329}
+.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:hidden;border:3px solid #b88a30;border-radius:10px;background:#397d8d;box-shadow:0 12px 35px #0009}
+#island-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.island-scene::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(90deg,transparent 4%,#e6f4ee 4%,#e6f4ee 9%,transparent 9%),linear-gradient(90deg,transparent 20%,#fff 20%,#fff 28%,transparent 28%);background-size:380px 10px,520px 8px;background-repeat:repeat-x;background-position:0 10%,0 19%;animation:island-clouds 24s linear infinite}
+@keyframes island-clouds{to{background-position:380px 10%,-520px 19%}}
+@media(prefers-reduced-motion:reduce){.island-scene::after{animation:none}}
+#island-hotspots{position:absolute;inset:0;z-index:1}
+.island-hotspot{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1}
+.island-message{min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
+body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-controls,body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-redirect{display:none!important}
+@media(max-width:600px){#island-view{padding:112px 10px 76px}.island-heading{align-items:start}.island-heading button{font-size:15px;max-width:145px}.island-heading p{font-size:15px}.island-hotspot{padding:4px 6px;font-size:15px}}
