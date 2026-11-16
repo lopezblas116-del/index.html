@@ -52,12 +52,70 @@ function parallel(lat, color, size) {
 function meridian(lon, color, size) {
   traceLine(Array.from({ length: 91 }, (_, i) => ({ lon, lat: -Math.PI / 2 + i * Math.PI / 90 })), color, size);
 }
+function drawRedLineMeridian(lon) {
+  const halfWidth = 0.105;
+  const rows = 90;
+  for (let i = 0; i < rows; i++) {
+    const lat1 = -Math.PI / 2 + i * Math.PI / rows;
+    const lat2 = -Math.PI / 2 + (i + 1) * Math.PI / rows;
+    const points = [
+      project(lon - halfWidth, lat1), project(lon + halfWidth, lat1),
+      project(lon + halfWidth, lat2), project(lon - halfWidth, lat2)
+    ];
+    if (points.every((point) => point.visible)) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let j = 1; j < points.length; j++) ctx.lineTo(points[j].x, points[j].y);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 ? "#874238" : "#77372f";
+      ctx.fill();
+      if (i % 3 === 0) {
+        ctx.strokeStyle = "rgba(211,144,99,.3)";
+        ctx.lineWidth = Math.max(1, radius * zoom * .003);
+        ctx.beginPath();
+        ctx.moveTo(points[0].x + (points[3].x - points[0].x) * .28, points[0].y + (points[3].y - points[0].y) * .28);
+        ctx.lineTo(points[1].x + (points[2].x - points[1].x) * .68, points[1].y + (points[2].y - points[1].y) * .68);
+        ctx.stroke();
+      }
+    }
+  }
+  traceLine(Array.from({ length: 91 }, (_, i) => ({ lon: lon - halfWidth, lat: -Math.PI / 2 + i * Math.PI / 90 })), "rgba(223,145,98,.62)", Math.max(1, radius * zoom * .009));
+  traceLine(Array.from({ length: 91 }, (_, i) => ({ lon: lon + halfWidth, lat: -Math.PI / 2 + i * Math.PI / 90 })), "rgba(68,39,39,.7)", Math.max(1, radius * zoom * .01));
+}
 function drawPoint(point, label, icon, color) {
   const p = projectPoint(point);
   if (!p.visible) return;
   const scale = clamp(0.7 + zoom * 0.3, 0.7, 1.8);
+  const size = 5 * scale;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.7)";
+  ctx.shadowBlur = 5 * scale;
+  ctx.shadowOffsetY = 2 * scale;
+  const relief = ctx.createRadialGradient(p.x - size * .35, p.y - size * .4, 0, p.x, p.y, size);
+  relief.addColorStop(0, color === "#f4b41a" ? "#fff0a1" : "#e2d99c");
+  relief.addColorStop(.55, color);
+  relief.addColorStop(1, color === "#f4b41a" ? "#93661c" : "#395437");
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+  ctx.fillStyle = relief;
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.fillStyle = "#66834f";
+  ctx.beginPath();
+  ctx.moveTo(p.x - size * .62, p.y + size * .03);
+  ctx.lineTo(p.x - size * .16, p.y - size * .5);
+  ctx.lineTo(p.x + size * .05, p.y - size * .22);
+  ctx.lineTo(p.x + size * .47, p.y - size * .38);
+  ctx.lineTo(p.x + size * .62, p.y + size * .25);
+  ctx.lineTo(p.x + size * .24, p.y + size * .51);
+  ctx.lineTo(p.x - size * .41, p.y + size * .43);
+  ctx.closePath();
+  ctx.fill();
   ctx.fillStyle = color;
-  ctx.fillRect(Math.round(p.x - 3.5 * scale), Math.round(p.y - 3.5 * scale), 7 * scale, 7 * scale);
+  ctx.fillRect(Math.round(p.x - size * .12), Math.round(p.y - size * .18), Math.max(1, size * .24), Math.max(1, size * .24));
+  ctx.restore();
 }
 function roundedRect(x, y, w, h, color) {
   ctx.fillStyle = color;
@@ -207,38 +265,60 @@ function drawBoat(point, destination) {
 function drawSeaLabel(point, label) {
   const p = projectPoint(point);
   if (!p.visible) return;
+  const location = radians(point);
+  const before = project(location.lon - .08, location.lat);
+  const after = project(location.lon + .08, location.lat);
+  let angle = Math.atan2(after.y - before.y, after.x - before.x);
+  if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(angle);
   ctx.fillStyle = "rgba(224,243,244,.68)";
-  ctx.font = "bold 11px monospace";
+  ctx.font = "bold 10px monospace";
   ctx.textAlign = "center";
-  ctx.fillText(label, p.x, p.y);
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, 0, 0);
+  ctx.restore();
 }
 function render(now = performance.now()) {
   if (!ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#0b1329";
+  const ocean = ctx.createRadialGradient(width * .5, height * .44, 2, width * .5, height * .5, Math.max(width, height) * .75);
+  ocean.addColorStop(0, "#1a2b4c");
+  ocean.addColorStop(1, "#0b1329");
+  ctx.fillStyle = ocean;
   ctx.fillRect(0, 0, width, height);
   const size = globeRadius();
   const gradient = ctx.createRadialGradient(width / 2 - size * 0.3, height / 2 - size * 0.35, size * 0.05, width / 2, height / 2, size);
-  gradient.addColorStop(0, "#287080");
-  gradient.addColorStop(0.65, "#163e59");
-  gradient.addColorStop(1, "#07172c");
+  gradient.addColorStop(0, "#1a2b4c");
+  gradient.addColorStop(0.65, "#102340");
+  gradient.addColorStop(1, "#0b1329");
   ctx.beginPath();
   ctx.arc(width / 2, height / 2, size, 0, Math.PI * 2);
   ctx.fillStyle = gradient;
   ctx.fill();
   ctx.save();
   ctx.clip();
+  for (let i = 0; i < 96; i++) {
+    const lon = ((i * 137 + 19) % 997) / 997 * Math.PI * 2 - Math.PI;
+    const lat = ((i * 313 + 71) % 991) / 991 * Math.PI - Math.PI / 2;
+    const point = project(lon, lat);
+    if (!point.visible || Math.hypot(point.x - width / 2, point.y - height / 2) > size * .92) continue;
+    ctx.fillStyle = i % 5 === 0 ? "rgba(210,240,240,.32)" : "rgba(194,220,232,.16)";
+    ctx.fillRect(point.x, point.y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
+  }
   parallel(0.24, "rgba(201,226,217,.22)", radius * 0.13);
   parallel(-0.24, "rgba(201,226,217,.22)", radius * 0.13);
   parallel(0, "rgba(79,192,192,.65)", radius * 0.16);
-  meridian(0, "#b75343", radius * 0.085);
-  meridian(Math.PI, "#b75343", radius * 0.085);
+  drawRedLineMeridian(0);
+  drawRedLineMeridian(Math.PI);
   for (let lat = -Math.PI / 3; lat <= Math.PI / 3; lat += Math.PI / 6) parallel(lat, "rgba(210,240,240,.12)", 1);
   for (let lon = -Math.PI; lon < Math.PI; lon += Math.PI / 6) meridian(lon, "rgba(210,240,240,.12)", 1);
-  drawSeaLabel({ x: 120, y: 190 }, "EAST BLUE");
-  drawSeaLabel({ x: 120, y: 610 }, "WEST BLUE");
-  drawSeaLabel({ x: 950, y: 100 }, "NORTH BLUE");
-  drawSeaLabel({ x: 950, y: 650 }, "SOUTH BLUE");
+  drawSeaLabel({ x: 120, y: 190 }, "MAR DEL ESTE");
+  drawSeaLabel({ x: 120, y: 610 }, "MAR DEL OESTE");
+  drawSeaLabel({ x: 950, y: 100 }, "MAR DEL NORTE");
+  drawSeaLabel({ x: 950, y: 650 }, "MAR DEL SUR");
+  drawSeaLabel({ x: 600, y: 380 }, "PARAÍSO");
   for (const island of islands) {
     const point = projectPoint(island);
     drawPoint(island, island.name, "■", "#a9cb78");

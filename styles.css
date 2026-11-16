@@ -352,11 +352,28 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .island-heading button:hover,.island-hotspot:hover,.island-hotspot:focus-visible{background:#f4b41a;color:#0b1329}
 .island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:hidden;border:3px solid #b88a30;border-radius:10px;background:#397d8d;box-shadow:0 12px 35px #0009}
 #island-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
-.island-scene::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(90deg,transparent 4%,#e6f4ee 4%,#e6f4ee 9%,transparent 9%),linear-gradient(90deg,transparent 20%,#fff 20%,#fff 28%,transparent 28%);background-size:380px 10px,520px 8px;background-repeat:repeat-x;background-position:0 10%,0 19%;animation:island-clouds 24s linear infinite}
-@keyframes island-clouds{to{background-position:380px 10%,-520px 19%}}
-@media(prefers-reduced-motion:reduce){.island-scene::after{animation:none}}
 #island-hotspots{position:absolute;inset:0;z-index:1}
 .island-hotspot{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1}
 .island-message{min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
 body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-controls,body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-redirect{display:none!important}
 @media(max-width:600px){#island-view{padding:112px 10px 76px}.island-heading{align-items:start}.island-heading button{font-size:15px;max-width:145px}.island-heading p{font-size:15px}.island-hotspot{padding:4px 6px;font-size:15px}}
+
+/* Painted parchment and pinned notices make the information panels feel physical. */
+#modal-perfil.open .one-hud-dialog{color:#30251a;background-color:#e3d2ab;background-image:radial-gradient(ellipse at 18% 12%,rgba(255,255,255,.55),transparent 42%),radial-gradient(ellipse at 85% 90%,rgba(124,82,35,.18),transparent 45%),linear-gradient(135deg,#f4ebd0 0%,#e3d2ab 100%);border:4px double #93661c;border-radius:16px;box-shadow:inset 0 0 15px rgba(0,0,0,.3),inset 0 0 35px rgba(124,82,35,.2),0 24px 70px #0009;font-family:Georgia,"Times New Roman",serif}
+#modal-perfil.open .one-hud-heading,#modal-perfil.open .one-hud-heading-title{color:#69450e;font-family:Georgia,"Times New Roman",serif}
+#modal-perfil.open .one-hud-stats div,#modal-perfil.open .one-hud-meter{color:#30251a;background:rgba(244,235,208,.72);border-color:#a78643}
+#modal-perfil.open .one-hud-stats strong,#modal-perfil.open .one-hud-meter strong{color:#69450e}
+#modal-perfil.open .soul-portrait{border:3px dotted #795b30;background:rgba(91,70,43,.12);box-shadow:inset 0 0 12px rgba(55,39,20,.25)}
+#modal-perfil.open .soul-portrait canvas{width:72px;height:72px;image-rendering:pixelated}
+#modal-noticias.open .one-hud-dialog,#modal-tablones.open .one-hud-dialog{background-color:#1a0d08;background-image:repeating-linear-gradient(2deg,rgba(117,73,43,.15) 0 2px,transparent 2px 15px),repeating-linear-gradient(91deg,#2c1810 0 22px,#1a0d08 22px 25px,#352015 25px 48px);border:4px ridge #8b5a2c;box-shadow:inset 0 0 24px #080403,0 24px 70px #0009}
+#modal-tablones.open .one-hud-contract,#modal-noticias.open .news-card{position:relative;margin:10px 2px;padding:14px 12px 12px;color:#292319;background-color:#f1e4c4;background-image:linear-gradient(135deg,rgba(255,255,255,.45),transparent 45%),repeating-linear-gradient(0deg,#eee0be 0 8px,#e6d6ae 8px 10px);border:1px solid #251c14;border-radius:3px;box-shadow:2px 5px 8px #0008}
+#modal-tablones.open .one-hud-contract::before,#modal-noticias.open .news-card::before{content:"";position:absolute;inset:5px 6px auto;height:9px;background:radial-gradient(circle at 5px 4px,#666 0 3px,rgba(255,255,255,.65) 3.5px 4px,transparent 4.5px),radial-gradient(circle at calc(100% - 5px) 4px,#666 0 3px,rgba(255,255,255,.65) 3.5px 4px,transparent 4.5px);pointer-events:none}
+#modal-tablones.open .one-hud-contract::after,#modal-noticias.open .news-card::after{content:"";position:absolute;inset:auto 6px 5px;height:9px;background:radial-gradient(circle at 5px 4px,#666 0 3px,rgba(255,255,255,.65) 3.5px 4px,transparent 4.5px),radial-gradient(circle at calc(100% - 5px) 4px,#666 0 3px,rgba(255,255,255,.65) 3.5px 4px,transparent 4.5px);pointer-events:none}
+#modal-tablones.open .one-hud-contract h3,#modal-noticias.open .news-card summary{position:relative;color:#4e2a18}
+#modal-tablones.open .one-hud-contract p,#modal-noticias.open .news-card-detail{color:#292319}
+#modal-noticias.open .news-card[open] summary{color:#73391f}
+.one-hud-chat-message{display:grid;grid-template-columns:32px minmax(0,1fr);align-items:start;gap:8px;min-height:48px;padding:8px 70px 8px 9px;border-left:0;border-radius:12px;background:rgba(22,34,56,.9)}
+.one-hud-chat-avatar{width:32px;height:32px;border:1px dotted #f4b41a;border-radius:50%;image-rendering:pixelated}
+.one-hud-chat-body{min-width:0}
+.one-hud-chat-body strong{color:#f4c85d}
+.one-hud-chat-message time{font-size:14px}

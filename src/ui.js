@@ -2,7 +2,7 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { drawIslandScene } from "./island_scene.js";
+import { drawIslandScene } from "./island_renderer.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);

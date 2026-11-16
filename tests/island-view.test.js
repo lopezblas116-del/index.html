@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getMapIslands } from "../src/map.js";
 import { ISLAND_DATA } from "../src/islands_data.js";
-import { drawIslandScene } from "../src/island_scene.js";
+import { drawIslandScene } from "../src/island_renderer.js";
 
 test("each mapped island has its own stable scene and island-specific options", () => {
   const islands = getMapIslands({ id: "captain" });
@@ -21,7 +21,7 @@ test("each mapped island has its own stable scene and island-specific options", 
 
 test("scene renderer uses each island design without changing game state", () => {
   const calls = [];
-  const ctx = { fillRect: (...args) => calls.push(args) };
+  const ctx = { fillRect: (...args) => calls.push(args), createLinearGradient: () => ({ addColorStop() {} }) };
   const canvas = { getContext: () => ctx };
   const islands = getMapIslands();
   const character = { appearance: { skin: "Oscura" } };
@@ -33,11 +33,11 @@ test("scene renderer uses each island design without changing game state", () =>
 
 test("remote previews do not draw the avatar at the dock", () => {
   const calls = [];
-  const canvas = { getContext: () => ({ fillRect: (...args) => calls.push(args) }) };
+  const canvas = { getContext: () => ({ fillRect: (...args) => calls.push(args), createLinearGradient: () => ({ addColorStop() {} }) }) };
   const island = getMapIslands().find((item) => item.id === "dawn");
   drawIslandScene(canvas, island, null);
-  assert.ok(!calls.some(([x, y, w, h]) => x === 93 && y === 264 && w === 22 && h === 5));
+  const previewPixels = calls.length;
   calls.length = 0;
   drawIslandScene(canvas, island, { appearance: { skin: "Oscura" } });
-  assert.ok(calls.some(([x, y, w, h]) => x === 93 && y === 264 && w === 22 && h === 5));
+  assert.ok(calls.length > previewPixels, "the docked avatar adds its layered pixel-art sprite");
 });
