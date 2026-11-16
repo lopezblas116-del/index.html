@@ -15,7 +15,8 @@ export function showSetup() {
   const wizard = byId("wizard-container");
   const game = byId("game-container");
   const reset = byId("reset-button");
-  if (wizard) { wizard.hidden = false; wizard.style.display = "block"; }
+  document.body.classList.add("wizard-active");
+  if (wizard) { wizard.hidden = false; wizard.style.display = "grid"; }
   if (game) { game.hidden = true; game.style.display = "none"; }
   if (reset) reset.hidden = true;
   closeDialog("legacy-modal");
@@ -25,6 +26,7 @@ export function showGame() {
   const wizard = byId("wizard-container");
   const game = byId("game-container");
   const reset = byId("reset-button");
+  document.body.classList.remove("wizard-active");
   if (wizard) { wizard.hidden = true; wizard.style.display = "none"; }
   if (game) { game.hidden = false; game.style.display = "block"; }
   if (reset) reset.hidden = false;
@@ -243,7 +245,11 @@ function showWizardStep(index) {
   const nav = [...document.querySelectorAll(".progress-step")];
   if (!steps.length) return;
   currentStep = Math.max(0, Math.min(steps.length - 1, index));
-  steps.forEach((step, i) => step.classList.toggle("active", i === currentStep));
+  steps.forEach((step, i) => {
+    step.hidden = i !== currentStep;
+    step.classList.toggle("active", i === currentStep);
+    step.setAttribute("aria-hidden", String(i !== currentStep));
+  });
   nav.forEach((button, i) => { button.classList.toggle("active", i === currentStep); button.setAttribute("aria-current", i === currentStep ? "step" : "false"); });
   if (byId("prev-step")) byId("prev-step").hidden = currentStep === 0;
   if (byId("next-step")) byId("next-step").hidden = currentStep === steps.length - 1;
@@ -322,11 +328,15 @@ export function initWizard() {
 export function resetWizard() {
   selectedTraits = [];
   const form = byId("character-form");
-  if (form?.elements.namedItem("traitPrimary")) form.elements.namedItem("traitPrimary").value = "";
-  if (form?.elements.namedItem("traitSecondary")) form.elements.namedItem("traitSecondary").value = "";
+  form?.reset();
   document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
+  document.querySelectorAll("#faction-list .option-card, #dream-list .option-card").forEach((card) => {
+    card.classList.toggle("selected", Boolean(card.querySelector('input[type="radio"]')?.checked));
+  });
   showWizardStep(0);
   updateWizardSummary();
+  byId("wizard-container")?.scrollTo({ top: 0 });
+  document.querySelector(".wizard-card")?.scrollTo({ top: 0 });
 }
 export function openPantheon() { const dialog = byId("pantheon-dialog"); if (dialog && !dialog.open) dialog.showModal(); }
 export function closePantheon() { closeDialog("pantheon-dialog"); }

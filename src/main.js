@@ -68,7 +68,7 @@ listen(byId("character-form"), "submit", (event) => {
   const data = new FormData(event.currentTarget);
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"), dream: String(data.get("dream") || "Libertad"), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"), dream: String(data.get("dream") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
   ensureBlockOneData(character);
   persistRender(true);
 });

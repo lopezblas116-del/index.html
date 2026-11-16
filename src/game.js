@@ -43,7 +43,7 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
   const normalizedFaction = faction === "Marina" ? "Marine" : faction;
@@ -54,6 +54,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     id: globalThis.crypto?.randomUUID?.() ?? `captain-${Date.now()}`,
     name: displayName,
     username: String(username).startsWith("@") ? String(username).slice(0, 17) : `@${String(username).slice(0, 16)}`,
+    story: String(story).trim().slice(0, 240),
     faction: normalizedFaction,
     originSea,
     appearance: { skin: appearance.skin || "Clara", hair: appearance.hair || "Negro", accessory: appearance.accessory || "Bandana" },

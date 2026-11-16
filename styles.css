@@ -243,3 +243,45 @@ button.one-hud-slot{color:#fff;font:inherit;cursor:pointer}
 .one-hud-badge{padding:6px 10px;border:1px solid #f4b41a;border-radius:7px;color:#f4b41a}
 .one-hud-warning{padding:10px;border-left:3px solid #ef4444;background:#0b1329;color:#fff}
 .one-hud-new-game{padding:12px 14px;font-size:22px}
+
+/* Character creation is a centered overlay over the nautical grid. */
+body.wizard-active .masthead{display:none}
+#wizard-container{position:fixed;inset:0;z-index:80;display:grid;place-items:center;width:100vw;height:100vh;height:100dvh;margin:0;padding:16px;overflow-y:auto;background-color:rgba(11,19,41,.94);background-image:linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px),radial-gradient(ellipse at 50% 0,rgba(35,86,145,.24),transparent 58%);background-size:24px 24px,24px 24px,auto;overscroll-behavior:contain}
+#wizard-container[hidden]{display:none!important}
+#wizard-container>.wizard-card{width:min(480px,100%);max-width:480px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);margin:0;padding:clamp(16px,4vw,25px);overflow-y:auto;border:2px solid #f4b41a;border-radius:16px;background:#162238;box-shadow:0 10px 30px rgba(0,0,0,.8)}
+.wizard-intro{margin-bottom:14px}
+#wizard-title{color:#f4b41a;font-size:clamp(.65rem,2.4vw,.9rem);line-height:1.75}
+.wizard-progress{gap:5px;margin:14px 0 18px}
+.progress-step{min-width:0;padding:6px 3px;border:1px solid rgba(244,180,26,.38);border-radius:8px;background:#0b1329;transition:background .16s,border-color .16s,box-shadow .16s}
+.progress-step:hover,.progress-step.active{border-color:#f4b41a;background:#22334e;box-shadow:0 0 10px rgba(244,180,26,.2)}
+.progress-step.active .step-number{color:#0b1329;border-color:#f4b41a;background:#f4b41a}
+.progress-step.active .step-label{color:#fff}
+.step-number{width:30px;height:30px;border-color:#f4b41a66;color:#f4b41a}
+.step-label{font-size:.76rem}
+.wizard-step{min-height:0;margin-top:8px}
+.wizard-step[hidden]{display:none!important}
+.step-header{margin-bottom:12px}
+.step-header h3{color:#fff}
+.appearance-grid{gap:10px}
+.appearance-grid label{display:grid;gap:5px;color:#fff}
+#wizard-container input:not([type=radio]),#wizard-container select,#wizard-container textarea{width:100%;min-height:44px;padding:9px 11px;color:#fff;border:1px solid rgba(244,180,26,.45);border-radius:7px;background:#0b1329}
+#wizard-container textarea{min-height:84px;resize:vertical}
+#wizard-container input::placeholder,#wizard-container textarea::placeholder{color:#9ba9bd}
+.story-field{grid-column:1/-1}
+#faction-list .option-card{min-height:94px;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:10px}
+#faction-list .option-card .option-icon{font-size:1.5rem}
+.option-card{border-color:rgba(244,180,26,.42);background:#0b1329;transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}
+.option-card:hover,.option-card.selected{border-color:#f4b41a;background:#22334e;box-shadow:0 0 12px rgba(244,180,26,.22)}
+.option-card.selected{box-shadow:0 0 0 1px #f4b41a,0 0 14px rgba(244,180,26,.3)}
+.trait-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.trait-card{min-height:76px;border-color:rgba(244,180,26,.42);background:#0b1329;transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}
+.trait-card:hover:not(:disabled){transform:translateY(-2px);border-color:#f4b41a}
+.trait-card.selected{border:2px solid #f4b41a;background:#263853;box-shadow:0 0 14px rgba(244,180,26,.38)}
+.trait-card.selected strong{color:#ffd45c}
+.wizard-actions{position:sticky;bottom:-1px;z-index:2;margin:14px -4px -4px;padding:8px 4px 4px;background:linear-gradient(180deg,rgba(22,34,56,0),#162238 20%)}
+.wizard-actions .button{min-height:48px;padding:10px 18px}
+.wizard-actions .button-primary{color:#0b1329;border-color:#f4b41a;background:#f4b41a;font-weight:800;box-shadow:0 4px 12px rgba(244,180,26,.22);transition:transform .15s,background .15s,box-shadow .15s}
+.wizard-actions .button-primary:hover{transform:translateY(-2px);background:#ffd35a;box-shadow:0 7px 18px rgba(244,180,26,.34)}
+.wizard-actions .button-primary:active{transform:translateY(1px);background:#d99c08}
+.launch-button{min-width:200px;font-size:1.25rem}
+@media(max-width:520px){#wizard-container{padding:10px}.wizard-card{max-height:calc(100dvh - 20px)}.wizard-progress{gap:3px}.step-label{font-size:.68rem}.progress-step{padding-inline:1px}.wizard-actions{bottom:0}.wizard-actions .button{padding-inline:10px}}
