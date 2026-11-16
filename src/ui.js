@@ -1,5 +1,5 @@
 import { newsLocation } from "./map.js";
-import { ISLAND_VIEW, initMap, renderMap, resizeMap, returnToGlobalMap } from "./world3d.js";
+import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
 import { drawIslandScene } from "./island_scene.js";
@@ -209,8 +209,6 @@ export function showGame() {
   if (wizard) { wizard.hidden = true; wizard.style.display = "none"; }
   if (game) { game.hidden = false; game.style.display = "block"; }
   if (reset) reset.hidden = false;
-  // The canvas may have measured 0×0 while its parent was hidden.
-  requestAnimationFrame(() => resizeMap());
 }
 
 function closeDialog(id) {
@@ -330,10 +328,6 @@ export function renderGame(character) {
     headerStatus.classList.toggle("paused", paused && !dead);
     headerStatus.classList.toggle("dead", dead);
   }
-  const autonomyStatus = byId("autonomy-status");
-  if (autonomyStatus) { autonomyStatus.textContent = dead ? "☠ En el Panteón" : paused ? "⏸ En pausa" : "● Activa"; autonomyStatus.classList.toggle("badge-live", !paused); }
-  const pauseButton = byId("pause-button");
-  if (pauseButton) { pauseButton.textContent = paused ? "Reanudar avatar" : "Pausar avatar"; pauseButton.disabled = dead; }
   if (byId("sync-value")) byId("sync-value").textContent = `${character.whisper?.affinity ?? 55}%`;
   if (byId("sync-bar")) byId("sync-bar").value = character.whisper?.affinity ?? 55;
   if (byId("rebellion-value")) byId("rebellion-value").textContent = `Rebeldía: ${character.whisper?.rebellion ?? 45}%`;
@@ -500,11 +494,6 @@ export function initWizard() {
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
     }
     updateWizardSummary();
-  });
-  if (byId("quick-action")) byId("quick-action").addEventListener("click", () => {
-    if (byId("game-container")?.hidden) return;
-    byId("chat-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    byId("whisper-input")?.focus({ preventScroll: true });
   });
   showWizardStep(0);
   updateTraitButtons();

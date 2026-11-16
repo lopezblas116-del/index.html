@@ -26,6 +26,8 @@ Al volver a abrir o activar la página, la partida simula hasta ocho horas de ac
 
 El reloj personal avanza cinco minutos de juego por cada 75 segundos reales: una hora de juego por cada 15 minutos reales. Los pulsos parciales se conservan entre guardados. Las decisiones mostradas al jugador esperan 60 segundos; si vencen o la partida se recupera sin conexión, el avatar decide según sus rasgos. Los ciclos de fuga locales se procesan al avanzar un día de juego. El reloj personal no es un reloj compartido autoritativo: el ciclo de servidor de Supabase requiere `pg_cron` como se describe arriba.
 
+El botón de pausa ya no está disponible. Las partidas guardadas que estaban pausadas se reanudan al abrirlas, sin simular el tiempo que pasaron en pausa. Con la página en segundo plano, el temporizador de simulación se detiene y el progreso se calcula al volver; el globo también deja de animarse cuando está cubierto por un modal.
+
 Las frutas del diablo se reclaman mediante una función SQL atómica, por lo que solo una sesión puede poseer cada fruta a la vez. La muerte libera la fruta para su reaparición en el siguiente ciclo global; sin Supabase, el mismo sistema funciona localmente en el navegador. Las razas, el Haki, la captura y el rescate también se simulan en el cliente y no son resultados autoritativos.
 
 ## Límites de confianza

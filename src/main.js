@@ -6,7 +6,7 @@ import {
   closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
   renderGame, renderIslandView, resetWizard, showSetup
 } from "./ui.js";
-import { focusMap, initWorldMap, renderMap, resizeMap, returnToGlobalMap } from "./world3d.js";
+import { focusMap, returnToGlobalMap } from "./world3d.js";
 import { initHud, openIslandPanel, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
@@ -15,6 +15,7 @@ import {
 } from "./systems.js";
 import { trade } from "./combat_economy.js";
 import { createNetwork } from "./network.js";
+import { SUPABASE_CONFIG } from "./network-config.js";
 import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantPort } from "./politics.js";
 import { removeStorage } from "./storage_adapter.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
@@ -33,9 +34,6 @@ function paint() {
   ensureAdvancedSystems(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
-  initWorldMap();
-  resizeMap();
-  renderMap(character);
   renderIslandView(character);
   renderHud(character);
   clearTimeout(branchTimer);
@@ -69,26 +67,25 @@ function claimPendingFruit(actor) {
     saveGame(actor);
     paint();
   });
-  onTypedEvent(EVENT_TYPES.globalChatMessage, (event) => {
-    if (!character || character.status === "dead") return;
-    const { message } = event.detail || {};
-    if (!message?.id || !message?.text) return;
-    network.publish("global_chat", { text: message.text }, character, message.id);
-    persistRender();
-  });
-  onTypedEvent(EVENT_TYPES.journalEntry, (event) => {
-    if (!character || character.status === "dead") return;
-    character.log.unshift({ time: new Date().toISOString(), message: event.detail.message });
-    character.log = character.log.slice(0, 80);
-    persistRender();
-  });
-  onTypedEvent(EVENT_TYPES.newsArticle, (event) => {
-    if (!character || character.status === "dead") return;
-    character.world.news.unshift(event.detail.article);
-    character.world.news = character.world.news.slice(0, 60);
-    persistRender();
-  });
 }
+onTypedEvent(EVENT_TYPES.globalChatMessage, (event) => {
+  if (!character || character.status === "dead") return;
+  const { message } = event.detail;
+  network.publish("global_chat", { text: message.text }, character, message.id);
+  persistRender();
+});
+onTypedEvent(EVENT_TYPES.journalEntry, (event) => {
+  if (!character || character.status === "dead") return;
+  character.log.unshift({ time: new Date().toISOString(), message: event.detail.message });
+  character.log = character.log.slice(0, 80);
+  persistRender();
+});
+onTypedEvent(EVENT_TYPES.newsArticle, (event) => {
+  if (!character || character.status === "dead") return;
+  character.world.news.unshift(event.detail.article);
+  character.world.news = character.world.news.slice(0, 60);
+  persistRender();
+});
 async function scoutFugitive(actor) {
     if (scouting || !actor?.location?.atSea || !actor.mapPosition || actor.status === "dead") return;
     const { x, y } = actor.mapPosition;
@@ -128,7 +125,7 @@ function publishChanges(before, c, whispered = false) {
 }
 function scheduleTick() {
   clearTimeout(timerId);
-  if (!character || character.status === "dead" || character.autonomy?.paused || character.captured) return;
+  if (document.hidden || !character || character.status === "dead" || character.autonomy?.paused || character.captured) return;
   timerId = setTimeout(() => {
     if (!character || character.status === "dead" || character.autonomy?.paused || character.captured) return;
     network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, interactive: !document.hidden && navigator.onLine, availableFruitIds: availableFruitIds() }));
@@ -163,9 +160,26 @@ function resumeOffline() {
   if (result.ticks || pending !== character.autonomy.pendingBranch) { persistRender(true); if (character.location?.atSea) scoutFugitive(character); }
 }
 window.addEventListener("online", () => { resumeOffline(); network.sync(); });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeOffline(); });
-setInterval(() => network.sync(), 30000);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) clearTimeout(timerId);
+  else { resumeOffline(); scheduleTick(); }
+});
+let syncTimer;
+function scheduleNetworkSync() {
+  clearTimeout(syncTimer);
+  if (document.hidden || (!SUPABASE_CONFIG.url && !SUPABASE_CONFIG.publishableKey)) return;
+  syncTimer = setTimeout(async () => {
+    await network.sync();
+    scheduleNetworkSync();
+  }, 30000);
+}
+document.addEventListener("visibilitychange", scheduleNetworkSync);
+scheduleNetworkSync();
 if (character) {
+  if (character.status !== "dead" && character.autonomy?.paused) {
+    setAutonomyPaused(character, false);
+    saveGame(character);
+  }
   ensureBlockOneData(character);
   const pending = character.autonomy.pendingBranch;
   const offline = network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, availableFruitIds: availableFruitIds() }));
@@ -175,7 +189,6 @@ if (character) {
   if (character.status !== "dead" && !character.captured) scheduleTick();
 } else showSetup();
 
-listen(window, "resize", () => { if (!character) return; resizeMap(); renderMap(character); });
 listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
@@ -203,9 +216,7 @@ listen(byId("character-form"), "submit", (event) => {
   persistRender(true);
 });
 listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const before = publicSnapshot(character); sendWhisper(character, input.value); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
-listen(byId("pause-button"), "click", () => { if (!character || character.status === "dead") return; setAutonomyPaused(character, !character.autonomy.paused); persistRender(true); });
 listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
-listen(byId("archive-button"), "click", openPantheon);
 listen(document.querySelector("[data-close-pantheon]"), "click", closePantheon);
 listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal);
 listen(document.querySelector("[data-open-heir]"), "click", () => { const modal = byId("legacy-modal"); if (modal && !modal.open) modal.showModal(); });
@@ -231,11 +242,6 @@ listen(document, "onepiece:hud-branch-choice", (event) => {
     : resolveBranch(character, event.detail?.choice);
   if (!resolved) return;
   persistRender();
-});
-listen(document, "onepiece:hud-toggle-pause", () => {
-  if (!character || character.status === "dead") return;
-  setAutonomyPaused(character, !character.autonomy.paused);
-  persistRender(true);
 });
 listen(document, "onepiece:hud-tavern-action", (event) => {
   if (!character || character.status === "dead" || character.location?.atSea) return;

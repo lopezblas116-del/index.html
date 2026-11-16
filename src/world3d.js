@@ -15,6 +15,8 @@ let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map()
 export const GLOBAL_MAP = "GLOBAL_MAP";
 export const ISLAND_VIEW = "ISLAND_VIEW";
 let cameraState = GLOBAL_MAP, transition = null, savedCamera = null;
+let modalOpen = false;
+const mapCovered = () => modalOpen || Boolean(document.querySelector?.("dialog[open]"));
 export function getCameraState() { return cameraState; }
 
 function project(lon, lat) {
@@ -162,7 +164,14 @@ function drawNightSky(now) {
   ctx.restore();
 }
 function scheduleFrame() {
-  if (frame === null) frame = requestAnimationFrame(animate);
+  if (!mapCovered() && !document.hidden && frame === null) frame = requestAnimationFrame(animate);
+}
+function stopFrame() {
+  if (frame !== null) cancelAnimationFrame(frame);
+  frame = null;
+}
+function shouldAnimateRoute() {
+  return Boolean(character?.location?.atSea && !character.autonomy?.paused && character.status !== "dead" && routeDestination());
 }
 function routeDestination() {
   if (character?.redirectTarget) return character.redirectTarget;
@@ -279,6 +288,7 @@ function positionFor(c) {
 }
 function animate(now) {
   frame = null;
+  if (mapCovered() || document.hidden) return;
   if (transition) {
     const t = clamp((now - transition.started) / 650, 0, 1);
     const eased = t * t * (3 - 2 * t);
@@ -305,7 +315,7 @@ function animate(now) {
   }
   dashOffset = (dashOffset + .45) % 24;
   render(now);
-  if (animation || Math.abs(targetZoom - zoom) > .003 || routeDestination() || character?.travel?.climate === "calm-belt") scheduleFrame();
+  if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
 }
 function screenPoint(event) {
   const rect = canvas.getBoundingClientRect();
@@ -396,17 +406,20 @@ export function returnToGlobalMap() {
     savedCamera = null;
   }
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
-  render();
-  if (character && (animation || routeDestination() || character.travel?.climate === "calm-belt")) scheduleFrame();
+  if (!mapCovered() && !document.hidden) render();
+  if (character && (animation || shouldAnimateRoute())) scheduleFrame();
 }
 export function resizeMap() {
   if (!canvas || !ctx) return;
-  width = Math.max(1, window.innerWidth);
-  height = Math.max(1, window.innerHeight);
+  const nextWidth = Math.max(1, window.innerWidth);
+  const nextHeight = Math.max(1, window.innerHeight);
+  if (width === nextWidth && height === nextHeight) return;
+  width = nextWidth;
+  height = nextHeight;
   canvas.width = width;
   canvas.height = height;
   radius = Math.max(70, Math.min(width * 0.44, height * 0.37));
-  render();
+  if (!mapCovered() && !document.hidden && cameraState === GLOBAL_MAP) render();
 }
 export function zoomMap(value) {
   if (cameraState !== GLOBAL_MAP || transition) return;
@@ -438,31 +451,48 @@ export function initMap() {
   document.getElementById("map-reset-view")?.addEventListener("click", () => { zoomMap(1); focusMap(positionFor(character)); });
   document.addEventListener("onepiece:map-zoom", (event) => adjustZoom(event.detail?.direction));
   document.addEventListener("onepiece:map-fit", () => zoomMap(1));
+  document.addEventListener("onepiece:modal-visibility", (event) => {
+    modalOpen = Boolean(event.detail?.open);
+    if (modalOpen) stopFrame();
+    else if (!mapCovered() && !document.hidden && cameraState === GLOBAL_MAP) {
+      render();
+      if (transition || animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopFrame();
+    else if (!mapCovered() && cameraState === GLOBAL_MAP) {
+      render();
+      if (transition || animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
+    }
+  });
+  document.addEventListener("close", (event) => {
+    if (event.target?.tagName !== "DIALOG" || mapCovered() || document.hidden || cameraState !== GLOBAL_MAP) return;
+    render();
+    if (transition || animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
+  }, true);
   window.addEventListener("resize", resizeMap);
   resizeMap();
 }
-export const initWorldMap = initMap;
 export function renderMap(c) {
   initMap();
   if (!canvas || !c) return;
   const previous = character?.id === c.id ? boatPosition : null;
-  if (!previous && frame) cancelAnimationFrame(frame);
-  if (!previous) { animation = null; frame = null; }
+  if (!previous) { stopFrame(); animation = null; }
   character = c;
   islands = getMapIslands(c);
   const next = positionFor(c);
   if (next && previous && (next.x !== previous.x || next.y !== previous.y) && !c.autonomy?.paused && c.status !== "dead") {
     if (!animation || animation.to.x !== next.x || animation.to.y !== next.y) {
       animation = { from: previous, to: next, started: performance.now(), duration: c.travel?.speedMultiplier === 0.5 ? 6000 : 3000 };
-      if (frame) cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(animate);
+      stopFrame();
+      if (cameraState === GLOBAL_MAP) scheduleFrame();
     }
   } else if (!previous || c.autonomy?.paused || c.status === "dead") {
     boatPosition = next;
     animation = null;
-    if (frame) cancelAnimationFrame(frame);
-    frame = null;
+    stopFrame();
   }
-  render();
-  if (cameraState === GLOBAL_MAP && (transition || routeDestination() || character.travel?.climate === "calm-belt")) scheduleFrame();
+  if (!mapCovered() && !document.hidden && cameraState === GLOBAL_MAP) render();
+  if (cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute())) scheduleFrame();
 }
