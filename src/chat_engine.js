@@ -71,7 +71,7 @@ export function sendConsciousnessWhisper(character, text) {
   character.whisper.history.unshift({
     time: new Date().toISOString(),
     message: phrase,
-    status: result.obeyed ? "Aceptado" : "Ignorado",
+    status: result.reinterpretedAction ? "Reflexionando" : result.obeyed ? "Aceptado" : "Ignorado",
     response: character.log.find((entry) => entry.message.includes(`«${phrase}»`))?.message || ""
   });
   character.whisper.history = character.whisper.history.slice(0, 30);

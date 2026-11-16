@@ -241,7 +241,7 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   });
   if (character) {
     const action = avatarAction(character);
-    const position = avatarScenePosition(island.id, character.id, action);
+    const position = avatarScenePosition(island.id, character.id, action, character.location?.scenePosition);
     box(ctx, position.x - 7, position.y + 35, 31, 6, "rgba(0,0,0,.25)");
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
       x: position.x - 15, y: position.y - 38, scale: 1.15, fullBody: true, action, time: now

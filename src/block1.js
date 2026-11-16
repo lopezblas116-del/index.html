@@ -1,5 +1,6 @@
 import { CONTRACTS, STORAGE_KEYS } from "./config.js";
 import { writeJSON } from "./storage_adapter.js";
+import { awardBerries } from "./gm_engine.js";
 
 const SAVE_KEY = STORAGE_KEYS.save;
 const TRAIT_LABELS = { valiente: "Valiente", prudente: "Prudente", astuto: "Astuto", impulsivo: "Impulsivo", leal: "Leal", agresivo: "Agresivo" };
@@ -99,7 +100,7 @@ export function resolvePortContracts(character, previousIsland) {
     if (contract.status !== "accepted" || contract.fromIsland === character.location.island) continue;
     contract.status = "completed";
     contract.completedAt = new Date().toISOString();
-    character.berries += Math.max(0, Number(contract.reward) || 0);
+    awardBerries(character, Math.max(0, Number(contract.reward) || 0));
     const text = `${character.name} completa «${contract.title}» en ${character.location.island}.`;
     log(character, `📜 ${text}`);
     addNotice(character, "contract", "Contrato completado", text);
@@ -229,7 +230,7 @@ export function resolvePortSuggestions(character, previousIsland, random = Math.
       const items = entry.kind === "equipment" ? character.inventory.equipment : character.inventory.items;
       items.splice(items.indexOf(entry.name), 1);
     }
-    character.berries += 25;
+    awardBerries(character, 25);
     log(character, `🏷️ ${character.name} vende ${entry.name} en ${character.location.island} por ฿25.`);
   }
 }

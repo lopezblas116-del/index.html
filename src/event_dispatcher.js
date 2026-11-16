@@ -1,7 +1,10 @@
 export const EVENT_TYPES = Object.freeze({
   globalChatMessage: "global-chat-message",
   journalEntry: "journal-entry",
-  newsArticle: "news-article"
+  newsArticle: "news-article",
+  psycheUpdate: "psyche-update",
+  worldEvent: "world-event",
+  gmEvent: "gm-event"
 });
 
 const TYPES = new Set(Object.values(EVENT_TYPES));
@@ -14,7 +17,18 @@ function validDetail(type, detail) {
       typeof message?.text === "string" && message.text.length <= 280;
   }
   if (type === "journal-entry") return typeof detail.message === "string";
-  return Boolean(detail.article && typeof detail.article === "object" && !Array.isArray(detail.article));
+  if (type === "news-article") return Boolean(detail.article && typeof detail.article === "object" && !Array.isArray(detail.article));
+  if (type === "psyche-update") {
+    return typeof detail.mood === "string" &&
+      ["Eufórico", "Cauteloso", "Ambicioso", "Melancólico", "Vengativo"].includes(detail.mood) &&
+      Number.isFinite(detail.morality?.honor) && Number.isFinite(detail.morality?.greed) &&
+      Number.isFinite(detail.morality?.liberty);
+  }
+  if (type === "world-event") {
+    return typeof detail.id === "string" && typeof detail.title === "string" &&
+      typeof detail.text === "string" && typeof detail.location === "string";
+  }
+  return typeof detail.type === "string" && typeof detail.text === "string";
 }
 
 export function dispatchTypedEvent(type, detail, target = globalThis.document) {

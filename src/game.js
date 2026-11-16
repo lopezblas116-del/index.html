@@ -1,7 +1,7 @@
 import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, updateCrewLoyalty } from "./systems.js";
 import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
-import { getMapIslands } from "./map.js";
+import { createScenePosition, getMapIslands } from "./map.js";
 import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
 import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./races.js";
 import { fruitNear } from "./devil_fruits.js";
@@ -10,7 +10,11 @@ import missionData from "./data/missions_data.json" with { type: "json" };
 import { PULSE_MS, STORAGE_KEYS } from "./config.js";
 import { readStorage, writeJSON } from "./storage_adapter.js";
 import { advanceClock, MINUTES_PER_PULSE } from "./time_engine.js";
-import { advanceGM } from "./gm_engine.js";
+import { advanceGM, awardBerries } from "./gm_engine.js";
+import {
+  chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome,
+  resolvePortDilemma, writeDailyReflection
+} from "./ai_engine.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -51,7 +55,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     accessory: appearance.accessory || "Bandana", eyes: appearance.eyes || "Marrón",
     outfit: appearance.outfit || "Rojo"
   };
-  return {
+  const character = {
     version: 3,
     id: globalThis.crypto?.randomUUID?.() ?? `captain-${Date.now()}`,
     name: displayName,
@@ -62,7 +66,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     appearance: { ...avatarConfig },
     avatarConfig,
     avatarActivity: "idle",
-    location: { region: originSea, island: route[0], routeIndex: 0 },
+    location: { region: originSea, island: route[0], routeIndex: 0, scenePosition: createScenePosition(spawn?.id || route[0], displayName) },
     mapPosition: spawn ? { x: spawn.x, y: spawn.y } : undefined,
     logPose: { alignment: 0, required: 3 },
     mission: { ...missionFor({ originSea, location: { routeIndex: 0 } }), completed: 0 },
@@ -88,6 +92,8 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     status: "alive",
     log: [{ time: new Date().toISOString(), message: `¡${displayName} (${username}) inicia su aventura en ${route[0]}, ${originSea}! Sueño: ${dream}.` }]
   };
+  ensurePsyche(character);
+  return character;
 }
 
 function normalize(character) {
@@ -128,6 +134,10 @@ function normalize(character) {
   character.location ??= { region: character.originSea, island: route[0], routeIndex: 0 };
   character.location.routeIndex = clamp(Number(character.location.routeIndex) || 0, 0, route.length - 1);
   if (!character.location.detour) character.location.island = route[character.location.routeIndex] ?? character.location.island ?? route[0];
+  if (!character.location.atSea) {
+    const island = getMapIslands(character).find((entry) => entry.name === character.location.island);
+    character.location.scenePosition ??= createScenePosition(island?.id || character.location.island, character.id);
+  }
   character.logPose ??= { alignment: 0, required: 3 };
   character.logPose.required = Math.max(1, Number(character.logPose.required) || 3);
   character.logPose.alignment = clamp(Number(character.logPose.alignment) || 0, 0, character.logPose.required - 1);
@@ -152,6 +162,7 @@ function normalize(character) {
   character.stats.maxHealth ??= 100;
   character.stats.health = clamp(Number(character.stats.health) || (character.status === "dead" ? 0 : 1), 0, character.stats.maxHealth);
   character.log ??= [];
+  ensurePsyche(character);
   return character;
 }
 export function loadGame() {
@@ -276,9 +287,9 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
     gainExperience(character, xp);
     if (character.faction === "Marine") {
       character.captures += 1;
-      character.berries += 30 + rivalLevel * 10 + (mission ? 100 : 0);
+      awardBerries(character, 30 + rivalLevel * 10 + (mission ? 100 : 0));
       updateRank(character);
-    } else character.berries += 20 + rivalLevel * 15 + (mission ? 120 : 0);
+    } else awardBerries(character, 20 + rivalLevel * 15 + (mission ? 120 : 0));
     addLog(character, `⚔ Victoria contra ${rivalType} nivel ${rivalLevel}${style ? ` usando ${style}` : ""}. +${formatNum(reward)} de renombre${character.faction === "Marine" ? ` · captura ${character.captures} · rango ${character.rank}` : ""}.`);
     if (Math.random() < 0.1) character.lineage.legacyChest.push(pick(["Log Pose antiguo", "Brújula de la Grand Line", "Medalla de la Marina", "Mapa del Calm Belt"]));
   } else {
@@ -286,6 +297,7 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
     if (character.stats.health > 0) maybeCaptureAtAuction(character);
   }
   if (character.stats.health <= 0) checkDeath(character, `${rivalType}${dangerous ? " en aguas peligrosas" : " en batalla crítica"}`);
+  recordActionOutcome(character, "combat", { wins });
   return { wins, damage, rivalLevel, dead: character.status === "dead", technique: style };
 }
 export function confrontFugitive(character, name) {
@@ -308,8 +320,8 @@ function completeMission(character) {
     mission.status = "complete";
     mission.completed = (mission.completed || 0) + 1;
     const berries = 100 + character.location.routeIndex * 50;
-    character.berries += berries;
-    addLog(character, `🏴‍☠️ Misión completada en ${mission.island}: «${mission.title}». +฿${formatNum(mission.reward)} de reputación y +฿${formatNum(berries)} de provisiones.`);
+    const earned = awardBerries(character, berries);
+    addLog(character, `🏴‍☠️ Misión completada en ${mission.island}: «${mission.title}». +฿${formatNum(mission.reward)} de reputación y +฿${formatNum(earned)} de provisiones.`);
     if (character.faction === "Marine") character.captures += 1;
   } else if (!result.dead) addLog(character, `La misión «${mission.title}» sigue pendiente; recupera fuerzas o vuelve a intentarlo en ${mission.island}.`);
 }
@@ -333,6 +345,7 @@ function navigate(character) {
       character.location.routeIndex = routeIndex;
       character.mission = { ...missionFor(character, routeIndex), completed: character.mission?.completed || 0 };
     }
+    character.location.scenePosition = createScenePosition(island.id, character.id);
     return `La carabela arriba a ${island.name} tras desviar su rumbo.`;
   }
   if (character.location.atSea || character.location.detour) {
@@ -340,7 +353,10 @@ function navigate(character) {
     character.location.atSea = false;
     character.location.detour = false;
     const port = getMapIslands(character).find((island) => island.name === character.location.island);
-    if (port) character.mapPosition = { x: port.x, y: port.y };
+    if (port) {
+      character.mapPosition = { x: port.x, y: port.y };
+      character.location.scenePosition = createScenePosition(port.id, character.id);
+    }
     return `La carabela regresa a ${character.location.island} y retoma su expedición.`;
   }
   const mission = character.mission;
@@ -361,7 +377,10 @@ function navigate(character) {
   character.location.routeIndex = next;
   character.location.island = route[next];
   const position = getMapIslands(character).find((island) => island.name === character.location.island);
-  if (position) character.mapPosition = { x: position.x, y: position.y };
+  if (position) {
+    character.mapPosition = { x: position.x, y: position.y };
+    character.location.scenePosition = createScenePosition(position.id, character.id);
+  }
   character.location.region = next < route.indexOf("Reverse Mountain") || route.indexOf("Reverse Mountain") < 0 ? character.originSea : next <= route.indexOf("Reverse Mountain") ? "Grand Line — Reverse Mountain" : next === route.length - 1 ? "Grand Line — Nuevo Mundo" : "Grand Line — Paraíso";
   character.mission = { ...missionFor(character, next), completed: mission?.completed || 0 };
   addLog(character, `⛵ Llegada a ${character.location.island}. Nueva misión: «${character.mission.title}».`);
@@ -382,8 +401,8 @@ function train(character) {
 function searchFruit(character, availableFruitIds = []) {
   if (character.fruit) {
     const berries = 20 + rand(60);
-    character.berries += berries;
-    return `No encuentra otra fruta; vende provisiones por ฿${berries}.`;
+    const earned = awardBerries(character, berries);
+    return `No encuentra otra fruta; vende provisiones por ฿${earned}.`;
   }
   if (character.location?.atSea && Math.random() < 0.0001) {
     const fruit = fruitNear(character.mapPosition, availableFruitIds);
@@ -393,8 +412,8 @@ function searchFruit(character, availableFruitIds = []) {
     }
   }
   const berries = 10 + rand(35);
-  if (character.location?.atSea && !character.fruit) character.berries += berries;
-  return `La búsqueda no descubre una Akuma no Mi; la probabilidad de naufragio es 0,01%. ${character.location?.atSea ? `Rescata ฿${berries}.` : "Las frutas solo aparecen en naufragios de alta mar."}`;
+  const earned = character.location?.atSea && !character.fruit ? awardBerries(character, berries) : 0;
+  return `La búsqueda no descubre una Akuma no Mi; la probabilidad de naufragio es 0,01%. ${character.location?.atSea ? `Rescata ฿${earned}.` : "Las frutas solo aparecen en naufragios de alta mar."}`;
 }
 function rest(character) {
   const before = character.stats.health;
@@ -409,6 +428,7 @@ export function performAction(character, action, { availableFruitIds } = {}) {
   const handlers = { navigate, train, rest };
   const previousIsland = character.location?.island;
   const previousAtSea = Boolean(character.location?.atSea);
+  recordActionOutcome(character, action);
   const message = action === "searchFruit"
     ? searchFruit(character, availableFruitIds)
     : handlers[action] ? handlers[action](character) : "Acción desconocida.";
@@ -419,6 +439,7 @@ export function performAction(character, action, { availableFruitIds } = {}) {
     if (character.status !== "dead" && (arrived || character.location.atSea)) {
       const encounter = seaEncounter(character);
       if (encounter) character.avatarActivity = "combat";
+      if (encounter?.won || encounter?.dead) recordActionOutcome(character, "combat", { wins: Boolean(encounter.won) });
       if (encounter?.dead) checkDeath(character, encounter.enemy);
     }
     if (character.status !== "dead") {
@@ -428,6 +449,7 @@ export function performAction(character, action, { availableFruitIds } = {}) {
     resolvePortSuggestions(character, previousIsland);
     if (arrived) resolvePortContracts(character, previousIsland);
     if (arrived) updateCrewLoyalty(character, true);
+    if (arrived) resolvePortDilemma(character);
   }
   advanceAdvancedSystems(character, { action, previousIsland });
   if (character.stats.health <= 0) checkDeath(character, "ahogamiento por Akuma no Mi");
@@ -444,7 +466,7 @@ function factionEvent(character) {
   character.world.news.unshift({ day: character.world.day, era: character.world.era, text: event });
   character.world.news = character.world.news.slice(0, 30);
   addLog(character, event);
-  if (character.faction === "Marine" && Math.random() < 0.4) { character.captures += 1; character.berries += 25; updateRank(character); }
+  if (character.faction === "Marine" && Math.random() < 0.4) { character.captures += 1; awardBerries(character, 25); updateRank(character); }
   else if (character.faction === "Pirata" && Math.random() < 0.35) addReputation(character, 15000, "incidente entre facciones");
 }
 export function resolveBranch(character, choice, source = "jugador") {
@@ -467,11 +489,12 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
   character.autonomy.tickCount += 1;
   const newDay = advanceClock(character.world, ERAS);
+  if (newDay) writeDailyReflection(character);
   advanceGM(character);
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);
-  const action = decideAction(character);
+  const action = chooseAutonomousAction(character);
   addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
   const message = performAction(character, action, { availableFruitIds });
   if (character.status !== "dead" && character.crew?.length && Math.random() < 0.12) {
@@ -506,19 +529,6 @@ export function simulateOffline(character, now = Date.now(), observer) {
   if (completed && !observer?.interactive) addLog(character, `⏳ Simulación fuera de línea: ${completed} ciclos${elapsed > maxElapsed ? " (límite: 8 horas)" : ""}.`);
   return { ticks: completed, capped: elapsed > maxElapsed };
 }
-function decideAction(character) {
-  const hp = character.stats.health / character.stats.maxHealth;
-  if (hp < 0.3) return "rest";
-  const dream = (character.soulCard?.dream || "Libertad").toLowerCase();
-  const traits = traitsOf(character);
-  const weights = { navigate: 3, train: 1.4, searchFruit: 1.1, rest: hp < 0.5 ? 2 : 0.3 };
-  if (dream.includes("poder")) weights.train += 2;
-  if (dream.includes("riqueza")) weights.searchFruit += 2;
-  if (dream.includes("libertad") || dream.includes("fama") || dream.includes("lazos")) weights.navigate += 2;
-  if (traits.includes("astuto")) weights.searchFruit += 1;
-  const pool = Object.entries(weights).flatMap(([key, weight]) => Array(Math.max(1, Math.round(weight * 10))).fill(key));
-  return pick(pool);
-}
 function parseWhisper(text) {
   const phrase = text.toLocaleLowerCase("es");
   if (/descans|dorm|recuper|cur|puerto|huir|escap/.test(phrase)) return "rest";
@@ -527,26 +537,31 @@ function parseWhisper(text) {
   if (/explor|naveg|viaj|zarpar|aventur|libertad|rumbo|grand line|misión|isla/.test(phrase)) return "navigate";
   return null;
 }
-export function sendWhisper(character, text) {
+export function sendWhisper(character, text, random = Math.random) {
   if (character.status === "dead") return { obeyed: false, action: null };
   const phrase = String(text).trim().slice(0, 160);
   const action = parseWhisper(phrase);
   if (!action) { addLog(character, `El susurro «${phrase}» no fue comprendido.`); return { obeyed: false, action: null }; }
-  const dream = character.soulCard.dream.toLowerCase();
-  const traits = traitsOf(character);
-  const aligned = (action === "navigate" && ["libertad", "fama", "conocimiento", "lazos"].some((d) => dream.includes(d))) || (action === "train" && dream.includes("poder")) || (action === "searchFruit" && dream.includes("riqueza")) || (action === "rest" && traits.includes("prudente"));
-  const against = (action === "rest" && (traits.includes("valiente") || traits.includes("agresivo"))) || (action === "train" && traits.includes("prudente") && character.stats.health < 40) || traits.includes("rebelde");
+  const { aligned, against } = evaluateWhisper(character, action);
   if (aligned) { character.whisper.affinity = clamp(character.whisper.affinity + 5, 0, 100); character.whisper.rebellion = clamp(character.whisper.rebellion - 4, 0, 100); }
   if (against) { character.whisper.affinity = clamp(character.whisper.affinity - 5, 0, 100); character.whisper.rebellion = clamp(character.whisper.rebellion + 7, 0, 100); }
   const chance = clamp(character.whisper.affinity + (aligned ? 15 : 0) - (against ? 25 : 0), 5, 98);
-  if (Math.random() * 100 < chance) {
+  if (random() * 100 < chance) {
     addLog(character, `El avatar acepta el susurro «${phrase}» (sintonía ${chance}%).`);
     performAction(character, action);
     return { obeyed: true, action, chance };
   }
+  if (against && random() < 0.35) {
+    const reinterpretedAction = chooseAutonomousAction(character, random);
+    if (reinterpretedAction !== action) {
+      addLog(character, `El avatar vacila ante «${phrase}» y lo reinterpreta como una decisión propia: ${reinterpretedAction}.`);
+      performAction(character, reinterpretedAction);
+      return { obeyed: false, action, reinterpretedAction, chance };
+    }
+  }
   character.whisper.affinity = clamp(character.whisper.affinity - 2, 0, 100);
   character.whisper.rebellion = clamp(character.whisper.rebellion + 3, 0, 100);
-  addLog(character, `Rebeldía: ignora «${phrase}» y sigue su carácter (sintonía ${chance}%).`);
+  addLog(character, `El avatar reflexiona sobre «${phrase}» y decide no seguirlo (sintonía ${chance}%).`);
   return { obeyed: false, action, chance };
 }
 export function setAutonomyPaused(character, paused) {
@@ -571,11 +586,20 @@ export function createHeir(predecessor, { name, username } = {}) {
   heir.lineage = { family, generation: predecessor.lineage.generation + 1, inheritedFrom: predecessor.id, legacyChest: [...predecessor.lineage.legacyChest], inheritedReputation: Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3) };
   const ancestralTraits = [...predecessor.soulCard.traits.pros, ...predecessor.soulCard.traits.cons, predecessor.soulCard.latentTrait].filter((trait) => trait && !heir.soulCard.traits.pros.includes(trait));
   if (ancestralTraits.length && Math.random() < 0.15) heir.soulCard.latentTrait = pick(ancestralTraits);
+  if (Math.random() < 0.15) {
+    const ancestorPsyche = ensurePsyche(predecessor);
+    const heirPsyche = ensurePsyche(heir);
+    for (const axis of ["honor", "greed", "liberty"]) {
+      heirPsyche.morality[axis] = clamp(Math.round(heirPsyche.morality[axis] * 0.75 + ancestorPsyche.morality[axis] * 0.25), 0, 100);
+    }
+    heirPsyche.inheritedMemory = `Recuerdos diluidos de ${predecessor.name}: reputación ${Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3)}.`;
+  }
   heir.world = predecessor.world;
   heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], discoveries: [...(predecessor.systems?.discoveries ?? [])], dangerMapCreated: false };
   heir.ancientLanguage = structuredClone(ensureAncientLanguage(predecessor));
   heir.crew = [...(predecessor.crew ?? [])];
   heir.log = [...predecessor.log.slice(0, 25)];
+  if (heir.psyche.inheritedMemory) addLog(heir, heir.psyche.inheritedMemory);
   addLog(heir, `El linaje ${family} continúa: ${heir.name} hereda ${heir.lineage.legacyChest.length} reliquias; los puertos recuerdan a sus antepasados.`);
   return heir;
 }

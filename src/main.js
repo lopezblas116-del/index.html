@@ -20,7 +20,7 @@ import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantP
 import { removeStorage } from "./storage_adapter.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
 import { sendConsciousnessWhisper } from "./chat_engine.js";
-import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, transmitLocalGMMessage } from "./gm_engine.js";
+import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 
 let character = loadGame();
 const network = createNetwork();
@@ -315,6 +315,12 @@ listen(document, "onepiece:hud-gm-event", (event) => {
   if (!result) return;
   persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: "Evento GM aplicado a esta partida local." } }));
+});
+listen(document, "onepiece:hud-gm-schedule", (event) => {
+  if (!isLocalGMAvailable(character)) return;
+  const result = scheduleGMEvent(character, event.detail?.type, event.detail?.delayMinutes);
+  if (result.ok) persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.ok ? "Evento añadido a la agenda local." : result.message } }));
 });
 listen(document, "onepiece:hud-gm-bounty", (event) => {
   if (!isLocalGMAvailable(character)) return;

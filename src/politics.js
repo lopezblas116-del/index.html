@@ -1,4 +1,5 @@
 import { getMapIslands } from "./map.js";
+import { awardBerries } from "./gm_engine.js";
 
 const log = (character, message) => {
   character.log.unshift({ time: new Date().toISOString(), message });
@@ -16,10 +17,10 @@ export function lootCelestialTribute(character, world) {
   }
   if ((Number(character.world.day) || 0) % 7 === 0) return { ok: false, message: "La Marina ya cobró el tributo de este ciclo." };
   const berries = 300 + Math.floor(Math.random() * 201);
-  character.berries += berries;
+  const earned = awardBerries(character, berries);
   character.world.news.unshift({ type: "politics", text: `🏴‍☠️ ${character.name} saquea el tributo celestial de ${island.name}; la Marina retira sus tropas y el puerto cae en anarquía.`, day: character.world.day, location: island.name });
-  log(character, `💰 Tributo celestial saqueado en ${island.name}: +฿${berries}. La guarnición se retira.`);
-  return { ok: true, type: "tribute_theft", island: island.name, berries, message: `Tributo saqueado: +฿${berries}. La Marina abandona el puerto.` };
+  log(character, `💰 Tributo celestial saqueado en ${island.name}: +฿${earned}. La guarnición se retira.`);
+  return { ok: true, type: "tribute_theft", island: island.name, berries: earned, message: `Tributo saqueado: +฿${earned}. La Marina abandona el puerto.` };
 }
 
 export function sabotageTyrantPort(character, world) {

@@ -1,6 +1,7 @@
 import { ensureBlockOneData } from "./block1.js";
 import { getMapIslands } from "./map.js";
 import { cargoCapacity } from "./races.js";
+import { awardBerries } from "./gm_engine.js";
 
 const GOODS = {
   wood: { label: "Madera", price: 20, kind: "items" },
@@ -58,9 +59,9 @@ export function trade(character, id, action) {
     if (index < 0) return { ok: false, message: `No tienes ${good.label} para vender.` };
     inv[good.kind].splice(index, 1);
   }
-  character.berries += good.sell;
-  log(character, `⚓ Vende ${good.label} por ฿${good.sell} en ${character.location.island}.`);
-  return { ok: true, message: `Vendiste ${good.label} por ฿${good.sell}.` };
+  const earned = awardBerries(character, good.sell);
+  log(character, `⚓ Vende ${good.label} por ฿${earned} en ${character.location.island}.`);
+  return { ok: true, message: `Vendiste ${good.label} por ฿${earned}.` };
 }
 
 export function seaEncounter(character, random = Math.random) {
@@ -103,10 +104,10 @@ export function seaEncounter(character, random = Math.random) {
   const booty = ["Madera", "Ron", "Arma de puerto"][Math.floor(random() * 3)];
   if (booty === "Arma de puerto") character.inventory.equipment.push(booty);
   else character.inventory.items.push(booty);
-  character.berries += 40;
+  const berries = awardBerries(character, 40);
   const before = character.bounty;
   if (character.faction === "Pirata") character.bounty = Math.max(0, before + (enemy === "Marina" ? 5000 : enemy === "Barco Pirata" ? 2000 : -500));
-  log(character, `[COMBATE] Victoria sobre ${enemy}. Botín: ${booty} y ฿40.`);
+  log(character, `[COMBATE] Victoria sobre ${enemy}. Botín: ${booty} y ฿${berries}.`);
   if (character.bounty !== before) {
     const text = `📜 SE BUSCA · ${character.name} · Recompensa: ฿${character.bounty} Berries.`;
     character.world.news.unshift({ type: "bounty", text, day: character.world.day, location: character.location?.atSea ? undefined : character.location?.island, coordinates: character.location?.atSea ? character.mapPosition : undefined });

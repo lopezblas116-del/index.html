@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCharacter } from "../src/game.js";
-import { adjustLocalBounty, advanceGM, applyGMEvent, isLocalGMAvailable, transmitLocalGMMessage } from "../src/gm_engine.js";
+import { adjustLocalBounty, advanceGM, applyGMEvent, awardBerries, getBerryMultiplier, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "../src/gm_engine.js";
 import { avatarScenePosition } from "../src/map.js";
 import { drawPixelAvatar } from "../src/island_renderer.js";
 import { ensureAdvancedSystems } from "../src/systems.js";
@@ -79,4 +79,18 @@ test("manual GM controls are local, bounded, and do not send a server chat event
   assert.equal(adjustLocalBounty(character, -1).ok, false);
   character.world.shared.status = "online";
   assert.equal(isLocalGMAvailable(character), false);
+});
+
+test("scheduled local GM events trigger on simulation time and expire their berry multiplier", () => {
+  const character = createCharacter({ name: "Capitana" });
+  const scheduled = scheduleGMEvent(character, "berry_multiplier", 10);
+  assert.equal(scheduled.ok, true);
+  character.world.minuteOfDay = 10;
+  assert.equal(advanceGM(character, () => 1).type, "berry_multiplier");
+  assert.equal(getBerryMultiplier(character), 2);
+  assert.equal(awardBerries(character, 12), 24);
+  character.world.minuteOfDay = 490;
+  assert.equal(getBerryMultiplier(character), 1);
+  assert.equal(awardBerries(character, 12), 12);
+  assert.equal(scheduleGMEvent(character, "untyped", 60).ok, false);
 });

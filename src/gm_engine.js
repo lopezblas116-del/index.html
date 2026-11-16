@@ -1,13 +1,15 @@
-import { STORAGE_KEYS } from "./config.js";
+import { GM_CONFIG, STORAGE_KEYS } from "./config.js";
+import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { readJSON, writeJSON } from "./storage_adapter.js";
 
 const MAX_NEWS = 60;
 const MAX_LOG = 80;
 const MAX_CHAT = 100;
 const GM_EVENTS = Object.freeze({
-  buster_call: "Alerta mundial: un Buster Call ha sido avistado en alta mar.",
+  buster_call: "Alerta local del mar: un Buster Call ha sido avistado en alta mar.",
   rogue_wave: "Una marejada repentina sacude las rutas del Calm Belt.",
   berry_boon: "El Game Master anuncia un hallazgo extraordinario de Berries.",
+  berry_multiplier: "El Game Master activa un multiplicador local de Berries por ocho horas de simulación.",
   legendary_sighting: "Varios vigías reportan un barco legendario en el horizonte."
 });
 
@@ -23,6 +25,7 @@ function recordEvent(character, type, text, source) {
   character.log = character.log.slice(0, MAX_LOG);
   character.world.gm.events.unshift(event);
   character.world.gm.events = character.world.gm.events.slice(0, 30);
+  dispatchTypedEvent(EVENT_TYPES.gmEvent, { type, text });
   return event;
 }
 
@@ -32,6 +35,7 @@ export function applyGMEvent(character, type, source = "manual") {
   character.world.news ??= [];
   character.log ??= [];
   character.world.gm ??= { lastCheckedHour: -1, lastEventMinute: 0, events: [] };
+  if (!Array.isArray(character.world.gm.events)) character.world.gm.events = [];
   const text = GM_EVENTS[type];
   if (type === "rogue_wave") {
     const now = gameMinute(character);
@@ -40,8 +44,50 @@ export function applyGMEvent(character, type, source = "manual") {
     character.travel.weather = "storm";
   } else if (type === "berry_boon") {
     character.berries = Math.max(0, Number(character.berries) || 0) + 500;
+  } else if (type === "berry_multiplier") {
+    const now = gameMinute(character);
+    character.world.gm.berryMultiplier = {
+      value: GM_CONFIG.berryMultiplier,
+      expiresAt: now + GM_CONFIG.berryMultiplierDurationMinutes
+    };
   }
   return recordEvent(character, type, text, source);
+}
+
+export function getBerryMultiplier(character) {
+  if (!character?.world) return 1;
+  const active = character?.world?.gm?.berryMultiplier;
+  return Number(active?.expiresAt) > gameMinute(character) && Number.isFinite(active?.value)
+    ? Math.max(1, Math.min(10, active.value))
+    : 1;
+}
+
+export function awardBerries(character, amount) {
+  if (!character) return 0;
+  const base = Math.max(0, Number(amount) || 0);
+  const reward = Math.round(base * getBerryMultiplier(character));
+  character.berries = Math.max(0, Number(character.berries) || 0) + reward;
+  return reward;
+}
+
+export function scheduleGMEvent(character, type, delayMinutes = 60) {
+  if (!character || character.status === "dead" || !Object.hasOwn(GM_EVENTS, type)) {
+    return { ok: false, message: "El evento local no es válido para esta partida." };
+  }
+  const delay = Number(delayMinutes);
+  if (!Number.isSafeInteger(delay) || delay < 5 || delay > 10_080) {
+    return { ok: false, message: "Programa el evento entre 5 minutos y 7 días de simulación." };
+  }
+  character.world ??= { day: 0, minuteOfDay: 0, news: [], pantheon: [] };
+  character.world.gm ??= { lastCheckedHour: -1, lastEventMinute: 0, events: [] };
+  if (!Array.isArray(character.world.gm.scheduled)) character.world.gm.scheduled = [];
+  if (character.world.gm.scheduled.length >= GM_CONFIG.maxScheduledEvents) {
+    return { ok: false, message: "La agenda local está llena; elimina o espera eventos pendientes." };
+  }
+  const event = { type, dueAt: gameMinute(character) + delay };
+  character.world.gm.scheduled.push(event);
+  character.world.gm.scheduled.sort((a, b) => a.dueAt - b.dueAt);
+  return { ok: true, event };
 }
 
 export function advanceGM(character, random = Math.random) {
@@ -49,11 +95,18 @@ export function advanceGM(character, random = Math.random) {
   character.world ??= { day: 0, minuteOfDay: 0, news: [], pantheon: [] };
   character.world.gm ??= { lastCheckedHour: -1, lastEventMinute: 0, events: [] };
   const state = character.world.gm;
+  if (!Array.isArray(state.events)) state.events = [];
+  if (!Array.isArray(state.scheduled)) state.scheduled = [];
   const minute = gameMinute(character);
+  const scheduledIndex = state.scheduled.findIndex((entry) => entry.dueAt <= minute);
+  if (scheduledIndex >= 0) {
+    const [scheduled] = state.scheduled.splice(scheduledIndex, 1);
+    return applyGMEvent(character, scheduled.type, "scheduled");
+  }
   const hour = Math.floor(minute / 60);
   if (hour <= state.lastCheckedHour) return null;
   state.lastCheckedHour = hour;
-  if (minute - state.lastEventMinute < 360 || random() >= 0.18) return null;
+  if (minute - state.lastEventMinute < GM_CONFIG.eventCooldownMinutes || random() >= GM_CONFIG.eventChancePerHour) return null;
   const choices = character.location?.atSea && character.travel?.climate === "calm-belt"
     ? ["rogue_wave", "legendary_sighting", "buster_call"]
     : ["legendary_sighting", "buster_call", "berry_boon"];

@@ -12,6 +12,19 @@ export const STORAGE_KEYS = Object.freeze({
 
 export const PULSE_MS = 75_000;
 
+export const AI_CONFIG = Object.freeze({
+  portDilemmaChance: 0.45,
+  maxDilemmaHistory: 60
+});
+
+export const GM_CONFIG = Object.freeze({
+  eventCooldownMinutes: 360,
+  eventChancePerHour: 0.18,
+  berryMultiplier: 2,
+  berryMultiplierDurationMinutes: 480,
+  maxScheduledEvents: 12
+});
+
 export const CONTRACTS = Object.freeze([
   Object.freeze({ id: "escort", category: "commerce", title: "Escolta de mercaderes", risk: "Medio", reward: 180 }),
   Object.freeze({ id: "bounty", category: "bounty", title: "Caza de recompensas", risk: "Alto", reward: 260 }),

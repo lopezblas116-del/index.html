@@ -15,5 +15,38 @@
     "un Rey del Mar obligó a desviar varias rutas.",
     "un nuevo capitán reunió una tripulación y puso rumbo al Paraíso.",
     "la Marina anunció ascensos tras una captura de alto perfil."
+  ],
+  "portDilemmas": [
+    {
+      "id": "tavern-dispute",
+      "title": "Una disputa en la taberna",
+      "text": "Dos marineros discuten por el pago de una tripulación desaparecida; la taberna espera que alguien intervenga.",
+      "choices": [
+        { "id": "mediate", "text": "Mediar y repartir el pago", "honor": 8, "greed": -2, "liberty": 2, "mood": "Cauteloso", "berries": 20 },
+        { "id": "take-cut", "text": "Exigir una parte por resolverlo", "honor": -3, "greed": 8, "liberty": 1, "mood": "Ambicioso", "berries": 70 },
+        { "id": "leave", "text": "Dejar que la tripulación lo resuelva", "honor": 0, "greed": 0, "liberty": 4, "mood": "Cauteloso", "berries": 0 }
+      ]
+    },
+    {
+      "id": "castaway-map",
+      "title": "Náufragos con un mapa roto",
+      "text": "Una familia náufraga ofrece un fragmento de mapa a cambio de agua y un lugar seguro en el próximo barco.",
+      "choices": [
+        { "id": "rescue", "text": "Compartir agua y llevarlos a puerto", "honor": 9, "greed": -3, "liberty": 4, "mood": "Eufórico", "water": -1 },
+        { "id": "trade", "text": "Intercambiar provisiones por el fragmento", "honor": 1, "greed": 5, "liberty": 1, "mood": "Ambicioso", "berries": 35 },
+        { "id": "decline", "text": "Seguir la ruta y guardar provisiones", "honor": -2, "greed": 2, "liberty": 2, "mood": "Cauteloso", "berries": 10 }
+      ]
+    },
+    {
+      "id": "black-market-auction",
+      "title": "Subasta del mercado negro",
+      "text": "Un corredor ofrece una brújula robada a una familia del puerto; nadie más parece dispuesto a reclamarla.",
+      "locations": ["Archipiélago Sabaody"],
+      "choices": [
+        { "id": "return", "text": "Devolver la brújula a sus dueños", "honor": 8, "greed": -2, "liberty": 3, "mood": "Eufórico", "berries": -25 },
+        { "id": "buy", "text": "Comprar la brújula para la tripulación", "honor": 0, "greed": 2, "liberty": 1, "mood": "Ambicioso", "berries": -40 },
+        { "id": "expose", "text": "Denunciar al corredor y abrir la subasta", "honor": 3, "greed": -1, "liberty": 7, "mood": "Vengativo", "berries": 0 }
+      ]
+    }
   ]
 }

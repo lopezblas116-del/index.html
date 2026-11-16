@@ -22,6 +22,8 @@ function memoryStorage() {
 test("configuration and descriptive JSON keep world and mission data separate", () => {
   assert.deepEqual(PALETTE, { ocean: "#0b1329", panel: "#162238", gold: "#f4b41a" });
   assert.equal(Object.keys(islandData).length, 28);
+  assert.deepEqual(islandData.dawn.coordinates, { x: 190, y: 170, sea: "East Blue" });
+  assert.equal(islandData.shells.name, "Shells Town");
   assert.deepEqual(missionData.routes["East Blue"].slice(0, 3), ["Isla Dawn", "Orange Town", "Villa Syrup"]);
   assert.ok(CONTRACTS.some((contract) => contract.category === "archaeology" && contract.reward > 0));
   assert.equal(STORAGE_KEYS.save, "one-latam-rpg-beta-1");
@@ -82,6 +84,7 @@ test("whisper outcomes and avatar responses survive serialization", () => {
 test("typed event dispatcher rejects unknown types and malformed payloads", () => {
   assert.throws(() => dispatchTypedEvent("untyped", {}, new EventTarget()), TypeError);
   assert.throws(() => dispatchTypedEvent("journal-entry", { message: 4 }, new EventTarget()), TypeError);
+  assert.throws(() => dispatchTypedEvent("psyche-update", { mood: "nervioso", morality: {} }, new EventTarget()), TypeError);
 });
 
 test("global chat actions become idempotent shared-world notices", () => {
