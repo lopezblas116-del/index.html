@@ -31,3 +31,19 @@ body:has(#game-container:not([hidden])){position:fixed;inset:0;overflow:hidden}
 .one-hud-news-item{padding:10px;margin:8px 0;border-left:3px solid #38bdf8;border-bottom:1px solid #ffffff20;background:#0b1329;color:#fff}.one-hud-news-item[data-type="obituary"]{border-left-color:#ef4444}.one-hud-news-item[data-type="bounty"]{border-left-color:#f4b41a}.one-hud-news-item[data-type="level"]{border-left-color:#10b981}.one-hud-tab-panel[hidden]{display:none}
 #modal-cofre,#modal-tablones,#modal-noticias{background:rgba(22,34,56,.98);border:2px solid #f4b41a;border-radius:12px}
 @media(max-width:520px){.block1-slots,.one-hud-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.block1-meter{grid-template-columns:88px 1fr 38px}}
+/* Flow, time control and deep chest interaction. */
+.one-hud-brand .one-hud-pause{display:inline-grid;place-items:center;width:34px;height:34px;min-width:34px;margin:6px 0 0;padding:0;border:1px solid #f4b41a;border-radius:50%;background:#0b1329;color:#f4b41a;font-size:16px;vertical-align:middle}
+.one-hud-objective{display:block;margin-top:6px;color:#f4b41a;font-style:normal;font-size:17px}
+.one-hud-paused{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:8px 14px;border:1px solid #f4b41a;border-radius:8px;background:#162238;color:#f4b41a;font:700 11px 'Press Start 2P',monospace;pointer-events:none}
+.one-hud-toast{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100vw - 32px);padding:12px 16px;border:2px solid #f4b41a;border-radius:10px;background:#162238;color:#fff;text-align:center;box-shadow:0 10px 30px #0008;z-index:2100;pointer-events:none}
+.one-hud-toast[hidden],.one-hud-paused[hidden],.one-hud-objective[hidden]{display:none}
+button.one-hud-slot{color:#fff;font:inherit;cursor:pointer}
+.one-hud-slot[data-selected="true"]{border:2px solid #ffd54a;box-shadow:0 0 12px #f4b41a}
+.one-hud-inspect{margin:10px 0;padding:12px;border:2px solid #f4b41a;border-radius:10px;background:#0b1329}
+.one-hud-inspect h3{margin:0 0 6px;color:#f4b41a;font:700 11px 'Press Start 2P',monospace}
+.one-hud-inspect p{margin:4px 0}
+.one-hud-action:disabled{opacity:.4;cursor:not-allowed}
+.one-hud-contract-actions{flex-wrap:wrap}
+.one-hud-badge{padding:6px 10px;border:1px solid #f4b41a;border-radius:7px;color:#f4b41a}
+.one-hud-warning{padding:10px;border-left:3px solid #ef4444;background:#0b1329;color:#fff}
+.one-hud-new-game{padding:12px 14px;font-size:22px}

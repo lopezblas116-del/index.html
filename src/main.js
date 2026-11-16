@@ -7,7 +7,7 @@ import {
   renderGame, resetWizard, showSetup
 } from "./ui.js";
 import { initWorldMap, renderMap, resizeMap } from "./map.js";
-import { initHud, renderHud } from "./hud.js";
+import { initHud, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 
 let character = loadGame();
@@ -79,4 +79,21 @@ listen(byId("archive-button"), "click", openPantheon);
 listen(document.querySelector("[data-close-pantheon]"), "click", closePantheon);
 listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal);
 listen(document.querySelector("[data-open-heir]"), "click", () => { const modal = byId("legacy-modal"); if (modal && !modal.open) modal.showModal(); });
-listen(byId("reset-button"), "click", () => { if (!window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) return; clearTimeout(timerId); localStorage.removeItem(SAVE_KEY); character = null; byId("character-form")?.reset(); closeLegacyModal(); closePantheon(); resetWizard(); showSetup(); });
+function startNewGame() {
+  clearTimeout(timerId);
+  localStorage.removeItem(SAVE_KEY);
+  character = null;
+  byId("character-form")?.reset();
+  closeLegacyModal();
+  closePantheon();
+  setHudVisible(false);
+  resetWizard();
+  showSetup();
+}
+listen(byId("reset-button"), "click", () => { if (window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) startNewGame(); });
+listen(document, "onepiece:hud-new-game", startNewGame);
+listen(document, "onepiece:hud-toggle-pause", () => {
+  if (!character || character.status === "dead") return;
+  setAutonomyPaused(character, !character.autonomy.paused);
+  persistRender(true);
+});

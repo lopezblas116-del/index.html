@@ -66,15 +66,92 @@ export function evaluateContract(character, contract, decision) {
   const compatible = contract.id === "bounty" ? bold || traits.includes("astuto") : contract.id === "supply" ? cautious || traits.includes("leal") : bold || cautious;
   const accepted = decision === "accept" && compatible;
   let response;
+  const objective = OBJECTIVES[contract.id] ?? contract.title;
   if (decision !== "accept") response = `${character.name} rechaza «${contract.title}» y sigue su propio rumbo.`;
   else if (accepted) {
     if (!character.activeContracts.some((entry) => entry.id === contract.id && entry.status === "accepted")) character.activeContracts.unshift({ ...contract, acceptedAt: new Date().toISOString(), status: "accepted" });
+    character.objective = `Objetivo activo: ${objective}`;
+    log(character, `📌 ${character.objective}`);
     response = `${character.name} acepta «${contract.title}»; sus rasgos encajan con el contrato.`;
   } else response = `${character.name} rechaza «${contract.title}»: su perfil evita ese riesgo.`;
   character.contractNotice = response;
   log(character, `📜 ${response}`);
   addNotice(character, "contract", "Tablón del puerto", response);
   return accepted;
+}
+const OBJECTIVES = { escort: "Escortar mercader", bounty: "Cazar recompensa", supply: "Abastecer isla" };
+const CONSUMABLES = [
+  { re: /manzana/i, name: "Manzana", heal: 10, desc: "Fruta fresca del puerto. Reconforta el cuerpo." },
+  { re: /agua/i, name: "Agua", heal: 6, desc: "Agua potable. Imprescindible en alta mar." },
+  { re: /ron/i, name: "Ron", heal: 8, desc: "Ron de contrabandista. Levanta el ánimo, pero nubla la cabeza." },
+  { re: /provisi/i, name: "Provisión de viaje", heal: 12, desc: "Ración seca para la travesía." }
+];
+const consumableInfo = (name) => CONSUMABLES.find((entry) => entry.re.test(name));
+const ARMOR_RE = /armadura|chaleco|escudo|coraza|casco/i;
+export const equipSlotFor = (name) => (ARMOR_RE.test(name) ? "armor" : "weapon");
+
+export function listChestItems(character) {
+  ensureBlockOneData(character);
+  const inv = character.inventory;
+  const entries = [];
+  if (inv.provisions > 0) entries.push({ kind: "provision", index: 0, name: "Provisión de viaje", qty: inv.provisions, type: "Consumible" });
+  inv.equipment.forEach((name, index) => entries.push({ kind: "equipment", index, name, qty: 1, type: "Equipamiento" }));
+  inv.items.forEach((name, index) => entries.push({ kind: "item", index, name, qty: 1, type: consumableInfo(name) ? "Consumible" : "Botín" }));
+  return entries.map((entry) => {
+    const info = consumableInfo(entry.name);
+    const slot = equipSlotFor(entry.name);
+    if (entry.type === "Consumible") return { ...entry, consumable: true, stats: `Salud +${info?.heal ?? 5}`, description: info?.desc ?? "Objeto consumible." };
+    if (entry.type === "Equipamiento") return { ...entry, equippable: true, stats: slot === "armor" ? "Defensa +3" : "Ataque +3", description: slot === "armor" ? "Protección para las travesías peligrosas." : "Arma de mano para abrirse paso en el mar." };
+    return { ...entry, stats: "—", description: "Botín sin identificar. Quizá valga algo en el próximo puerto." };
+  });
+}
+export function whisperAdviceFor(character, entry) {
+  const traits = traitsOf(character);
+  const name = entry.name;
+  if (entry.consumable) {
+    const hp = (character.stats?.health ?? 100) / (character.stats?.maxHealth ?? 100);
+    if (traits.includes("prudente")) return `Guarda ${name} para una emergencia; no lo malgastes ahora.`;
+    if (traits.includes("impulsivo")) return `Usa ${name} cuando lo necesites, ¡sin pensarlo tanto!`;
+    return hp < 0.6 ? `Consume ${name} y recupera fuerzas antes de zarpar.` : `Conserva ${name} para cuando baje tu salud.`;
+  }
+  if (entry.equippable) {
+    if (traits.some((t) => ["valiente", "agresivo"].includes(t))) return `Equípate ${name} y busca pelea sin miedo.`;
+    return `Equípate ${name} por si el viaje se complica.`;
+  }
+  if (traits.includes("astuto")) return `Vende ${name} al mejor postor, o escóndelo en el cofre.`;
+  return `Guarda ${name} en el cofre hasta saber su valor.`;
+}
+export function useChestItem(character, ref, action) {
+  ensureBlockOneData(character);
+  const entry = listChestItems(character).find((item) => item.kind === ref?.kind && item.name === ref?.name);
+  if (!entry) return { ok: false, message: "Ese objeto ya no está en el cofre." };
+  const inv = character.inventory;
+  const stats = (character.stats ??= { health: 100, maxHealth: 100 });
+  let message;
+  if (action === "consume" && entry.consumable) {
+    const heal = consumableInfo(entry.name)?.heal ?? 5;
+    const before = stats.health;
+    stats.health = Math.min(stats.maxHealth, stats.health + heal);
+    if (entry.kind === "provision") inv.provisions -= 1;
+    else inv.items.splice(inv.items.indexOf(entry.name), 1);
+    message = `${character.name} consume ${entry.name} y recupera ${stats.health - before} de salud.`;
+  } else if (action === "equip" && entry.equippable) {
+    const slot = equipSlotFor(entry.name);
+    character.equipped ??= { weapon: null, armor: null };
+    const previous = character.equipped[slot];
+    inv.equipment.splice(inv.equipment.indexOf(entry.name), 1);
+    if (previous) inv.equipment.push(previous);
+    character.equipped[slot] = entry.name;
+    message = `${character.name} se equipa ${entry.name}.`;
+  } else if (action === "whisper") {
+    const advice = whisperAdviceFor(character, entry);
+    character.whisper ??= { affinity: 55, rebellion: 45 };
+    character.whisper.affinity = clamp(character.whisper.affinity + 1, 0, 100);
+    message = `🗣️ Susurro sobre ${entry.name}: «${advice}»`;
+  } else return { ok: false, message: "Acción no disponible para este objeto." };
+  log(character, message);
+  addNotice(character, "chest", "Cofre", message);
+  return { ok: true, message };
 }
 export function initBlock1({ getCharacter, onChange } = {}) {
   if (window.__oneLatamBlock1Initialized) return;
@@ -83,11 +160,18 @@ export function initBlock1({ getCharacter, onChange } = {}) {
     const character = getCharacter?.();
     if (!character || character.status === "dead") return;
     ensureBlockOneData(character);
-    mutate(character);
+    const result = mutate(character);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(character)); } catch {}
     onChange?.(character);
-    window.dispatchEvent(new CustomEvent("onepiece:block1-render", { detail: { character } }));
+    window.dispatchEvent(new CustomEvent("onepiece:block1-render", { detail: { character, toast: result?.toast } }));
   };
-  document.addEventListener("onepiece:hud-chest-item", (event) => update((character) => processChestItem(character, event.detail?.item)));
-  document.addEventListener("onepiece:hud-contract-decision", (event) => update((character) => evaluateContract(character, event.detail?.contract, event.detail?.decision)));
+  document.addEventListener("onepiece:hud-chest-item", (event) => update((character) => { processChestItem(character, event.detail?.item); }));
+  document.addEventListener("onepiece:hud-chest-use", (event) => update((character) => {
+    const result = useChestItem(character, event.detail?.ref, event.detail?.action);
+    return { toast: result.message };
+  }));
+  document.addEventListener("onepiece:hud-contract-decision", (event) => update((character) => {
+    const accepted = evaluateContract(character, event.detail?.contract, event.detail?.decision);
+    return { toast: accepted ? "¡Contrato aceptado! Consulta tu bitácora" : character.contractNotice };
+  }));
 }
