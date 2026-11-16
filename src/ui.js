@@ -1,4 +1,5 @@
 import { initMap, renderMap, resizeMap } from "./map.js";
+import { ensureAdvancedSystems } from "./systems.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -103,6 +104,7 @@ function renderTerminalLog(list, entries, characterName) {
 
 export function renderGame(character) {
   if (!character) return;
+  ensureAdvancedSystems(character);
   showGame();
   const world = character.world ?? { day: 0, year: 1, era: "Era de los Grandes Descubrimientos", news: [], pantheon: [] };
   const lineage = character.lineage ?? { family: character.name, generation: 1, legacyChest: [] };
@@ -117,7 +119,7 @@ export function renderGame(character) {
     "faction-display": `${character.faction ?? "Pirata"} · ${character.rank ?? "Novato"}`,
     "origin-display": character.originSea ?? "East Blue",
     "location-display": `${character.location?.island ?? "Puerto"} · ${character.location?.region ?? character.originSea ?? "East Blue"}`,
-    "log-pose-display": `${character.logPose?.alignment ?? 0}/${character.logPose?.required ?? 3} alineamientos`,
+    "log-pose-display": `${character.logPose?.alignment ?? 0}/${character.logPose?.required ?? 3} alineamientos · Carga ${Math.round(character.travel?.logPoseCharge ?? 0)}%`,
     "dream-display": safe(soulCard.dream),
     "traits-display": traits.join(", ") || "Sin definir",
     "fruit-display": character.fruit ? `${character.fruit.name} (${character.fruit.type})` : "Ninguna",

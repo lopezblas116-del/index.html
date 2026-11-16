@@ -285,3 +285,16 @@ body.wizard-active .masthead{display:none}
 .wizard-actions .button-primary:active{transform:translateY(1px);background:#d99c08}
 .launch-button{min-width:200px;font-size:1.25rem}
 @media(max-width:520px){#wizard-container{padding:10px}.wizard-card{max-height:calc(100dvh - 20px)}.wizard-progress{gap:3px}.step-label{font-size:.68rem}.progress-step{padding-inline:1px}.wizard-actions{bottom:0}.wizard-actions .button{padding-inline:10px}}
+
+.one-hud-meter{display:grid;gap:5px;margin:12px 0;padding:10px;border:1px solid rgba(244,180,26,.35);border-radius:8px;background:#0b1329}
+.one-hud-meter strong,.one-hud-loyalty span{color:#f4b41a}
+.one-hud-meter progress,.one-hud-loyalty progress{width:100%;height:12px;accent-color:#f4b41a}
+.one-hud-tavern-roster{display:grid;gap:10px}
+.one-hud-tavern-card h3,.one-hud-crew h3{margin:0 0 6px;color:#f4b41a;font:700 11px 'Press Start 2P',monospace}
+.one-hud-loyalty{display:grid;gap:3px;margin-top:8px}
+.one-hud-crew{margin-top:16px;padding-top:12px;border-top:1px solid rgba(244,180,26,.4)}
+.one-hud-climate-zones{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.one-hud-climate-zones button[aria-pressed="true"]{outline:2px solid #fff;outline-offset:2px}
+.one-hud-port-action{width:100%;margin-top:8px}
+.one-hud-testament,.one-hud-treasure-map{padding:10px;border-left:3px solid #f4b41a;background:#0b1329;line-height:1.25}
+#modal-taberna .one-hud-dialog{max-width:680px}

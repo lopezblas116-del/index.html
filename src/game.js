@@ -1,3 +1,5 @@
+import { generateTreasureMap } from "./systems.js";
+
 const ERAS = [
   "Era de los Grandes Descubrimientos",
   "Era de las Banderas Rotas",
@@ -176,6 +178,7 @@ function checkDeath(character, cause) {
   character.status = "dead";
   character.autonomy.paused = true;
   character.autonomy.mode = "paused";
+  generateTreasureMap(character, "muerte");
   character.world.pantheon.unshift({ id: character.id, name: character.name, username: character.username, family: character.lineage.family, generation: character.lineage.generation, faction: character.faction, level: character.level, bounty: character.bounty, reputation: character.reputation, dream: character.soulCard.dream, cause, achievements: [`Nivel ${character.level}`, character.location.island, ...(character.fruit ? [`Portador de ${character.fruit.name}`] : [])], time: new Date().toISOString() });
   character.world.pantheon = character.world.pantheon.slice(0, 30);
   addLog(character, `☠ ${character.name} ha caído (${cause}). Su nombre entra en el Panteón de Leyendas; su linaje continúa.`);
@@ -248,7 +251,7 @@ function navigate(character) {
   const route = routeFor(character.originSea);
   const mission = character.mission;
   if (mission?.status === "active") {
-    character.logPose.alignment += 1;
+    character.logPose.alignment += character.travel?.speedMultiplier === 0.5 ? 0.5 : 1;
     if (character.logPose.alignment < character.logPose.required) return `El Log Pose se alinea ${character.logPose.alignment}/${character.logPose.required} rumbo a ${mission.island}.`;
     character.logPose.alignment = 0;
     addLog(character, `🧭 Log Pose alineado: comienza la misión «${mission.title}» en ${mission.island}.`);
@@ -385,6 +388,8 @@ export function createHeir(predecessor, { name, username } = {}) {
   heir.reputation = heir.lineage.inheritedReputation;
   heir.bounty = heir.faction === "Pirata" ? heir.lineage.inheritedReputation : 0;
   heir.world = predecessor.world;
+  heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], dangerMapCreated: false };
+  heir.crew = [...(predecessor.crew ?? [])];
   heir.world.day += 1;
   heir.log = [...predecessor.log.slice(0, 25)];
   addLog(heir, `El linaje ${family} continúa: ${heir.name} hereda ${heir.lineage.legacyChest.length} reliquias y el 30% del renombre.`);

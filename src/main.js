@@ -9,6 +9,10 @@ import {
 import { initWorldMap, renderMap, resizeMap } from "./map.js";
 import { initHud, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
+import {
+  advanceAdvancedSystems, draftTestament, ensureAdvancedSystems,
+  setClimateZone, tavernAction
+} from "./systems.js";
 
 let character = loadGame();
 let timerId = null;
@@ -18,6 +22,7 @@ const listen = (element, type, handler, options) => { if (element) element.addEv
 function paint() {
   if (!character) return;
   ensureBlockOneData(character);
+  ensureAdvancedSystems(character);
   renderGame(character);
   initWorldMap();
   resizeMap();
@@ -29,7 +34,9 @@ function scheduleTick() {
   if (!character || character.status === "dead" || character.autonomy?.paused) return;
   timerId = setTimeout(() => {
     if (!character || character.status === "dead" || character.autonomy?.paused) return;
-    autonomousTick(character);
+    const previousIsland = character.location?.island;
+    const tick = autonomousTick(character);
+    advanceAdvancedSystems(character, { action: tick?.action, previousIsland });
     saveGame(character);
     paint();
     scheduleTick();
@@ -38,6 +45,7 @@ function scheduleTick() {
 function persistRender(reschedule = false) {
   if (!character) return;
   ensureBlockOneData(character);
+  ensureAdvancedSystems(character);
   saveGame(character);
   paint();
   if (reschedule) scheduleTick();
@@ -57,6 +65,7 @@ listen(document, "onepiece:map-destination", (event) => {
   if (!character || character.status === "dead") return;
   character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
   persistRender();
+  if (event.detail.name === character.location?.island) document.dispatchEvent(new CustomEvent("onepiece:open-tavern"));
 });
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
@@ -96,4 +105,20 @@ listen(document, "onepiece:hud-toggle-pause", () => {
   if (!character || character.status === "dead") return;
   setAutonomyPaused(character, !character.autonomy.paused);
   persistRender(true);
+});
+listen(document, "onepiece:hud-tavern-action", (event) => {
+  if (!character || character.status === "dead") return;
+  const result = tavernAction(character, event.detail?.visitorId, event.detail?.action);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-draft-will", () => {
+  if (!character || character.status === "dead") return;
+  draftTestament(character);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: "Testamento redactado y guardado en la bitácora." } }));
+});
+listen(document, "onepiece:hud-set-climate", (event) => {
+  if (!character || character.status === "dead" || !setClimateZone(character, event.detail?.zone)) return;
+  persistRender();
 });
