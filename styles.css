@@ -343,18 +343,18 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .one-hud-branch p{margin:0 0 8px}.one-hud-branch button{margin:4px}
 
 #game-container .main-column > #island-view:not([hidden]){display:grid!important}
-#island-view{position:absolute;inset:0;z-index:5;place-items:center;overflow:auto;padding:100px 16px 76px;background:radial-gradient(ellipse at 50% 30%,#24516a,#0b1329 75%);pointer-events:auto}
-.island-view-content{width:min(850px,100%);margin:auto}
+#island-view{position:absolute;inset:0;z-index:5;place-items:center;overflow:hidden;padding:100px 16px 76px;background:transparent;pointer-events:none}
+.island-view-content{position:relative;width:min(850px,100%,calc((100dvh - 270px) * 1.6));margin:auto;min-width:0}
+#island-view.approaching .island-view-content{visibility:hidden}
 .island-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px;color:#fff}
 .island-heading p{margin:0;color:#d4e4e6;line-height:1.15}
 .island-heading h2{margin:3px 0;color:#f4b41a;font:700 clamp(12px,2vw,18px) 'Press Start 2P',monospace;line-height:1.4}
-.island-heading button,.island-hotspot{min-height:48px;padding:7px 10px;border:2px solid #f4b41a;border-radius:8px;background:#162238;color:#fff;font:700 18px VT323,monospace;cursor:pointer;box-shadow:0 4px 12px #0008}
+.island-heading button,.island-hotspot{min-width:48px;min-height:48px;padding:7px 10px;border:2px solid #f4b41a;border-radius:8px;background:#162238;color:#fff;font:700 18px VT323,monospace;cursor:pointer;box-shadow:0 4px 12px #0008;pointer-events:auto}
 .island-heading button:hover,.island-hotspot:hover,.island-hotspot:focus-visible{background:#f4b41a;color:#0b1329}
-.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:hidden;border:3px solid #b88a30;border-radius:10px;background:#397d8d;box-shadow:0 12px 35px #0009}
-#island-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:visible;background:transparent}
 #island-hotspots{position:absolute;inset:0;z-index:1}
 .island-hotspot{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1}
-.island-message{min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
+.island-message{position:absolute;top:100%;left:0;right:0;min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
 body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-controls,body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-redirect{display:none!important}
 @media(max-width:600px){#island-view{padding:112px 10px 76px}.island-heading{align-items:start}.island-heading button{font-size:15px;max-width:145px}.island-heading p{font-size:15px}.island-hotspot{padding:4px 6px;font-size:15px}}
 

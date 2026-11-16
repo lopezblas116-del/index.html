@@ -11,14 +11,6 @@ function box(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, w, h);
 }
-function house(ctx, x, y, roof, wall) {
-  box(ctx, x, y + 22, 76, 65, "#463e38");
-  box(ctx, x + 5, y + 24, 66, 58, wall);
-  for (let i = 0; i < 6; i++) box(ctx, x + i * 6, y + 15 - i * 3, 76 - i * 12, 4, roof);
-  box(ctx, x + 28, y + 53, 18, 29, "#513c31");
-  box(ctx, x + 9, y + 35, 12, 12, "#ffd071");
-  box(ctx, x + 54, y + 35, 12, 12, "#ffd071");
-}
 function tree(ctx, x, y, color, fruit = false) {
   box(ctx, x + 10, y + 25, 8, 24, "#6a4934");
   box(ctx, x + 3, y + 9, 22, 23, color);
@@ -28,7 +20,7 @@ function tree(ctx, x, y, color, fruit = false) {
 }
 
 export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
-  const { x = 0, y = 0, scale = 1 } = options;
+  const { x = 0, y = 0, scale = 1, fullBody = false } = options;
   const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35" })[appearance.skin] || "#e4b991";
   const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e" })[appearance.hair] || "#1c1b22";
   const pixel = (px, py, w, h, color) => box(ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
@@ -36,6 +28,13 @@ export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
   pixel(11, 22, 10, 9, "#c65f4c");
   pixel(12, 30, 8, 2, "#f4b41a");
   pixel(10, 31, 12, 1, "#49382d");
+  if (fullBody) {
+    pixel(9, 23, 3, 10, skin);
+    pixel(21, 23, 3, 10, skin);
+    pixel(11, 32, 10, 6, "#35455c");
+    pixel(11, 38, 4, 5, "#3b2822");
+    pixel(18, 38, 4, 5, "#3b2822");
+  }
   pixel(12, 10, 9, 12, skin);
   pixel(11, 8, 11, 4, hair);
   pixel(9, 11, 4, 7, hair);
@@ -67,105 +66,127 @@ export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
   }
 }
 
-function drawClouds(ctx, seed) {
-  const layers = [
-    { y: 38, speed: 1, color: "rgba(255,255,255,.55)", width: 92 },
-    { y: 75, speed: -1, color: "rgba(238,249,250,.42)", width: 128 },
-    { y: 112, speed: 1, color: "rgba(255,255,255,.28)", width: 72 }
-  ];
-  for (const [layer, cloud] of layers.entries()) {
-    for (let i = 0; i < 6; i++) {
-      const x = ((seed + i * 151 + layer * 47) % 760) - 60;
-      const y = cloud.y + (i % 3) * 9;
-      box(ctx, x, y, cloud.width, 7, cloud.color);
-      box(ctx, x + 12, y - 5, cloud.width * .55, 6, cloud.color);
-      box(ctx, x + 27, y - 9, cloud.width * .25, 5, cloud.color);
+export const ISLAND_SCENE_WIDTH = 640;
+export const ISLAND_SCENE_HEIGHT = 400;
+export const ISLAND_HOTSPOTS = {
+  tavern: { x: 112, y: 129 },
+  market: { x: 514, y: 129 },
+  blackmarket: { x: 135, y: 240 },
+  poneglyph: { x: 548, y: 236 },
+  chest: { x: 400, y: 260 }
+};
+
+function building(ctx, x, y, w, h, roof, wall) {
+  box(ctx, x + 4, y + 9, w, h, "#423a35");
+  box(ctx, x, y, w, h, wall);
+  box(ctx, x - 5, y - 8, w + 10, 13, roof);
+  box(ctx, x + 4, y - 13, w - 8, 6, roof);
+  for (let px = x + 10; px < x + w - 8; px += 24) {
+    box(ctx, px, y + 15, 11, 13, "#594c40");
+    box(ctx, px + 2, y + 17, 7, 9, "#f5cf7a");
+  }
+  box(ctx, x + w / 2 - 7, y + h - 22, 14, 22, "#4b342a");
+}
+
+function ship(ctx, x, y, flag) {
+  box(ctx, x, y + 26, 74, 13, "#614536");
+  box(ctx, x + 6, y + 39, 62, 6, "#3e342e");
+  box(ctx, x + 35, y - 10, 3, 37, "#5b4030");
+  box(ctx, x + 38, y - 7, 22, 23, "#e6dec4");
+  box(ctx, x + 38, y - 13, 14, 6, flag);
+  box(ctx, x + 13, y + 22, 48, 4, "#c29a6b");
+}
+
+export function drawIslandSceneContext(ctx, island, character) {
+  const scene = island.localScene;
+  const palette = PALETTES[scene.theme] || PALETTES.green;
+  const seed = scene.seed;
+  ctx.imageSmoothingEnabled = false;
+  box(ctx, 0, 0, 640, 400, "#397d8d");
+  for (let y = 8; y < 400; y += 16) for (let x = (y % 32 ? 7 : 20); x < 640; x += 43)
+    box(ctx, x, y, 22, 2, (x + y + seed) % 3 ? "#518f9b" : "#71afaf");
+
+  box(ctx, 24, 12, 592, 272, palette.earth);
+  box(ctx, 30, 12, 580, 252, palette.land);
+  box(ctx, 40, 20, 560, 230, "#9d9c8b");
+  for (let y = 22; y < 248; y += 12) {
+    for (let x = 42 + (y % 24 ? 0 : 9); x < 594; x += 18) {
+      box(ctx, x, y, 16, 10, (x + y + seed) % 5 ? "#bcb7a1" : "#a8a994");
+      box(ctx, x + 2, y + 1, 8, 1, "#d0c8b0");
     }
+  }
+  box(ctx, 27, 21, 15, 217, "#656b65");
+  box(ctx, 598, 21, 15, 217, "#656b65");
+  box(ctx, 30, 10, 580, 17, "#6c7774");
+  for (let x = 33; x < 610; x += 24) box(ctx, x, 5, 14, 10, "#85918c");
+  box(ctx, 170, 272, 300, 21, "#74523a");
+  for (let x = 172; x < 466; x += 14) box(ctx, x, 275, 11, 15, "#aa7e52");
+  for (const x of [190, 450]) {
+    box(ctx, x, 290, 40, 62, "#694732");
+    for (let y = 292; y < 350; y += 9) box(ctx, x + 3, y, 34, 7, "#b08354");
+  }
+  ship(ctx, 92, 317, "#f4b41a");
+  ship(ctx, 495, 322, "#e6ded2");
+
+  const arch = scene.architecture;
+  building(ctx, 65, 65, 96, 68, "#a9503b", "#e7d19f");
+  building(ctx, 473, 65, 96, 68, "#82624a", "#d9c5a1");
+  building(ctx, 56, 179, 78, 51, "#9e5e47", "#ddc59a");
+  building(ctx, 506, 179, 78, 51, "#997850", "#d4c2a1");
+  box(ctx, 99, 52, 29, 11, "#704c32");
+  box(ctx, 102, 54, 23, 6, "#e1b95f");
+  box(ctx, 507, 52, 28, 11, "#704c32");
+  box(ctx, 510, 54, 22, 6, "#82b99a");
+
+  if (arch === "fortress" || island.id === "ennies") {
+    building(ctx, 225, 59, 190, 101, "#667a83", "#adb7ae");
+    box(ctx, 270, 38, 100, 32, "#889897");
+    box(ctx, 305, 13, 28, 49, "#aab7b2");
+    box(ctx, 318, 0, 3, 19, "#4a3b2b");
+    box(ctx, 321, 3, 25, 9, "#e7e9d8");
+    box(ctx, 327, 5, 10, 5, "#537d9a");
+    for (let x = 228; x < 415; x += 21) box(ctx, x, 50, 13, 12, "#778b8d");
+  } else if (arch === "loguetown") {
+    building(ctx, 216, 43, 208, 75, "#a86e58", "#e3d4b8");
+    box(ctx, 253, 139, 134, 57, "#989b94");
+    for (let x = 261; x < 385; x += 16) box(ctx, x, 146, 12, 45, "#c3c0ac");
+    box(ctx, 297, 151, 46, 27, "#73533d");
+    box(ctx, 304, 126, 4, 30, "#4f392e");
+    box(ctx, 332, 126, 4, 30, "#4f392e");
+    box(ctx, 304, 126, 32, 4, "#4f392e");
+  } else if (arch === "baratie") {
+    box(ctx, 225, 80, 190, 77, "#78513b");
+    box(ctx, 210, 111, 220, 28, "#b9844e");
+    box(ctx, 191, 99, 25, 52, "#b9844e");
+    building(ctx, 260, 64, 120, 55, "#527c84", "#e5ca8d");
+  } else if (arch === "arlong" || island.id === "wano") {
+    building(ctx, 244, 69, 152, 86, "#a54238", "#6b9da3");
+    box(ctx, 232, 60, 176, 12, "#b7493b");
+    box(ctx, 254, 44, 132, 16, "#bd5b41");
+    tree(ctx, 430, 171, "#508e55", true);
+  } else {
+    building(ctx, 245, 65, 150, 90, arch === "sky" ? "#d9cba4" : "#b85a41", "#e7d09c");
+    if (arch === "foosha") {
+      box(ctx, 413, 66, 12, 70, "#ad8058");
+      box(ctx, 397, 79, 45, 5, "#e6d3a6");
+      box(ctx, 416, 59, 5, 45, "#e6d3a6");
+    } else tree(ctx, 410, 155, "#4c8d60", true);
+  }
+  box(ctx, 388, 232, 26, 17, "#6c3e2d");
+  box(ctx, 390, 226, 22, 8, "#bc8641");
+  box(ctx, 399, 235, 5, 6, "#f4b41a");
+  if (scene.options.includes("poneglyph")) {
+    box(ctx, 535, 205, 27, 30, "#385b72");
+    for (let i = 0; i < 4; i++) box(ctx, 540, 209 + i * 5, 15, 2, "#b4d7d2");
+  }
+  if (character) {
+    box(ctx, 275, 260, 31, 6, "rgba(0,0,0,.25)");
+    drawPixelAvatar(ctx, character.appearance, { x: 267, y: 211, scale: 1.15, fullBody: true });
   }
 }
 
 export function drawIslandScene(canvas, island, character) {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo inicializar la vista de isla.");
-  const scene = island.localScene;
-  const palette = PALETTES[scene.theme] || PALETTES.green;
-  const seed = scene.seed;
-  ctx.imageSmoothingEnabled = false;
-  const sky = ctx.createLinearGradient(0, 0, 0, 200);
-  sky.addColorStop(0, palette.sky[0]);
-  sky.addColorStop(1, palette.sky[1]);
-  box(ctx, 0, 0, 640, 400, sky);
-  drawClouds(ctx, seed);
-  box(ctx, 0, 182, 640, 218, "#397d8d");
-  for (let i = 0; i < 12; i++) {
-    const x = (seed + i * 137) % 640, y = 185 + (i * 43) % 155;
-    box(ctx, x, y, 35, 3, "#71afaf");
-    box(ctx, x + 8, y + 6, 18, 2, "rgba(205,240,235,.35)");
-  }
-  for (let i = 0; i < 4; i++) {
-    const x = (seed + i * 179) % 660 - 40;
-    box(ctx, x, 165, 100, 30, palette.mountain);
-    box(ctx, x + 15, 150, 70, 20, palette.mountain);
-    box(ctx, x + 34, 138, 30, 20, palette.mountain);
-    box(ctx, x + 41, 143, 11, 3, "rgba(255,255,255,.2)");
-  }
-  box(ctx, 35, 235, 570, 123, palette.earth);
-  box(ctx, 44, 251, 552, 95, "rgba(20,25,24,.12)");
-  box(ctx, 58, 220, 524, 30, palette.land);
-  box(ctx, 35, 242, 570, 18, palette.land);
-  box(ctx, 55, 220, 526, 5, palette.light);
-  for (let i = 0; i < 34; i++) {
-    const x = 43 + ((seed + i * 83) % 545), y = 263 + ((seed >>> (i % 16)) + i * 19) % 81;
-    box(ctx, x, y, 8 + (i % 3) * 4, 4, i % 2 ? palette.land : palette.earth);
-  }
-  const arch = scene.architecture;
-  if (arch === "fortress" || arch === "stone" || arch === "loguetown") {
-    box(ctx, 246, 126, 138, 107, "#56636a");
-    box(ctx, 258, 133, 111, 99, "#a1ada9");
-    for (let x = 250; x < 379; x += 22) box(ctx, x, 112, 14, 18, "#68777c");
-    for (let y = 145; y < 218; y += 22) box(ctx, 263, y, 102, 3, "#82918e");
-    box(ctx, 300, 75, 35, 80, "#7b898c");
-    box(ctx, 314, 54, 4, 25, "#513c31");
-    box(ctx, 318, 55, 24, 11, "#f4b41a");
-    box(ctx, 300, 180, 34, 52, "#3e5055");
-    if (arch === "loguetown") {
-      box(ctx, 275, 198, 84, 9, "#b8b2a1");
-      box(ctx, 289, 185, 11, 13, "#4a443e");
-      box(ctx, 336, 185, 11, 13, "#4a443e");
-    }
-  } else if (arch === "baratie") {
-    box(ctx, 230, 215, 180, 25, "#6f4938");
-    box(ctx, 245, 193, 145, 24, "#b28251");
-    house(ctx, 280, 116, "#4e7984", "#d9bd80");
-    box(ctx, 205, 198, 40, 10, "#e1b06d");
-    box(ctx, 192, 188, 18, 28, "#e1b06d");
-  } else if (arch === "arlong" || island.id === "wano") {
-    house(ctx, 275, 136, "#ab4739", "#5a8b93");
-    box(ctx, 261, 160, 104, 7, "#b24438");
-    box(ctx, 278, 143, 70, 7, "#d96748");
-    tree(ctx, 420, 180, "#508e55", true);
-  } else {
-    house(ctx, 280, 135, arch === "sky" ? "#d9cba4" : "#b85a41", "#e7d09c");
-    if (arch === "foosha") {
-      box(ctx, 401, 139, 16, 90, "#ad8058");
-      box(ctx, 381, 157, 56, 6, "#e6d3a6");
-      box(ctx, 406, 132, 6, 55, "#e6d3a6");
-    } else tree(ctx, 405, 180, "#4c8d60", true);
-  }
-  tree(ctx, 160, 184, scene.theme === "snow" ? "#a5c1b6" : "#467d55");
-  tree(ctx, 505, 178, scene.theme === "snow" ? "#a5c1b6" : "#518b5b");
-  box(ctx, 56, 284, 160, 14, "#845b3b");
-  box(ctx, 64, 297, 9, 34, "#69432f");
-  box(ctx, 195, 297, 9, 34, "#69432f");
-  if (character) drawPixelAvatar(ctx, character.appearance, { x: 87, y: 255, scale: 1.15 });
-  box(ctx, 457, 218, 27, 16, "#6c3e2d");
-  box(ctx, 459, 211, 23, 8, "#bc8641");
-  box(ctx, 467, 220, 5, 6, "#f4b41a");
-  if (scene.options.includes("poneglyph")) {
-    box(ctx, 508, 180, 36, 48, "#385b72");
-    box(ctx, 513, 186, 26, 35, "#557f92");
-    for (let i = 0; i < 5; i++) box(ctx, 517 + i % 2 * 4, 190 + i * 6, 12, 2, "#b4d7d2");
-  }
-  box(ctx, 0, 358, 640, 42, "#255e70");
-  for (let x = 0; x < 640; x += 60) box(ctx, x + (seed % 23), 370 + x % 13, 30, 3, "#67a9ad");
+  drawIslandSceneContext(ctx, island, character);
 }

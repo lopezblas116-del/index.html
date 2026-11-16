@@ -2,7 +2,7 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { drawIslandScene } from "./island_renderer.js";
+import { ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -24,12 +24,23 @@ const isAtIsland = (character, island) => Boolean(character && character.status 
 export function initIslandView() {
   if (islandViewInitialized) return;
   islandViewInitialized = true;
+  listen(document, "onepiece:island-approach", (event) => {
+    islandView = event.detail.island;
+    islandRenderKey = "";
+    const view = byId("island-view");
+    view.hidden = false;
+    view.classList.add("approaching");
+    renderIslandView(islandCharacter);
+  });
   listen(document, "onepiece:camera-state", (event) => {
     islandView = event.detail.state === ISLAND_VIEW ? event.detail.island : null;
     islandRenderKey = "";
     document.body.dataset.cameraState = event.detail.state;
     const view = byId("island-view");
-    if (view) view.hidden = !islandView;
+    if (view) {
+      view.hidden = !islandView;
+      view.classList.remove("approaching");
+    }
     if (islandView) {
       byId("island-message").textContent = "";
       renderIslandView(islandCharacter);
@@ -51,21 +62,21 @@ export function renderIslandView(character) {
   byId("island-presence").textContent = present
     ? `${character.name} está en el puerto.`
     : "Vista previa: el avatar no está atracado aquí. Sugiere el rumbo desde el mapa.";
-  drawIslandScene(byId("island-canvas"), islandView, present ? character : null);
   const hotspots = byId("island-hotspots");
   hotspots.replaceChildren();
   const actions = [
-    { id: "tavern", label: "🍻 Taberna", x: 50, y: 38 },
-    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "⚓ Mercado negro", x: 32, y: 54 }] : []),
-    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "📜 Ruinas", x: 82, y: 42 }] : []),
-    { id: "chest", label: "🧰 Cofre", x: 72, y: 62 }
+    { id: "tavern", label: "🍻 Taberna" },
+    { id: "market", label: "⚓ Mercado" },
+    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "⚓ Mercado negro" }] : []),
+    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "📜 Ruinas" }] : []),
+    { id: "chest", label: "🧰 Cofre" }
   ];
   for (const action of actions) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "island-hotspot";
-    button.style.left = `${action.x}%`;
-    button.style.top = `${action.y}%`;
+    button.style.left = `${ISLAND_HOTSPOTS[action.id].x / ISLAND_SCENE_WIDTH * 100}%`;
+    button.style.top = `${ISLAND_HOTSPOTS[action.id].y / ISLAND_SCENE_HEIGHT * 100}%`;
     button.textContent = action.label;
     button.addEventListener("click", () => {
       const current = isAtIsland(islandCharacter, islandView);
@@ -80,6 +91,7 @@ export function renderIslandView(character) {
     });
     hotspots.append(button);
   }
+  document.dispatchEvent(new CustomEvent("onepiece:island-layout"));
 }
 
 export function renderPsychology(container, character, selection, onSuggest) {

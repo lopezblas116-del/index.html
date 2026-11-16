@@ -172,7 +172,7 @@ export function renderHud(character){
   if(!writingChat&&currentPanel&&["chat","quick","chest","boards","tavern","market","profile","world","more","lineage","networkStatus","settings"].includes(currentPanel))openPanel(currentPanel);
 }
 export function openIslandPanel(panel){
-  if(!["chest","tavern","blackmarket"].includes(panel)||!activeCharacter)return;
+  if(!["chest","tavern","market","blackmarket"].includes(panel)||!activeCharacter)return;
   if(panel!=="chest"&&(activeCharacter.status==="dead"||activeCharacter.captured||activeCharacter.location?.atSea))return;
   if(panel==="blackmarket"&&!getMapIslands(activeCharacter).some(island=>island.name===activeCharacter.location?.island&&island.auctionHouse))return;
   openPanel(panel);

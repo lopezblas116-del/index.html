@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getMapIslands } from "../src/map.js";
 import { ISLAND_DATA } from "../src/islands_data.js";
-import { drawIslandScene } from "../src/island_renderer.js";
+import { drawIslandScene, drawPixelAvatar } from "../src/island_renderer.js";
 
 test("each mapped island has its own stable scene and island-specific options", () => {
   const islands = getMapIslands({ id: "captain" });
@@ -40,4 +40,28 @@ test("remote previews do not draw the avatar at the dock", () => {
   calls.length = 0;
   drawIslandScene(canvas, island, { appearance: { skin: "Oscura" } });
   assert.ok(calls.length > previewPixels, "the docked avatar adds its layered pixel-art sprite");
+});
+
+test("fortified Shells Town and Loguetown have distinct city landmarks", () => {
+  const islands = getMapIslands();
+  const render = (id) => {
+    const calls = [];
+    const ctx = { fillRect: (...args) => calls.push([ctx.fillStyle, ...args]) };
+    drawIslandScene({ getContext: () => ctx }, islands.find((island) => island.id === id), null);
+    return calls;
+  };
+  const shells = render("shells"), loguetown = render("loguetown");
+  assert.ok(shells.some(([color, x, y]) => color === "#aab7b2" && x === 305 && y === 13));
+  assert.ok(loguetown.some(([color, x, y]) => color === "#73533d" && x === 297 && y === 151));
+  assert.notDeepEqual(shells, loguetown);
+});
+
+test("full-body sprite adds legs without changing the portrait sprite", () => {
+  const calls = [];
+  const ctx = { fillRect: (...args) => calls.push(args) };
+  drawPixelAvatar(ctx, {}, { fullBody: true });
+  assert.ok(calls.some(([x, y, w, h]) => x === 11 && y === 38 && w === 4 && h === 5));
+  calls.length = 0;
+  drawPixelAvatar(ctx, {});
+  assert.ok(!calls.some(([, y]) => y >= 32));
 });
