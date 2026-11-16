@@ -89,5 +89,6 @@ export function applyLocalAction(world, action, actor) {
   } else if (action.type === "battle") text = `⚔ ${actor.name} protagoniza un combate en ${data.island || "alta mar"}.`;
   else if (action.type === "contract") text = `📜 ${actor.name} ${data.completed ? "completa" : "acepta"} un contrato en ${data.island}.`;
   else if (action.type === "whisper") text = `🗣️ ${actor.name} escucha un susurro.`;
+  else if (action.type === "global_chat") text = `${actor.name}: ${String(data.text || "").slice(0, 280)}`;
   if (text) world.global_events.unshift({ event_id: action.event_id, type: action.type, text, location: data.island, created_at: new Date().toISOString() });
 }

@@ -120,10 +120,15 @@ export function renderPsychology(container, character, selection, onSuggest) {
 export function renderNewspaper(container, character, onInvestigate, onSuggest) {
   const world = character.world ?? {};
   const shared = world.shared?.world;
+  const globalEvents = shared?.global_events ?? [];
   const sections = [
-    { label: "Crónica de la Era", items: [...(shared?.global_events ?? []), ...(world.news ?? [])], empty: "No hay crónicas todavía." },
-    { label: "Necrológica", items: [...(shared?.fallen_captains ?? []), ...(world.pantheon ?? [])].map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })), empty: "No se han registrado caídos." },
-    { label: "Carteles SE BUSCA", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "👑 YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." }
+    { label: "📰 Titulares", items: [...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], empty: "No hay titulares todavía." },
+    { label: "📜 Se Busca / Bounties", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "👑 YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." },
+    { label: "💀 Gaceta & Fugas", items: [
+      ...globalEvents.filter((entry) => ["death", "escape"].includes(entry.type)),
+      ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
+      ...(world.pantheon ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
+    ], empty: "La gaceta no registra caídos ni fugas." }
   ];
   const tabs = document.createElement("div");
   tabs.className = "one-hud-tabs";

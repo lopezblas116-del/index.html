@@ -16,6 +16,8 @@ import {
 import { trade } from "./combat_economy.js";
 import { createNetwork } from "./network.js";
 import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantPort } from "./politics.js";
+import { removeStorage } from "./storage_adapter.js";
+import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
 
 let character = loadGame();
 const network = createNetwork();
@@ -66,6 +68,25 @@ function claimPendingFruit(actor) {
     }
     saveGame(actor);
     paint();
+  });
+  onTypedEvent(EVENT_TYPES.globalChatMessage, (event) => {
+    if (!character || character.status === "dead") return;
+    const { message } = event.detail || {};
+    if (!message?.id || !message?.text) return;
+    network.publish("global_chat", { text: message.text }, character, message.id);
+    persistRender();
+  });
+  onTypedEvent(EVENT_TYPES.journalEntry, (event) => {
+    if (!character || character.status === "dead") return;
+    character.log.unshift({ time: new Date().toISOString(), message: event.detail.message });
+    character.log = character.log.slice(0, 80);
+    persistRender();
+  });
+  onTypedEvent(EVENT_TYPES.newsArticle, (event) => {
+    if (!character || character.status === "dead") return;
+    character.world.news.unshift(event.detail.article);
+    character.world.news = character.world.news.slice(0, 60);
+    persistRender();
   });
 }
 async function scoutFugitive(actor) {
@@ -192,7 +213,7 @@ function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
   returnToGlobalMap();
-  localStorage.removeItem(SAVE_KEY);
+  removeStorage(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();
   closeLegacyModal();
@@ -255,6 +276,7 @@ listen(document, "onepiece:hud-trade", (event) => {
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
 listen(document, "onepiece:hud-open-pantheon", openPantheon);
+listen(document, "onepiece:hud-network-refresh", () => { network.sync(); });
 listen(document, "onepiece:hud-politics", (event) => {
   if (!character || character.status === "dead") return;
   const action = event.detail?.action;

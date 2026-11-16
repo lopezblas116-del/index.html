@@ -16,7 +16,8 @@
   color: var(--text);
   background: var(--navy);
 }
-* { box-sizing: border-box; }
+:root{color-scheme:dark;--color-ocean:#0b1329;--color-panel:#162238;--color-gold:#f4b41a}
+*{box-sizing:border-box}
 html { min-height: 100%; scroll-behavior: smooth; scroll-padding-top: 86px; }
 body {
   min-width: 320px;
@@ -330,6 +331,17 @@ body[data-atmosphere="mist"] #one-hud .one-hud-brand,
 body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(11,19,41,.9)}
 body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(170,220,224,.12)}
 @media(max-width:600px){#bottom-nav{font-size:11px}}
+
+.one-hud-chat-feed{display:grid;gap:8px;max-height:min(34vh,300px);overflow:auto;padding:8px;border:1px solid rgba(244,180,26,.35);border-radius:8px;background:#0b1329}
+.one-hud-chat-message{position:relative;padding:8px 68px 8px 10px;border-left:2px solid #f4b41a;background:#162238;border-radius:4px}
+.one-hud-chat-message strong{color:#f4b41a}.one-hud-chat-message p{margin:4px 0;overflow-wrap:anywhere}.one-hud-chat-message time{position:absolute;top:8px;right:8px;color:#b9c5d6;font-size:16px}
+.one-hud-chat-notices{margin-top:12px}.one-hud-chat-notices h3{margin:0;color:#f4b41a}
+.one-hud-setting{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px;border:1px solid rgba(244,180,26,.5);border-radius:8px;background:#0b1329}
+.one-hud-setting input{width:24px;height:24px;accent-color:#f4b41a}
+.one-hud-tab-panel{min-width:0}.one-hud-tab-panel[role=tabpanel]{padding:4px 0}
+.one-hud-slot[data-selected="true"]{outline:2px solid #f4b41a;box-shadow:0 0 12px #f4b41755}
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+@media(max-width:600px){.one-hud-chat-feed{max-height:30vh}.one-hud-tabs{gap:5px}.one-hud-tabs button{flex-basis:calc(50% - 5px);font-size:17px}}
 
 #modal-perfil .one-hud-dialog{color:#30251a;background:#e8d4a0;border:4px double #93661c;box-shadow:inset 0 0 28px #8d632f55,0 24px 70px #0009;font-family:"Comic Sans MS",cursive}
 #modal-perfil .one-hud-heading,#modal-perfil .one-hud-stats strong,#modal-perfil .one-hud-meter strong{color:#69450e}

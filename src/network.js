@@ -1,13 +1,13 @@
 import { SUPABASE_CONFIG } from "./network-config.js";
 import { advanceLocalWorld, applyLocalAction, createLocalWorld } from "./geopolitics.js";
 import { advanceFruitCycle, claimLocalFruit, createLocalFruitLedger, releaseLocalFruit } from "./devil_fruits.js";
+import { browserStorage, readStorage, writeStorage } from "./storage_adapter.js";
 
 const TABLES = ["islands_control", "global_events", "bounties_leaderboard", "fallen_captains", "bosses", "devil_fruits"];
 
 export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.fetch, storage } = {}) {
   if (storage === undefined) {
-    try { storage = globalThis.localStorage; }
-    catch { storage = null; }
+    storage = browserStorage();
   }
   const scope = encodeURIComponent(config.url || "local");
   const sessionKey = `one-latam-supabase-session:${scope}`;
@@ -28,7 +28,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   const configError = Boolean(config.url) !== Boolean(config.publishableKey);
   if (!configured && !configError && storage) {
     try {
-      const saved = storage.getItem(worldKey);
+      const saved = readStorage(worldKey, storage);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.islands_control) || !Array.isArray(parsed.global_events) || !Array.isArray(parsed.bounties_leaderboard) || !Array.isArray(parsed.fallen_captains) || !Array.isArray(parsed.bosses)) throw new Error("Mundo local inválido.");
@@ -39,12 +39,11 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   }
   function saveLocalWorld() {
     if (configured || configError || !storage) return;
-    try { storage.setItem(worldKey, JSON.stringify(world)); }
-    catch { status = "offline"; error = "No se pudo guardar el mundo local."; }
+    if (!writeStorage(worldKey, JSON.stringify(world), storage)) { status = "offline"; error = "No se pudo guardar el mundo local."; }
   }
   if (configured && storage) {
     try {
-      const saved = storage.getItem(queueKey);
+      const saved = readStorage(queueKey, storage);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed)) throw new Error("Cola de eventos inválida.");
@@ -55,8 +54,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   function saveQueue() {
     try {
       if (!storage) throw new Error("Almacenamiento no disponible.");
-      storage.setItem(queueKey, JSON.stringify(pending));
-      return true;
+      return writeStorage(queueKey, JSON.stringify(pending), storage);
     } catch { return false; }
   }
   const notify = () => {
@@ -81,7 +79,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   async function authenticate() {
     if (session?.expires_at > Date.now() / 1000 + 60) return;
     if (!session) {
-      try { session = JSON.parse(storage?.getItem(sessionKey) || "null"); }
+      try { session = JSON.parse(readStorage(sessionKey, storage) || "null"); }
       catch { session = null; }
     }
     if (session?.expires_at > Date.now() / 1000 + 60) return;
@@ -93,7 +91,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
     session.expires_at ??= Math.floor(Date.now() / 1000) + session.expires_in;
     try {
       if (!storage) throw new Error("Almacenamiento no disponible.");
-      storage.setItem(sessionKey, JSON.stringify(session));
+      if (!writeStorage(sessionKey, JSON.stringify(session), storage)) throw new Error("Almacenamiento no disponible.");
     }
     catch { throw new Error("No se pudo guardar la sesión compartida en el navegador."); }
   }
@@ -123,8 +121,8 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
     working = working.then(sync);
     return working;
   }
-  function publish(type, data, actor) {
-    const action = { event_id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, type, data, actor: { id: actor.id, name: actor.name } };
+  function publish(type, data, actor, eventId) {
+    const action = { event_id: eventId || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, type, data, actor: { id: actor.id, name: actor.name } };
     applyLocalAction(world, action, action.actor);
     saveLocalWorld();
     if (configured) {

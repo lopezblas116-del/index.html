@@ -6,6 +6,9 @@ import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
 import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./races.js";
 import { fruitNear } from "./devil_fruits.js";
 import { maybeCaptureAtAuction } from "./politics.js";
+import missionData from "./data/missions_data.json" with { type: "json" };
+import { PULSE_MS, STORAGE_KEYS } from "./config.js";
+import { readStorage, writeJSON } from "./storage_adapter.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -13,28 +16,10 @@ const ERAS = [
   "Era de la Nueva Generación",
   "Era del Horizonte Final"
 ];
-const WORLD_NEWS = [
-  "la Marina interceptó una ruta pirata cerca de Loguetown.",
-  "un Cazarrecompensas entregó a un capitán buscado.",
-  "un avistamiento de Akuma no Mi agitó los mercados del East Blue.",
-  "una flota revolucionaria fue vista cerca de la Red Line.",
-  "un Rey del Mar obligó a desviar varias rutas.",
-  "un nuevo capitán reunió una tripulación y puso rumbo al Paraíso.",
-  "la Marina anunció ascensos tras una captura de alto perfil."
-];
-const ROUTES = {
-  "East Blue": ["Isla Dawn", "Orange Town", "Villa Syrup", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
-  "West Blue": ["Isla Ohara", "Isla Kano", "Water 7", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
-  "North Blue": ["Isla Flevance", "Isla Minion", "Isla Swallow", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
-  "South Blue": ["Isla Torino", "Baterilla", "Isla Karate", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"]
-};
-const MISSION_NAMES = [
-  "Proteger la aldea", "Recuperar el mapa de navegación", "Defender el astillero", "Escoltar el barco restaurante", "Liberar la isla", "El asalto de Loguetown", "Cruzar la Reverse Mountain", "Entrar al Paraíso", "Conquistar el Nuevo Mundo"
-];
-const ENEMIES = ["piratas rivales", "Marines", "Cazarrecompensas", "agentes del Gobierno", "una banda local"];
+const { worldNews: WORLD_NEWS, routes: ROUTES, missionNames: MISSION_NAMES, enemies: ENEMIES } = missionData;
 const TRAITS = ["Valiente", "Astuto", "Impulsivo", "Prudente", "Agresivo", "Honrado", "Rebelde", "Leal"];
-export const PULSE_MS = 75_000;
-export const SAVE_KEY = "one-latam-rpg-beta-1";
+export { PULSE_MS };
+export const SAVE_KEY = STORAGE_KEYS.save;
 const rand = (max) => Math.floor(Math.random() * max);
 const pick = (items) => items[rand(items.length)];
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -151,11 +136,11 @@ function normalize(character) {
   return character;
 }
 export function loadGame() {
-  try { const raw = localStorage.getItem(SAVE_KEY); return raw ? normalize(JSON.parse(raw)) : null; }
+  try { const raw = readStorage(SAVE_KEY); return raw ? normalize(JSON.parse(raw)) : null; }
   catch { return null; }
 }
 export function saveGame(character) {
-  try { character.autonomy.lastSavedAt = Date.now(); character.autonomy.lastPulseAt ??= character.autonomy.lastSavedAt; localStorage.setItem(SAVE_KEY, JSON.stringify(character)); return true; }
+  try { character.autonomy.lastSavedAt = Date.now(); character.autonomy.lastPulseAt ??= character.autonomy.lastSavedAt; return writeJSON(SAVE_KEY, character); }
   catch { return false; }
 }
 export function addLog(character, message) {

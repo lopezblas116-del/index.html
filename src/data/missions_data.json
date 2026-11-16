@@ -1,0 +1,19 @@
+{
+  "routes": {
+    "East Blue": ["Isla Dawn", "Orange Town", "Villa Syrup", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
+    "West Blue": ["Isla Ohara", "Isla Kano", "Water 7", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
+    "North Blue": ["Isla Flevance", "Isla Minion", "Isla Swallow", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"],
+    "South Blue": ["Isla Torino", "Baterilla", "Isla Karate", "Loguetown", "Reverse Mountain", "Paraíso", "Nuevo Mundo"]
+  },
+  "missionNames": ["Proteger la aldea", "Recuperar el mapa de navegación", "Defender el astillero", "Escoltar el barco restaurante", "Liberar la isla", "El asalto de Loguetown", "Cruzar la Reverse Mountain", "Entrar al Paraíso", "Conquistar el Nuevo Mundo"],
+  "enemies": ["piratas rivales", "Marines", "Cazarrecompensas", "agentes del Gobierno", "una banda local"],
+  "worldNews": [
+    "la Marina interceptó una ruta pirata cerca de Loguetown.",
+    "un Cazarrecompensas entregó a un capitán buscado.",
+    "un avistamiento de Akuma no Mi agitó los mercados del East Blue.",
+    "una flota revolucionaria fue vista cerca de la Red Line.",
+    "un Rey del Mar obligó a desviar varias rutas.",
+    "un nuevo capitán reunió una tripulación y puso rumbo al Paraíso.",
+    "la Marina anunció ascensos tras una captura de alto perfil."
+  ]
+}

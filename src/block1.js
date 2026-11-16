@@ -1,4 +1,7 @@
-const SAVE_KEY = "one-latam-rpg-beta-1";
+import { CONTRACTS, STORAGE_KEYS } from "./config.js";
+import { writeJSON } from "./storage_adapter.js";
+
+const SAVE_KEY = STORAGE_KEYS.save;
 const TRAIT_LABELS = { valiente: "Valiente", prudente: "Prudente", astuto: "Astuto", impulsivo: "Impulsivo", leal: "Leal", agresivo: "Agresivo" };
 const traitsOf = (character) => [...(character?.soulCard?.traits?.pros ?? []), ...(character?.soulCard?.traits?.cons ?? [])].map((trait) => String(trait).toLocaleLowerCase("es"));
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n) || 0));
@@ -13,11 +16,16 @@ export function ensureBlockOneData(character) {
   character.shipSecurity.humidity = clamp(character.shipSecurity.humidity, 0, 100);
   character.shipSecurity.raidRisk = clamp(character.shipSecurity.raidRisk, 0, 100);
   character.activeContracts ??= [];
-  character.availableContracts ??= [
-    { id: "escort", title: "Escolta de mercaderes", risk: "Medio", reward: 180 },
-    { id: "bounty", title: "Caza de recompensas", risk: "Alto", reward: 260 },
-    { id: "supply", title: "Abastecimiento de isla", risk: "Bajo", reward: 120 }
-  ];
+  character.availableContracts ??= CONTRACTS.map((contract) => ({ ...contract }));
+  for (const contract of character.availableContracts) {
+    const configured = CONTRACTS.find((entry) => entry.id === contract.id);
+    if (configured) contract.category ??= configured.category;
+  }
+  for (const contract of CONTRACTS) {
+    if (contract.category === "archaeology" && !character.availableContracts.some((entry) => entry.id === contract.id)) {
+      character.availableContracts.push({ ...contract });
+    }
+  }
   character.world ??= { day: 0, year: 1, era: "Era de los Grandes Descubrimientos", news: [], pantheon: [] };
   character.world.news ??= [];
   character.world.pantheon ??= [];
@@ -265,7 +273,7 @@ export function initBlock1({ getCharacter, onChange, onPublicAction } = {}) {
     if (!character || character.status === "dead") return;
     ensureBlockOneData(character);
     const result = mutate(character);
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(character)); } catch {}
+    writeJSON(SAVE_KEY, character);
     onChange?.(character);
     window.dispatchEvent(new CustomEvent("onepiece:block1-render", { detail: { character, toast: result?.toast } }));
   };

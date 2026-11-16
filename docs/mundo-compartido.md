@@ -2,10 +2,14 @@
 
 GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de datos configurada: Vista Mundial indica «Simulación local» y el avatar, su inventario y el estado geopolítico local se guardan en `localStorage`. El mundo local persiste al reiniciar el avatar; borrar los datos del sitio lo elimina.
 
+## Módulos del cliente
+
+`src/config.js` centraliza paleta, claves y contratos; `src/storage_adapter.js` es la única capa que accede al almacenamiento del navegador. `src/event_dispatcher.js` valida y distribuye eventos de bitácora/noticias/chat, y `src/chat_engine.js` mantiene el Chat Global local y sincronizable junto con el historial del Nexo de Conciencia. Los catálogos descriptivos viven en `src/data/islands_data.json` y `src/data/missions_data.json`; la lógica de mapa y navegación los consume por separado.
+
 ## Conectar Supabase
 
 1. Crea un proyecto dedicado y habilita **Anonymous Sign-Ins** en Supabase Auth. Si se usa en producción, configura protección contra abuso y límites de uso.
-2. Ejecuta `supabase/world.sql` en el editor SQL. Crea las tablas, sus políticas de lectura y las funciones transaccionales de acciones; los clientes no reciben permisos directos de escritura. Si ya desplegaste una versión anterior, vuelve a ejecutar el script para instalar la tabla de frutas únicas y la actualización de esquema.
+2. Ejecuta `supabase/world.sql` en el editor SQL. Crea las tablas, sus políticas de lectura y las funciones transaccionales de acciones; los clientes no reciben permisos directos de escritura. Si ya desplegaste una versión anterior, vuelve a ejecutar el script para instalar la tabla de frutas únicas, el evento de Chat Global y las actualizaciones de esquema.
 3. En `src/network-config.js`, introduce la URL HTTPS del proyecto y su clave **publishable/anon** pública. Nunca incluyas una clave `service_role`, contraseña ni token de acceso. Publica el cambio en Pages.
 4. Para ejecutar el ciclo de fugas sin depender de navegadores conectados, habilita `pg_cron` en el proyecto y, como administrador, ejecuta:
 
@@ -16,7 +20,7 @@ GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de dato
 
    La función no es accesible para usuarios anónimos o autenticados. También avanza el ciclo global de reencarnación de las Akuma no Mi. Las ubicaciones de los fugados permanecen en una tabla sin acceso para clientes.
 
-Vista Mundial muestra el estado de conexión y cualquier error. El cliente consulta el mundo cada 30 segundos y al recuperar la conexión. Los eventos públicos sin texto del susurro se conservan en una cola local hasta recibir confirmación; al conectarse se reintentan con identificadores idempotentes. Si el almacenamiento del navegador falla, la interfaz avisa que la cola solo existe durante la sesión. Sin configuración, no se envían eventos y la simulación local no se comparte.
+Vista Mundial muestra el estado de conexión y cualquier error; Más > Estado de Red permite solicitar una sincronización. El cliente consulta el mundo cada 30 segundos y al recuperar la conexión. Los eventos públicos, incluido el Chat Global (nunca el texto de un susurro privado), se conservan en una cola local hasta recibir confirmación; al conectarse se reintentan con identificadores idempotentes. Sin configuración, los mensajes globales y el resto de la simulación permanecen en este navegador y no se comparten.
 
 Al volver a abrir o activar la página, la partida simula hasta ocho horas de acciones pendientes, siempre que no estuviera pausada ni terminada; el límite se registra en la bitácora. Las acciones públicas simuladas se agregan a la cola para sincronizarlas al reconectar.
 

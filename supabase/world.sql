@@ -135,7 +135,7 @@ declare
 begin
   if uid is null then raise exception 'authentication required'; end if;
   if v_event_id is null or length(v_event_id) > 80 or captain is null or length(captain) = 0
-    or kind not in ('mission','battle','contract','whisper','bounty','death','boss_defeated','tribute_theft','port_sabotage','noble_attack')
+    or kind not in ('mission','battle','contract','whisper','global_chat','bounty','death','boss_defeated','tribute_theft','port_sabotage','noble_attack')
     or jsonb_typeof(data) <> 'object' or length(action::text) > 12000 then
     raise exception 'invalid action';
   end if;
@@ -213,6 +213,9 @@ begin
   elsif kind = 'battle' then message := format('⚔ %s protagoniza un combate.', captain);
   elsif kind = 'contract' then message := format('📜 %s %s un contrato.', captain, case when data->>'completed' = 'true' then 'completa' else 'acepta' end);
   elsif kind = 'whisper' then message := format('🗣️ %s escucha un susurro.', captain);
+  elsif kind = 'global_chat' then
+    if length(coalesce(data->>'text','')) = 0 then raise exception 'chat message required'; end if;
+    message := format('%s: %s', captain, left(data->>'text', 280));
   end if;
   if message is not null then
     insert into public.global_events (event_id, type, text, location)
