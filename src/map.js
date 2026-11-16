@@ -1,3 +1,5 @@
+import { islandDetails } from "./islands_data.js";
+
 const WORLD = { width: 1200, height: 760 };
 const FIXED_ISLANDS = [
   { id: "dawn", name: "Isla Dawn", x: 190, y: 170, sea: "East Blue" },
@@ -17,7 +19,7 @@ const FIXED_ISLANDS = [
   { id: "ohara", name: "Isla Ohara", x: 200, y: 80, sea: "West Blue" },
   { id: "flevance", name: "Isla Flevance", x: 970, y: 80, sea: "North Blue" },
   { id: "torino", name: "Isla Torino", x: 970, y: 680, sea: "South Blue" },
-  { id: "kano", name: "Isla Kano", x: 200, y: 680, sea: "South Blue" },
+  { id: "kano", name: "Isla Kano", x: 200, y: 680, sea: "West Blue" },
   { id: "minion", name: "Isla Minion", x: 1015, y: 120, sea: "North Blue" },
   { id: "swallow", name: "Isla Swallow", x: 1035, y: 155, sea: "North Blue" },
   { id: "baterilla", name: "Baterilla", x: 1020, y: 610, sea: "South Blue" },
@@ -50,7 +52,7 @@ function prepareIslands(character) {
 }
 export function getMapIslands(character) {
   prepareIslands(character);
-  return islands.map((island) => ({ ...island }));
+  return islands.map((island) => ({ ...island, ...islandDetails(island) }));
 }
 export function newsLocation(entry, character) {
   if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };

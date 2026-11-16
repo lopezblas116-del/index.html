@@ -73,7 +73,7 @@ export function evaluateContract(character, contract, decision) {
   const objective = OBJECTIVES[contract.id] ?? contract.title;
   if (decision !== "accept") response = `${character.name} rechaza «${contract.title}» y sigue su propio rumbo.`;
   else if (accepted) {
-    if (!character.activeContracts.some((entry) => entry.id === contract.id && entry.status === "accepted")) character.activeContracts.unshift({ ...contract, acceptedAt: new Date().toISOString(), status: "accepted" });
+    if (!character.activeContracts.some((entry) => entry.id === contract.id && entry.status === "accepted")) character.activeContracts.unshift({ ...contract, acceptedAt: new Date().toISOString(), fromIsland: character.location?.island, status: "accepted" });
     character.objective = `Objetivo activo: ${objective}`;
     log(character, `📌 ${character.objective}`);
     response = `${character.name} acepta «${contract.title}»; sus rasgos encajan con el contrato.`;
@@ -84,6 +84,20 @@ export function evaluateContract(character, contract, decision) {
   return accepted;
 }
 const OBJECTIVES = { escort: "Escortar mercader", bounty: "Cazar recompensa", supply: "Abastecer isla" };
+export function resolvePortContracts(character, previousIsland) {
+  ensureBlockOneData(character);
+  if (character.status === "dead" || character.location?.atSea || !previousIsland || previousIsland === character.location?.island) return;
+  for (const contract of character.activeContracts) {
+    if (contract.status !== "accepted" || contract.fromIsland === character.location.island) continue;
+    contract.status = "completed";
+    contract.completedAt = new Date().toISOString();
+    character.berries += Math.max(0, Number(contract.reward) || 0);
+    const text = `${character.name} completa «${contract.title}» en ${character.location.island}.`;
+    log(character, `📜 ${text}`);
+    addNotice(character, "contract", "Contrato completado", text);
+  }
+  if (!character.activeContracts.some((contract) => contract.status === "accepted")) delete character.objective;
+}
 const CONSUMABLES = [
   { re: /manzana/i, name: "Manzana", heal: 10, desc: "Fruta fresca del puerto. Reconforta el cuerpo." },
   { re: /agua/i, name: "Agua", heal: 6, desc: "Agua potable. Imprescindible en alta mar." },
@@ -243,7 +257,7 @@ export function useChestItem(character, ref, action) {
   addNotice(character, "chest", "Cofre", message);
   return { ok: true, message };
 }
-export function initBlock1({ getCharacter, onChange } = {}) {
+export function initBlock1({ getCharacter, onChange, onPublicAction } = {}) {
   if (window.__oneLatamBlock1Initialized) return;
   window.__oneLatamBlock1Initialized = true;
   const update = (mutate) => {
@@ -270,6 +284,7 @@ export function initBlock1({ getCharacter, onChange } = {}) {
   }));
   document.addEventListener("onepiece:hud-contract-decision", (event) => update((character) => {
     const accepted = evaluateContract(character, event.detail?.contract, event.detail?.decision);
+    if (accepted) onPublicAction?.("contract", { island: character.location?.island }, character);
     return { toast: accepted ? "¡Contrato aceptado! Consulta tu bitácora" : character.contractNotice };
   }));
 }

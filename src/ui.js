@@ -50,10 +50,11 @@ export function renderPsychology(container, character, selection, onSuggest) {
 
 export function renderNewspaper(container, character, onInvestigate, onSuggest) {
   const world = character.world ?? {};
+  const shared = world.shared?.world;
   const sections = [
-    { label: "Crónica de la Era", items: world.news ?? [], empty: "No hay crónicas todavía." },
-    { label: "Necrológica", items: (world.pantheon ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · Generación ${entry.generation || 1}`, location: entry.location })), empty: "No se han registrado caídos." },
-    { label: "Carteles SE BUSCA", items: character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [], empty: "No hay carteles activos para este avatar." }
+    { label: "Crónica de la Era", items: [...(shared?.global_events ?? []), ...(world.news ?? [])], empty: "No hay crónicas todavía." },
+    { label: "Necrológica", items: [...(shared?.fallen_captains ?? []), ...(world.pantheon ?? [])].map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })), empty: "No se han registrado caídos." },
+    { label: "Carteles SE BUSCA", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "👑 YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." }
   ];
   const tabs = document.createElement("div");
   tabs.className = "one-hud-tabs";
@@ -271,7 +272,8 @@ export function renderGame(character) {
   if (byId("world-clock")) byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
   const pantheon = world.pantheon ?? [];
   renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `☠ ${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
-  renderList(byId("pantheon-modal-list"), pantheon, "Aún no hay leyendas registradas.", (legend) => `☠ ${legend.name} · ${legend.family} · Gen. ${legend.generation} · ${legend.faction} · ${legend.cause} · ${number(legend.reputation)} renombre`);
+  const sharedFallen = character.world?.shared?.world?.fallen_captains ?? [];
+  renderList(byId("pantheon-modal-list"), [...sharedFallen, ...pantheon], "Aún no hay leyendas registradas.", (legend) => `☠ ${legend.name} · ${legend.cause || "Legado del mar"} · ${legend.island || legend.location || "mar abierto"}${(legend.maps || []).map((map) => ` · Tesoro X:${map.x} Y:${map.y}`).join("")}${(legend.notes || []).map((note) => ` · ${note.clue}`).join("")}`);
   renderList(byId("news-list"), world.news ?? [], "El mar aguarda sus primeras noticias.", (entry) => entry.text ?? String(entry));
   if (byId("treasure-count")) byId("treasure-count").textContent = String((lineage.legacyChest ?? []).length);
   renderList(byId("treasure-list"), lineage.legacyChest ?? [], "El cofre espera su primera reliquia.", (item) => `✦ ${item}`);

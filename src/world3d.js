@@ -1,4 +1,5 @@
 import { getMapIslands } from "./map.js";
+import { routeFor } from "./game.js";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -55,6 +56,44 @@ function drawPoint(point, label, icon, color) {
   ctx.fillText(`${icon} ${label}`, p.x, p.y + 19);
   ctx.shadowBlur = 0;
 }
+function routeDestination() {
+  if (animation?.to) return animation.to;
+  if (character?.redirectTarget) return character.redirectTarget;
+  if (character?.mission?.status !== "complete") return null;
+  const route = routeFor(character.originSea);
+  return islands.find((island) => island.name === route[character.location.routeIndex + 1]);
+}
+function drawRoute(from, to) {
+  const dx = ((to.x - from.x + WIDTH * 1.5) % WIDTH) - WIDTH / 2;
+  const points = Array.from({ length: 49 }, (_, i) => radians({ x: (from.x + dx * i / 48 + WIDTH) % WIDTH, y: from.y + (to.y - from.y) * i / 48 }));
+  ctx.setLineDash([5, 6]);
+  traceLine(points, "#f4b41a", 2);
+  ctx.setLineDash([]);
+}
+function drawBoat(point, destination) {
+  const p = projectPoint(point);
+  if (!p.visible) return;
+  let angle = 0;
+  if (destination) {
+    const dx = ((destination.x - point.x + WIDTH * 1.5) % WIDTH) - WIDTH / 2;
+    const next = projectPoint({ x: (point.x + dx * 0.02 + WIDTH) % WIDTH, y: point.y + (destination.y - point.y) * 0.02 });
+    angle = Math.atan2(next.y - p.y, next.x - p.x) + Math.PI / 2;
+  }
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#f4b41a";
+  ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(7, 7); ctx.lineTo(0, 4); ctx.lineTo(-7, 7); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawSeaLabel(point, label) {
+  const p = projectPoint(point);
+  if (!p.visible) return;
+  ctx.fillStyle = "rgba(224,243,244,.68)";
+  ctx.font = "bold 11px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(label, p.x, p.y);
+}
 function render() {
   if (!ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
@@ -77,10 +116,18 @@ function render() {
   meridian(Math.PI, "#b75343", radius * 0.085);
   for (let lat = -Math.PI / 3; lat <= Math.PI / 3; lat += Math.PI / 6) parallel(lat, "rgba(210,240,240,.12)", 1);
   for (let lon = -Math.PI; lon < Math.PI; lon += Math.PI / 6) meridian(lon, "rgba(210,240,240,.12)", 1);
+  drawSeaLabel({ x: 120, y: 190 }, "EAST BLUE");
+  drawSeaLabel({ x: 120, y: 610 }, "WEST BLUE");
+  drawSeaLabel({ x: 950, y: 100 }, "NORTH BLUE");
+  drawSeaLabel({ x: 950, y: 650 }, "SOUTH BLUE");
   for (const island of islands) drawPoint(island, island.name, "■", "#a9cb78");
   const target = character?.navigationTarget;
   if (Number.isFinite(target?.x) && Number.isFinite(target?.y)) drawPoint(target, target.name || "Rumbo", "◎", "#f4b41a");
-  if (boatPosition) drawPoint(boatPosition, character?.name || "Carabela", "⛵", "#f4b41a");
+  if (boatPosition) {
+    const destination = routeDestination();
+    if (destination) drawRoute(boatPosition, destination);
+    drawBoat(boatPosition, destination);
+  }
   ctx.restore();
   ctx.beginPath();
   ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);

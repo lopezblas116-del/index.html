@@ -1,7 +1,8 @@
 import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, updateCrewLoyalty } from "./systems.js";
-import { resolvePortSuggestions } from "./block1.js";
+import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
 import { getMapIslands } from "./map.js";
+import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -43,10 +44,11 @@ const pick = (items) => items[rand(items.length)];
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const formatNum = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
 const traitsOf = (character) => [...(character.soulCard?.traits?.pros ?? []), ...(character.soulCard?.traits?.cons ?? [])].map((trait) => String(trait).toLowerCase());
-const routeFor = (sea) => ROUTES[sea] ?? ROUTES["East Blue"];
+export const routeFor = (sea) => ROUTES[sea] ?? ROUTES["East Blue"];
 const missionFor = (character, index = character.location.routeIndex) => {
   const island = routeFor(character.originSea)[index] ?? "Mar abierto";
-  return { island, title: MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
+  const details = getMapIslands(character).find((entry) => entry.name === island);
+  return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
 export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
@@ -140,7 +142,7 @@ export function loadGame() {
   catch { return null; }
 }
 export function saveGame(character) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(character)); return true; }
+  try { character.autonomy.lastSavedAt = Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(character)); return true; }
   catch { return false; }
 }
 export function addLog(character, message) {
@@ -188,7 +190,7 @@ function checkDeath(character, cause) {
   character.autonomy.paused = true;
   character.autonomy.mode = "paused";
   generateTreasureMap(character, "muerte");
-  if (character.systems.discoveries?.length && !character.systems.testament) draftTestament(character);
+  if ((character.systems.discoveries?.length || character.ancientLanguage?.fragments?.length) && !character.systems.testament) draftTestament(character);
   character.world.pantheon.unshift({ id: character.id, name: character.name, username: character.username, family: character.lineage.family, generation: character.lineage.generation, faction: character.faction, level: character.level, bounty: character.bounty, reputation: character.reputation, dream: character.soulCard.dream, cause, location: character.location.atSea ? undefined : character.location.island, achievements: [`Nivel ${character.level}`, character.location.island, ...(character.fruit ? [`Portador de ${character.fruit.name}`] : [])], time: new Date().toISOString() });
   character.world.pantheon = character.world.pantheon.slice(0, 30);
   addLog(character, `☠ ${character.name} ha caído (${cause}). Su nombre entra en el Panteón de Leyendas; su linaje continúa.`);
@@ -243,10 +245,21 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
   if (character.stats.health <= 0) checkDeath(character, `${rivalType}${dangerous ? " en aguas peligrosas" : " en batalla crítica"}`);
   return { wins, damage, rivalLevel, dead: character.status === "dead", technique: style };
 }
+export function confrontFugitive(character, name) {
+  if (character.status === "dead" || !character.location?.atSea || name !== "Arlong") return null;
+  return resolveCombat(character, name, true, false);
+}
 function completeMission(character) {
   const mission = character.mission;
   if (!mission || mission.status === "complete") return;
-  const rival = mission.enemy;
+  const boss = character.world?.shared?.world?.bosses?.find((entry) => entry.name === "Arlong");
+  if (mission.island === "Arlong Park" && boss && boss.status !== "active") {
+    mission.status = "complete";
+    mission.completed = (mission.completed || 0) + 1;
+    addLog(character, "Arlong ya no controla el puerto; la expedición continúa sin enfrentarlo de nuevo.");
+    return;
+  }
+  const rival = mission.island === "Arlong Park" ? "Arlong" : mission.enemy;
   const result = resolveCombat(character, rival, character.location.routeIndex >= 5, true);
   if (result.wins) {
     mission.status = "complete";
@@ -349,8 +362,12 @@ export function performAction(character, action) {
       const encounter = seaEncounter(character);
       if (encounter?.dead) checkDeath(character, encounter.enemy);
     }
-    if (character.status !== "dead") discoverAtSea(character);
+    if (character.status !== "dead") {
+      discoverAtSea(character);
+      discoverAncient(character);
+    }
     resolvePortSuggestions(character, previousIsland);
+    if (arrived) resolvePortContracts(character, previousIsland);
     if (arrived) updateCrewLoyalty(character, true);
   }
   advanceAdvancedSystems(character, { action, previousIsland });
@@ -384,6 +401,23 @@ export function autonomousTick(character) {
   const message = performAction(character, action);
   if (character.status !== "dead" && Math.random() < 0.12) addReputation(character, 1000, "rumores en el periódico");
   return { action, message };
+}
+export function simulateOffline(character, now = Date.now(), observer) {
+  const saved = Number(character.autonomy?.lastSavedAt);
+  if (!Number.isFinite(saved) || saved <= 0 || character.autonomy?.paused || character.status === "dead") return { ticks: 0, capped: false };
+  const elapsed = Math.max(0, now - saved);
+  const maxElapsed = 8 * 60 * 60 * 1000;
+  const ticks = Math.floor(Math.min(elapsed, maxElapsed) / 7500);
+  let completed = 0;
+  while (completed < ticks && character.status !== "dead") {
+    const before = observer?.before?.(character);
+    autonomousTick(character);
+    observer?.after?.(before, character);
+    completed += 1;
+  }
+  character.autonomy.lastSavedAt = now;
+  if (completed) addLog(character, `⏳ Simulación fuera de línea: ${completed} ciclos${elapsed > maxElapsed ? " (límite: 8 horas)" : ""}.`);
+  return { ticks: completed, capped: elapsed > maxElapsed };
 }
 function decideAction(character) {
   const hp = character.stats.health / character.stats.maxHealth;
@@ -442,6 +476,7 @@ export function createHeir(predecessor, { name, username } = {}) {
   heir.bounty = heir.faction === "Pirata" ? heir.lineage.inheritedReputation : 0;
   heir.world = predecessor.world;
   heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], discoveries: [...(predecessor.systems?.discoveries ?? [])], dangerMapCreated: false };
+  heir.ancientLanguage = structuredClone(ensureAncientLanguage(predecessor));
   heir.crew = [...(predecessor.crew ?? [])];
   heir.world.day += 1;
   heir.log = [...predecessor.log.slice(0, 25)];

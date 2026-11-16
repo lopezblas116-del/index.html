@@ -1,4 +1,5 @@
 import { ensureBlockOneData } from "./block1.js";
+import { getMapIslands } from "./map.js";
 
 const GOODS = {
   wood: { label: "Madera", price: 20, kind: "items" },
@@ -16,9 +17,11 @@ const hash = (value) => [...String(value)].reduce((result, char) => (result * 31
 export function marketPrices(character) {
   const port = character.location?.island || "Puerto";
   const day = Number(character.world?.day) || 0;
+  const island = getMapIslands(character).find((entry) => entry.name === port);
   return Object.fromEntries(Object.entries(GOODS).map(([id, good]) => {
     const change = (hash(`${port}:${day}:${id}`) % 41 - 20) / 100;
-    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change))), sell: Math.max(1, Math.round(good.price * (1 + change) * 0.6)) }];
+    const specialty = island?.specialty === id ? 0.75 : 1;
+    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty * 0.6)) }];
   }));
 }
 export function trade(character, id, action) {

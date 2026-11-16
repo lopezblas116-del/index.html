@@ -1,4 +1,5 @@
 import { getMapIslands } from "./map.js";
+import { ensureAncientLanguage } from "./ancient_language.js";
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const hash = (value) => [...String(value)].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
@@ -35,6 +36,7 @@ export function ensureAdvancedSystems(character) {
   character.soulCard ??= { dream: "Libertad", traits: { pros: [], cons: [] } };
   character.soulCard.alignment ??= "Libertad";
   character.soulCard.hiddenTalent ??= ["Cartografía", "Instinto de Tormenta", "Oído Antiguo"][hash(character.id ?? character.name) % 3];
+  ensureAncientLanguage(character);
   return character;
 }
 
@@ -237,7 +239,7 @@ export function draftTestament(character) {
   const writtenAt = new Date().toISOString();
   const discoveries = [...character.systems.discoveries];
   const text = `Yo, ${character.name}, dejo mi cofre y sus mapas a ${crew}. Que mi linaje continúe el viaje desde ${character.location?.island ?? "el último puerto"}.${discoveries.map((entry) => ` Pista heredada: ${entry.clue}`).join("")}`;
-  character.systems.testament = { text, writtenAt, beneficiary: crew, discoveries };
+  character.systems.testament = { text, writtenAt, beneficiary: crew, discoveries, ancientLanguage: structuredClone(ensureAncientLanguage(character)) };
   character.log.unshift({ time: writtenAt, message: `📜 ${character.name} redacta su testamento.` });
   return character.systems.testament;
 }
