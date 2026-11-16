@@ -447,7 +447,10 @@ function islandFrame(island, progress = 1, now = 0, sceneRect = null) {
   ctx.restore();
 }
 function sceneKey(island) {
-  return JSON.stringify([island.id, atIsland(island), character?.avatarConfig || character?.appearance, character?.avatarActivity]);
+  return JSON.stringify([
+    island.id, atIsland(island), character?.avatarConfig || character?.appearance,
+    character?.avatarActivity, character?.location?.scenePosition, character?.location?.localVenue
+  ]);
 }
 function renderLocalIsland(now = performance.now()) {
   if (!localIsland) return;

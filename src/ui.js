@@ -2,7 +2,7 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { drawPixelAvatar, npcAppearanceFor, ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -76,7 +76,7 @@ export function renderIslandView(character) {
   islandCharacter = character;
   if (!islandView || !character) return;
   const present = isAtIsland(character, islandView);
-  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}`;
+  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}`;
   if (key === islandRenderKey) return;
   islandRenderKey = key;
   byId("island-title").textContent = islandView.landmark || islandView.name;
@@ -86,31 +86,29 @@ export function renderIslandView(character) {
     : "Vista previa: el avatar no está atracado aquí. Sugiere el rumbo desde el mapa.";
   const hotspots = byId("island-hotspots");
   hotspots.replaceChildren();
-  const actions = [
-    { id: "tavern", label: "Taberna" },
-    { id: "market", label: "Mercado" },
-    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "Mercado negro" }] : []),
-    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "Ruinas" }] : []),
-    { id: "chest", label: "Cofre" }
-  ];
-  for (const action of actions) {
+  for (const poi of islandView.pois || []) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "island-hotspot";
-    button.style.left = `${ISLAND_HOTSPOTS[action.id].x / ISLAND_SCENE_WIDTH * 100}%`;
-    button.style.top = `${ISLAND_HOTSPOTS[action.id].y / ISLAND_SCENE_HEIGHT * 100}%`;
-    button.append(iconNode(action.id), document.createTextNode(action.label));
+    button.style.left = `${poi.x / ISLAND_SCENE_WIDTH * 100}%`;
+    button.style.top = `${poi.y / ISLAND_SCENE_HEIGHT * 100}%`;
+    button.setAttribute("aria-label", `${poi.name}; sugerencia opcional, el avatar decide si la sigue`);
+    const icon = poi.type === "tavern" || poi.type === "inn" ? "tavern"
+      : poi.type === "market" || poi.type === "restaurant" || poi.type === "kitchen" ? "market"
+        : poi.type === "dock" || poi.type === "shipyard" ? "ship"
+          : poi.type === "plaza" || poi.type === "landmark" ? "news"
+            : poi.type === "base" || poi.type === "weapon_shop" ? "bounty" : "chest";
+    button.append(iconNode(icon), document.createTextNode(poi.name));
     button.addEventListener("click", () => {
       const current = isAtIsland(islandCharacter, islandView);
-      if (action.id !== "chest" && !current) {
+      if (!current) {
         byId("island-message").textContent = "Este lugar solo se puede visitar cuando el avatar esté atracado en esta isla.";
-      } else if (action.id === "poneglyph") {
-        const knowledge = islandCharacter.ancientLanguage?.knowledge || 0;
-        byId("island-message").textContent = `Las ruinas guardan inscripciones antiguas. Conocimiento actual: ${knowledge}%. Los fragmentos se descubren durante la exploración.`;
       } else {
-        document.dispatchEvent(new CustomEvent("onepiece:open-island-panel", { detail: { panel: action.id } }));
+        document.dispatchEvent(new CustomEvent("onepiece:local-suggestion", { detail: { islandId: islandView.id, poiId: poi.id } }));
+        byId("island-message").textContent = `Sugerencia registrada. ${islandCharacter.name} decidirá según su ánimo y necesidades.`;
       }
     });
+    button.disabled = !isAtIsland(islandCharacter, islandView);
     hotspots.append(button);
   }
   document.dispatchEvent(new CustomEvent("onepiece:island-layout"));

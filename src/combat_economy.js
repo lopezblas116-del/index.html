@@ -1,7 +1,8 @@
 import { ensureBlockOneData } from "./block1.js";
 import { getMapIslands } from "./map.js";
-import { cargoCapacity } from "./races.js";
+import { cargoCapacity, raceTreatmentAtPort } from "./race_system.js";
 import { awardBerries } from "./gm_engine.js";
+import { assessPortTax, isPortBlockaded } from "./geopolitics.js";
 
 const GOODS = {
   wood: { label: "Madera", price: 20, kind: "items" },
@@ -21,16 +22,22 @@ export function marketPrices(character) {
   const port = character.location?.island || "Puerto";
   const day = Number(character.world?.day) || 0;
   const island = getMapIslands(character).find((entry) => entry.name === port);
+  const { portPriceModifier } = raceTreatmentAtPort(character.race, island);
   return Object.fromEntries(Object.entries(GOODS).map(([id, good]) => {
     const change = (hash(`${port}:${day}:${id}`) % 41 - 20) / 100;
     const specialty = island?.specialty === id ? 0.75 : 1;
-    const discrimination = island?.segregated && character.race && character.race !== "human" ? 1.5 : 1;
+    const discrimination = portPriceModifier;
     return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty * discrimination)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty / discrimination * 0.6)) }];
   }));
 }
-export function trade(character, id, action) {
+export function trade(character, id, action, localWorld) {
   ensureBlockOneData(character);
   if (character.status === "dead" || character.location?.atSea) return { ok: false, message: "El mercado solo está disponible en puerto." };
+  const island = getMapIslands(character).find((entry) => entry.name === character.location.island);
+  const control = localWorld?.islands_control?.find((entry) => entry.island_id === island?.id);
+  if (localWorld && isPortBlockaded(localWorld, island?.id, character.world?.day, character.id)) {
+    return { ok: false, message: "El bloqueo naval impide operar en este puerto." };
+  }
   const prices = marketPrices(character);
   if (!Object.hasOwn(prices, id) || !["buy", "sell"].includes(action)) return { ok: false, message: "Operación de mercado inválida." };
   const good = prices[id];
@@ -39,13 +46,17 @@ export function trade(character, id, action) {
   if (action === "buy" && carried >= cargoCapacity(character.race)) return { ok: false, message: "La capacidad de carga de esta raza está completa." };
   if (action === "buy" && id === "reinforcedHull" && character.race === "fishman" && getMapIslands(character).find((island) => island.name === character.location.island)?.segregated) return { ok: false, message: "El astillero rechaza atender a esta raza en este puerto." };
   if (action === "buy") {
-    if (character.berries < good.buy) return { ok: false, message: "No tienes suficientes Berries." };
-    character.berries -= good.buy;
+    const taxRate = control?.owner_id && control.owner_id === character.id ? 0 : Math.max(0, Math.min(20, Number(control?.tax_rate) || 0));
+    const taxAmount = Math.floor(good.buy * taxRate / 100);
+    const total = good.buy + taxAmount;
+    if (character.berries < total) return { ok: false, message: `Necesitas ฿${total}, incluido el impuesto portuario.` };
+    const tax = localWorld ? assessPortTax(localWorld, island?.id, good.buy, character.id) : { tax: 0 };
+    character.berries -= total;
     if (good.kind === "ship") character.ship.reinforced = true;
     else if (good.kind === "water") inv.water = (Number(inv.water) || 0) + 1;
     else inv[good.kind].push(good.label);
-    log(character, `⚓ Compra ${good.label} por ฿${good.buy} en ${character.location.island}.`);
-    return { ok: true, message: `Compraste ${good.label} por ฿${good.buy}.` };
+    log(character, `⚓ Compra ${good.label} por ฿${good.buy}${tax.tax ? ` + ฿${tax.tax} de impuesto` : ""} en ${character.location.island}.`);
+    return { ok: true, message: `Compraste ${good.label} por ฿${total}${tax.tax ? ` (impuesto: ฿${tax.tax})` : ""}.` };
   }
   const ref = { kind: good.kind === "equipment" ? "equipment" : "item", name: good.label };
   if (character.whisper.priorityItems.some((item) => item.kind === ref.kind && item.name === ref.name)) {
@@ -59,9 +70,10 @@ export function trade(character, id, action) {
     if (index < 0) return { ok: false, message: `No tienes ${good.label} para vender.` };
     inv[good.kind].splice(index, 1);
   }
-  const earned = awardBerries(character, good.sell);
+  const tax = localWorld ? assessPortTax(localWorld, island?.id, good.sell, character.id) : { net: good.sell, tax: 0 };
+  const earned = awardBerries(character, tax.net);
   log(character, `⚓ Vende ${good.label} por ฿${earned} en ${character.location.island}.`);
-  return { ok: true, message: `Vendiste ${good.label} por ฿${earned}.` };
+  return { ok: true, message: `Vendiste ${good.label} por ฿${earned}${tax.tax ? ` (impuesto: ฿${tax.tax})` : ""}.` };
 }
 
 export function seaEncounter(character, random = Math.random) {

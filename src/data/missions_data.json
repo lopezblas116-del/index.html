@@ -7,6 +7,13 @@
   },
   "missionNames": ["Proteger la aldea", "Recuperar el mapa de navegación", "Defender el astillero", "Escoltar el barco restaurante", "Liberar la isla", "El asalto de Loguetown", "Cruzar la Reverse Mountain", "Entrar al Paraíso", "Conquistar el Nuevo Mundo"],
   "enemies": ["piratas rivales", "Marines", "Cazarrecompensas", "agentes del Gobierno", "una banda local"],
+  "defaultDistricts": ["Barrio del puerto", "Plaza central", "Distrito comercial"],
+  "defaultPois": [
+    { "id": "inn", "name": "Posada del puerto", "type": "tavern", "x": 112, "y": 129 },
+    { "id": "market", "name": "Mercado local", "type": "market", "x": 515, "y": 129 },
+    { "id": "plaza", "name": "Plaza del puerto", "type": "plaza", "x": 320, "y": 205 },
+    { "id": "armory", "name": "Armería", "type": "weapon_shop", "x": 525, "y": 210 }
+  ],
   "worldNews": [
     "la Marina interceptó una ruta pirata cerca de Loguetown.",
     "un Cazarrecompensas entregó a un capitán buscado.",

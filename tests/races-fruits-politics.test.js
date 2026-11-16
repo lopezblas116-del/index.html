@@ -20,6 +20,7 @@ test("race selection keeps rare bloodlines hidden and applies human learning", (
   assert.equal(character({ race: "human" }).racialLearning.talentBonus, 0.1);
   assert.equal(character({ race: "giant" }).stats.maxHealth, 140);
   assert.equal(character({ race: "mink" }).stats.agility, 7);
+  assert.equal(character({ race: "threeeye" }).race, "threeeye");
   const giant = character({ race: "giant", originSea: "East Blue" });
   giant.location.routeIndex = 5;
   giant.mission.status = "complete";

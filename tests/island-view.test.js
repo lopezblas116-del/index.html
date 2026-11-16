@@ -19,6 +19,22 @@ test("each mapped island has its own stable scene and island-specific options", 
   assert.ok(!islands.find((item) => item.id === "dawn").localScene.options.includes("blackmarket"));
 });
 
+test("requested island venues are loaded from island data with medium-map coordinates", () => {
+  const islands = getMapIslands();
+  const expected = {
+    dawn: ["Taberna de Makino", "Muelle de Partida", "Molino de Viento", "Cabaña de Dadan"],
+    shells: ["Base Militar del Capitán Morgan", "Patio de Ejecuciones", "Mercado Urbano"],
+    baratie: ["Cubierta Principal", "Cocina de Zeff", "Comedor Flotante"],
+    arlong: ["Torre de Arlong", "Plaza Conomi", "Astillero de Gyojins"],
+    loguetown: ["Plaza de la Plataforma de Ejecución", "Tienda de Katanas de Ipponmatsu", "Bar Gold Roger"]
+  };
+  for (const [id, names] of Object.entries(expected)) {
+    const points = islands.find((island) => island.id === id).pois;
+    assert.deepEqual(points.map((point) => point.name), names);
+    assert.ok(points.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y)));
+  }
+});
+
 test("scene renderer uses each island design without changing game state", () => {
   const calls = [];
   const ctx = { fillRect: (...args) => calls.push(args), createLinearGradient: () => ({ addColorStop() {} }) };

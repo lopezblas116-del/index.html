@@ -32,14 +32,22 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
       if (saved) {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.islands_control) || !Array.isArray(parsed.global_events) || !Array.isArray(parsed.bounties_leaderboard) || !Array.isArray(parsed.fallen_captains) || !Array.isArray(parsed.bosses)) throw new Error("Mundo local inválido.");
+        for (const island of parsed.islands_control) {
+          island.tax_rate = Math.max(0, Math.min(20, Number(island.tax_rate) || 0));
+          island.taxes = Math.max(0, Number(island.taxes) || 0);
+          island.treasury = Math.max(0, Number(island.treasury) || 0);
+          island.blockade_until_day = Math.max(0, Number(island.blockade_until_day) || 0);
+          island.besieged_by ??= null;
+        }
         parsed.devil_fruits ??= createLocalFruitLedger();
         world = parsed;
       }
     } catch { status = "offline"; error = "No se pudo leer el mundo local guardado."; }
   }
   function saveLocalWorld() {
-    if (configured || configError || !storage) return;
-    if (!writeStorage(worldKey, JSON.stringify(world), storage)) { status = "offline"; error = "No se pudo guardar el mundo local."; }
+    if (configured || configError || !storage) return false;
+    if (!writeStorage(worldKey, JSON.stringify(world), storage)) { status = "offline"; error = "No se pudo guardar el mundo local."; return false; }
+    return true;
   }
   if (configured && storage) {
     try {
@@ -163,6 +171,26 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
         world.global_events.unshift({ event_id: `fruit-rebirth-${day}`, type: "fruit", text: "🌊 Una Akuma no Mi reencarnó en algún punto remoto del mar.", created_at: new Date().toISOString() });
       }
       if (changed || reborn) { saveLocalWorld(); notify(); }
+    },
+    persistLocalWorld() {
+      if (configured || configError) return false;
+      const saved = saveLocalWorld();
+      notify();
+      return saved;
+    },
+    mutateLocalWorld(callback) {
+      if (configured || configError || typeof callback !== "function") return null;
+      const previous = world;
+      const candidate = JSON.parse(JSON.stringify(world));
+      const result = callback(candidate);
+      world = candidate;
+      if (!saveLocalWorld()) {
+        world = previous;
+        notify();
+        return { ok: false, message: error || "No se pudo guardar el mundo local." };
+      }
+      notify();
+      return result;
     },
     async claimFruit(id, captainId, point) {
       if (configured) {

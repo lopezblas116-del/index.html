@@ -26,12 +26,11 @@ export function createScenePosition(islandId, avatarId) {
   return { x: 212 + seed % 212, y: 224 + (seed >>> 8) % 35 };
 }
 export function avatarScenePosition(islandId, avatarId, activity = "idle", savedPosition) {
+  if (Number.isFinite(savedPosition?.x) && Number.isFinite(savedPosition?.y)) return { x: savedPosition.x, y: savedPosition.y };
   if (activity === "tavern") return { x: 109, y: 130 };
   if (activity === "resting") return { x: 487, y: 325 };
   if (activity === "combat") return { x: 320, y: 228 };
-  return Number.isFinite(savedPosition?.x) && Number.isFinite(savedPosition?.y)
-    ? { x: savedPosition.x, y: savedPosition.y }
-    : createScenePosition(islandId, avatarId);
+  return createScenePosition(islandId, avatarId);
 }
 export function newsLocation(entry, character) {
   if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };

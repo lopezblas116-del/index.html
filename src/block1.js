@@ -1,6 +1,8 @@
 import { CONTRACTS, STORAGE_KEYS } from "./config.js";
 import { writeJSON } from "./storage_adapter.js";
 import { awardBerries } from "./gm_engine.js";
+import { assessPortTax, isPortBlockaded } from "./geopolitics.js";
+import { getMapIslands } from "./map.js";
 
 const SAVE_KEY = STORAGE_KEYS.save;
 const TRAIT_LABELS = { valiente: "Valiente", prudente: "Prudente", astuto: "Astuto", impulsivo: "Impulsivo", leal: "Leal", agresivo: "Agresivo" };
@@ -93,15 +95,19 @@ export function evaluateContract(character, contract, decision) {
   return accepted;
 }
 const OBJECTIVES = { escort: "Escortar mercader", bounty: "Cazar recompensa", supply: "Abastecer isla" };
-export function resolvePortContracts(character, previousIsland) {
+export function resolvePortContracts(character, previousIsland, localWorld = character?.world?.shared?.status === "local" ? character.world.shared.world : null) {
   ensureBlockOneData(character);
   if (character.status === "dead" || character.location?.atSea || !previousIsland || previousIsland === character.location?.island) return;
+  const island = getMapIslands(character).find((entry) => entry.name === character.location.island);
+  if (localWorld && isPortBlockaded(localWorld, island?.id, character.world?.day, character.id)) return;
   for (const contract of character.activeContracts) {
     if (contract.status !== "accepted" || contract.fromIsland === character.location.island) continue;
     contract.status = "completed";
     contract.completedAt = new Date().toISOString();
-    awardBerries(character, Math.max(0, Number(contract.reward) || 0));
-    const text = `${character.name} completa «${contract.title}» en ${character.location.island}.`;
+    const gross = Math.max(0, Number(contract.reward) || 0);
+    const tax = localWorld ? assessPortTax(localWorld, island?.id, gross, character.id) : { net: gross, tax: 0 };
+    awardBerries(character, tax.net);
+    const text = `${character.name} completa «${contract.title}» en ${character.location.island}${tax.tax ? `; ฿${tax.tax} se destina al impuesto portuario` : ""}.`;
     log(character, `📜 ${text}`);
     addNotice(character, "contract", "Contrato completado", text);
   }

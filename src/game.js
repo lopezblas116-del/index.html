@@ -3,8 +3,8 @@ import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
 import { createScenePosition, getMapIslands } from "./map.js";
 import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
-import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./races.js";
-import { fruitNear } from "./devil_fruits.js";
+import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./race_system.js";
+import { createHakiProfile, ensureHakiProfile, fruitNear } from "./power_systems.js";
 import { maybeCaptureAtAuction } from "./politics.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 import { PULSE_MS, STORAGE_KEYS } from "./config.js";
@@ -13,7 +13,7 @@ import { advanceClock, MINUTES_PER_PULSE } from "./time_engine.js";
 import { advanceGM, awardBerries } from "./gm_engine.js";
 import {
   chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome,
-  resolvePortDilemma, writeDailyReflection
+  resolveLocalActivity, resolvePortDilemma, writeDailyReflection
 } from "./ai_engine.js";
 
 const ERAS = [
@@ -71,7 +71,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     logPose: { alignment: 0, required: 3 },
     mission: { ...missionFor({ originSea, location: { routeIndex: 0 } }), completed: 0 },
     fruit: null,
-    haki: { busoshoku: false, kenbunshoku: false, haoshoku: false, conquerorPotential, grandLineSince: null, survivalEvents: 0 },
+    haki: createHakiProfile(conquerorPotential),
     bounty: species === "lunarian" ? 500_000 : 0,
     reputation: species === "lunarian" ? 500_000 : 0,
     berries: 100,
@@ -120,8 +120,7 @@ function normalize(character) {
   character.soulCard.traits.pros ??= [];
   character.soulCard.traits.cons ??= [];
   character.soulCard.latentHaki ??= Boolean(character.haki?.conquerorPotential);
-  character.haki ??= { busoshoku: false, kenbunshoku: false, haoshoku: false };
-  character.haki = { ...character.haki, busoshoku: Boolean(character.haki.busoshoku), kenbunshoku: Boolean(character.haki.kenbunshoku), haoshoku: Boolean(character.haki.haoshoku), survivalEvents: Number(character.haki.survivalEvents) || 0 };
+  character.haki = ensureHakiProfile(character.haki);
   character.race = normalizeRace(character.race, { allowRare: true });
   character.raceHunt ??= { exposed: isRacePursued(character.race), alertLevel: character.race === "lunarian" ? "active" : "latent" };
   character.racialLearning ??= { talentBonus: character.race === "human" ? 0.1 : 0 };
@@ -436,6 +435,15 @@ export function performAction(character, action, { availableFruitIds } = {}) {
   character.avatarActivity = action === "rest" ? "resting" : action === "navigate" ? "navigating" : "idle";
   if (action === "navigate") {
     const arrived = !character.location.atSea && (previousIsland !== character.location.island || previousAtSea);
+    if (arrived) {
+      delete character.location.localTarget;
+      delete character.location.localVenue;
+      delete character.localSuggestion;
+      character.location.scenePosition = createScenePosition(
+        getMapIslands(character).find((island) => island.name === character.location.island)?.id || character.location.island,
+        character.id
+      );
+    }
     if (character.status !== "dead" && (arrived || character.location.atSea)) {
       const encounter = seaEncounter(character);
       if (encounter) character.avatarActivity = "combat";
@@ -494,9 +502,11 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);
-  const action = chooseAutonomousAction(character);
-  addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
-  const message = performAction(character, action, { availableFruitIds });
+  const localActivity = resolveLocalActivity(character, Math.random, { advanceNeeds: true });
+  const action = localActivity ? "local" : chooseAutonomousAction(character);
+  if (localActivity) addLog(character, `Decisión autónoma local: ${localActivity.message}`);
+  else addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
+  const message = localActivity?.message ?? performAction(character, action, { availableFruitIds });
   if (character.status !== "dead" && character.crew?.length && Math.random() < 0.12) {
     const member = pick(character.crew);
     const change = character.nauticalStress?.value > 70 ? -2 : 1;
@@ -540,6 +550,11 @@ function parseWhisper(text) {
 export function sendWhisper(character, text, random = Math.random) {
   if (character.status === "dead") return { obeyed: false, action: null };
   const phrase = String(text).trim().slice(0, 160);
+  const localPriority = resolveLocalActivity(character, random, { prioritizeOnly: true });
+  if (localPriority) {
+    addLog(character, `El susurro «${phrase}» queda pendiente: ${character.name} prioriza una necesidad inmediata y decide por sí mismo.`);
+    return { obeyed: false, deferred: true, action: localPriority.action };
+  }
   const action = parseWhisper(phrase);
   if (!action) { addLog(character, `El susurro «${phrase}» no fue comprendido.`); return { obeyed: false, action: null }; }
   const { aligned, against } = evaluateWhisper(character, action);

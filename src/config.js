@@ -7,14 +7,17 @@ export const PALETTE = Object.freeze({
 export const STORAGE_KEYS = Object.freeze({
   save: "one-latam-rpg-beta-1",
   chat: "one-latam-global-chat-v1",
-  settings: "one-latam-settings-v1"
+  settings: "one-latam-settings-v1",
+  gmPin: "one-latam-local-gm-pin-v1"
 });
 
 export const PULSE_MS = 75_000;
 
 export const AI_CONFIG = Object.freeze({
   portDilemmaChance: 0.45,
-  maxDilemmaHistory: 60
+  maxDilemmaHistory: 60,
+  fatigueThreshold: 68,
+  hungerThreshold: 72
 });
 
 export const GM_CONFIG = Object.freeze({

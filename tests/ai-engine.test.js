@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome, resolvePortDilemma, writeDailyReflection } from "../src/ai_engine.js";
+import { chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome, resolveLocalActivity, resolvePortDilemma, writeDailyReflection } from "../src/ai_engine.js";
 import { createCharacter, sendWhisper } from "../src/game.js";
 
 test("legacy avatars receive a bounded psyche and personality-weighted decisions", () => {
@@ -45,4 +45,18 @@ test("combat outcomes update mood and honor in the persistent psyche", () => {
   assert.equal(captain.psyche.morality.honor, honor + 2);
   recordActionOutcome(captain, "combat", { wins: false });
   assert.equal(captain.psyche.mood, "Vengativo");
+});
+
+test("urgent fatigue defers whispers and the avatar walks to its data-driven local venue", () => {
+  const captain = createCharacter({ name: "Navegante" });
+  captain.psyche.needs.fatigue = 70;
+  const whisper = sendWhisper(captain, "entrena", () => 0);
+  assert.equal(whisper.deferred, true);
+  assert.equal(captain.location.localTarget.name, "Taberna de Makino");
+  resolveLocalActivity(captain, () => 0);
+  const visit = resolveLocalActivity(captain, () => 0);
+  assert.match(visit.message, /entra en Taberna de Makino/);
+  assert.equal(captain.location.localVenue.id, "makino-tavern");
+  assert.equal(captain.location.scenePosition.x, 112);
+  assert.ok(captain.psyche.diary[0].text.includes("Taberna de Makino"));
 });

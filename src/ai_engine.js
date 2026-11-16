@@ -1,5 +1,6 @@
 import { AI_CONFIG } from "./config.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
+import { getMapIslands } from "./map.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 
 export const MOODS = Object.freeze(["Eufórico", "Cauteloso", "Ambicioso", "Melancólico", "Vengativo"]);
@@ -32,6 +33,11 @@ export function ensurePsyche(character) {
   character.psyche.lastReflectionDay = Number.isInteger(character.psyche.lastReflectionDay)
     ? character.psyche.lastReflectionDay
     : -1;
+  const needs = character.psyche.needs;
+  character.psyche.needs = {
+    fatigue: clamp(needs?.fatigue),
+    hunger: clamp(needs?.hunger)
+  };
   return character.psyche;
 }
 
@@ -121,6 +127,100 @@ export function evaluateWhisper(character, action) {
     (action === "navigate" && psyche.mood === "Cauteloso" && character.stats.health < character.stats.maxHealth * 0.4) ||
     traits.includes("rebelde");
   return { aligned, against };
+}
+
+function satisfyLocalNeed(character, target) {
+  const psyche = ensurePsyche(character);
+  const { needs } = psyche;
+  if (target.type === "tavern" || target.type === "inn") {
+    const recovered = Math.min(20, needs.fatigue);
+    needs.fatigue = Math.max(12, needs.fatigue - 58);
+    character.stats.health = Math.min(character.stats.maxHealth, character.stats.health + 8);
+    character.avatarActivity = "resting";
+    return `descansa en ${target.name} y recupera ${Math.round(recovered)} puntos de energía`;
+  }
+  if (["market", "restaurant", "kitchen"].includes(target.type)) {
+    if (Number(character.inventory?.provisions) > 0) {
+      character.inventory.provisions -= 1;
+      needs.hunger = Math.max(8, needs.hunger - 65);
+      character.avatarActivity = "tavern";
+      return `compra una comida en ${target.name} y consume una provisión`;
+    }
+    if (Number(character.berries) >= 20) {
+      character.berries -= 20;
+      needs.hunger = Math.max(12, needs.hunger - 50);
+      character.avatarActivity = "tavern";
+      return `compra un plato en ${target.name} por ฿20`;
+    }
+    character.avatarActivity = "idle";
+    needs.hunger = Math.max(0, needs.hunger - 8);
+    return `visita ${target.name}, pero no puede pagar alimentos`;
+  }
+  character.avatarActivity = "inspecting";
+  psyche.mood = "Ambicioso";
+  return `inspecciona ${target.name} por curiosidad y ambición`;
+}
+
+export function resolveLocalActivity(character, random = Math.random, { advanceNeeds = false, prioritizeOnly = false } = {}) {
+  if (!character || character.status === "dead" || character.captured) return null;
+  const psyche = ensurePsyche(character);
+  if (advanceNeeds) {
+    psyche.needs.fatigue = clamp(psyche.needs.fatigue + 1.5);
+    psyche.needs.hunger = clamp(psyche.needs.hunger + 1);
+  }
+  if (character.location?.atSea) return null;
+  const island = getMapIslands(character).find((entry) => entry.name === character.location?.island);
+  if (!island) return null;
+  if (character.location.localTarget) {
+    const target = character.location.localTarget;
+    target.progress = Math.min(2, (Number(target.progress) || 0) + 1);
+    const start = target.from || character.location.scenePosition || target.position;
+    const blend = target.progress / 2;
+    character.location.scenePosition = {
+      x: start.x + (target.position.x - start.x) * blend,
+      y: start.y + (target.position.y - start.y) * blend
+    };
+    character.avatarActivity = "walking";
+    if (target.progress < 2) return { action: "walking", message: `${character.name} cruza las calles rumbo a ${target.name}.` };
+    character.location.scenePosition = { ...target.position };
+    character.location.localVenue = { id: target.id, name: target.name, type: target.type };
+    delete character.location.localTarget;
+    delete character.localSuggestion;
+    const experience = satisfyLocalNeed(character, target);
+    const corrected = `[BITÁCORA · ${psyche.mood}] ${character.name} entra en ${target.name}: ${experience}.`;
+    character.log.unshift({ time: new Date().toISOString(), message: corrected });
+    character.log = character.log.slice(0, 80);
+    psyche.diary.unshift({ day: Number(character.world?.day) || 0, location: island.name, mood: psyche.mood, text: corrected });
+    psyche.diary = psyche.diary.slice(0, 30);
+    return { action: target.type, message: corrected };
+  }
+  const { fatigue, hunger } = psyche.needs;
+  let requiredType = null;
+  if (fatigue >= AI_CONFIG.fatigueThreshold) requiredType = "rest";
+  else if (hunger >= AI_CONFIG.hungerThreshold) requiredType = "food";
+  else if (prioritizeOnly) return null;
+  const traits = traitsOf(character);
+  const cautious = traits.some((trait) => ["prudente", "cauteloso", "astuto"].includes(trait)) ||
+    psyche.mood === "Cauteloso";
+  const bounty = Number(character.bounty) || 0;
+  const candidates = island.pois.filter((poi) => {
+    if (requiredType === "rest") return ["tavern", "inn"].includes(poi.type);
+    if (requiredType === "food") return ["market", "restaurant", "kitchen"].includes(poi.type);
+    if (character.localSuggestion && poi.id === character.localSuggestion) return !((poi.guarded || poi.type === "base") && cautious && bounty > 0);
+    if ((poi.guarded || poi.type === "base") && cautious && bounty > 0) return false;
+    if (poi.type === "base" || poi.type === "weapon_shop") return psyche.mood === "Ambicioso" || character.soulCard?.dream === "Poder";
+    return false;
+  });
+  if (!candidates.length) return null;
+  if (!requiredType && !character.localSuggestion && Number(random()) >= 0.12) return null;
+  const destination = character.localSuggestion
+    ? candidates.find((poi) => poi.id === character.localSuggestion) || candidates[0]
+    : candidates[Math.floor(Math.min(0.999999, Math.max(0, Number(random()) || 0)) * candidates.length)];
+  const from = character.location.scenePosition || { x: 320, y: 240 };
+  character.location.localTarget = { ...destination, position: { x: destination.x, y: destination.y }, from, progress: 0 };
+  character.location.localVenue = null;
+  character.avatarActivity = "walking";
+  return { action: "walking", message: `${character.name} decide caminar por ${island.name} hacia ${destination.name}.` };
 }
 
 function choiceWeight(choice, morality) {

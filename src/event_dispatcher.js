@@ -4,7 +4,10 @@ export const EVENT_TYPES = Object.freeze({
   newsArticle: "news-article",
   psycheUpdate: "psyche-update",
   worldEvent: "world-event",
-  gmEvent: "gm-event"
+  gmEvent: "gm-event",
+  yonkouDeclared: "YONKOU_DECLARED",
+  busterCallStarted: "BUSTER_CALL_STARTED",
+  islandConquered: "ISLAND_CONQUERED"
 });
 
 const TYPES = new Set(Object.values(EVENT_TYPES));
@@ -28,6 +31,9 @@ function validDetail(type, detail) {
     return typeof detail.id === "string" && typeof detail.title === "string" &&
       typeof detail.text === "string" && typeof detail.location === "string";
   }
+  if (type === "ISLAND_CONQUERED") return typeof detail.islandId === "string" && typeof detail.ownerId === "string";
+  if (type === "YONKOU_DECLARED") return typeof detail.captainId === "string" && typeof detail.captainName === "string";
+  if (type === "BUSTER_CALL_STARTED") return typeof detail.islandId === "string" && typeof detail.islandName === "string";
   return typeof detail.type === "string" && typeof detail.text === "string";
 }
 

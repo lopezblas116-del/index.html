@@ -154,3 +154,46 @@ export function adjustLocalBounty(character, value) {
 export function isLocalGMAvailable(character) {
   return Boolean(character && character.status !== "dead" && character.world?.shared?.status === "local");
 }
+
+const PIN_PATTERN = /^\d{4,12}$/;
+
+async function pinDigest(salt, pin, cryptoProvider = globalThis.crypto) {
+  if (!cryptoProvider?.subtle) throw new Error("Este navegador no permite verificar el PIN local.");
+  const bytes = new TextEncoder().encode(`${salt}:${pin}`);
+  const digest = await cryptoProvider.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export function hasLocalGMPin(storage) {
+  const record = readJSON(STORAGE_KEYS.gmPin, null, storage);
+  return Boolean(record && typeof record.salt === "string" && typeof record.digest === "string");
+}
+
+export async function setLocalGMPin(pin, storage, cryptoProvider = globalThis.crypto) {
+  if (!PIN_PATTERN.test(String(pin))) {
+    return { ok: false, message: "El PIN debe contener entre 4 y 12 dígitos." };
+  }
+  try {
+    if (!cryptoProvider?.getRandomValues) throw new Error("Este navegador no permite crear un PIN local.");
+    const saltBytes = cryptoProvider.getRandomValues(new Uint8Array(16));
+    const salt = [...saltBytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    const digest = await pinDigest(salt, String(pin), cryptoProvider);
+    if (!writeJSON(STORAGE_KEYS.gmPin, { salt, digest }, storage)) {
+      return { ok: false, message: "No se pudo guardar el PIN en este navegador." };
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "No se pudo crear el PIN local." };
+  }
+}
+
+export async function verifyLocalGMPin(pin, storage, cryptoProvider = globalThis.crypto) {
+  if (!PIN_PATTERN.test(String(pin))) return false;
+  const record = readJSON(STORAGE_KEYS.gmPin, null, storage);
+  if (!record || typeof record.salt !== "string" || typeof record.digest !== "string") return false;
+  try {
+    return await pinDigest(record.salt, String(pin), cryptoProvider) === record.digest;
+  } catch {
+    return false;
+  }
+}

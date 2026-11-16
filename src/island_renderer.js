@@ -47,7 +47,7 @@ function avatarLayers(appearance, options) {
     pixel(12, 30, 8, 2, "#f4b41a");
     pixel(10, 31, 12, 1, "#49382d");
     if (fullBody) {
-      const step = action === "navigating" && frame % 2 ? 2 : 0;
+      const step = ["navigating", "walking"].includes(action) && frame % 2 ? 2 : 0;
       pixel(9, 23, 3, 10, skin);
       pixel(21, 23, 3, 10, skin);
       pixel(11 + step, 32, 4, 6, "#35455c");
@@ -100,7 +100,7 @@ export function avatarAction(character) {
   if (!character || character.status === "dead") return "resting";
   if (character.location?.atSea) return "navigating";
   const action = character.avatarActivity;
-  return ["tavern", "combat", "resting"].includes(action) ? action : "idle";
+  return ["tavern", "combat", "resting", "walking", "inspecting"].includes(action) ? action : "idle";
 }
 
 export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
@@ -237,6 +237,35 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
       ctx.font = "bold 10px monospace";
       ctx.textAlign = "center";
       ctx.fillText(npc.name, x + 13, y - 2);
+    }
+  });
+  (island.districts || []).slice(0, 3).forEach((district, index) => {
+    const x = 70 + index * 190;
+    box(ctx, x, 34, 174, 18, "rgba(11,19,41,.78)");
+    if (ctx.fillText) {
+      ctx.fillStyle = "#f4d58c";
+      ctx.font = "bold 9px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(district, x + 87, 47, 166);
+    }
+  });
+  (island.pois || []).forEach((poi) => {
+    const colors = {
+      tavern: "#d27d47", restaurant: "#da9c48", market: "#e5bd63",
+      weapon_shop: "#c7a2c2", base: "#849aa3", plaza: "#d2c49d",
+      dock: "#c18e55", shipyard: "#9db4a0", kitchen: "#c77b5d"
+    };
+    const x = Number(poi.x);
+    const y = Number(poi.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    const color = colors[poi.type] || "#f4b41a";
+    box(ctx, x - 5, y - 5, 12, 12, "#18263a");
+    box(ctx, x - 3, y - 3, 8, 8, color);
+    if (ctx.fillText) {
+      ctx.fillStyle = "#f7f1df";
+      ctx.font = "bold 8px system-ui, sans-serif";
+      ctx.textAlign = x > 470 ? "right" : "left";
+      ctx.fillText(poi.name, x + (x > 470 ? -7 : 9), y + 3, 150);
     }
   });
   if (character) {

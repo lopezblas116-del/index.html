@@ -21,10 +21,13 @@ import { removeStorage } from "./storage_adapter.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
 import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
+import { getMapIslands } from "./map.js";
+import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
 
 let character = loadGame();
 const network = createNetwork();
 let sharedState = network.snapshot();
+if (character?.world) Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
 let timerId = null;
 let branchTimer = null;
 let scouting = false;
@@ -131,6 +134,7 @@ function scheduleTick() {
   timerId = setTimeout(() => {
     if (!character || character.status === "dead" || character.autonomy?.paused || character.captured) return;
     network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, interactive: !document.hidden && navigator.onLine, availableFruitIds: availableFruitIds() }));
+    if (sharedState.status === "local") network.persistLocalWorld();
     claimPendingFruit(character);
     if (character.location?.atSea) scoutFugitive(character);
     saveGame(character);
@@ -151,6 +155,14 @@ initWizard();
 initHud();
 initIslandView();
 listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
+listen(document, "onepiece:local-suggestion", (event) => {
+  if (!character || character.status === "dead" || character.location?.atSea) return;
+  const { islandId, poiId } = event.detail || {};
+  const island = getMapIslands(character).find((entry) => entry.id === islandId && entry.name === character.location?.island);
+  if (!island?.pois.some((poi) => poi.id === poiId)) return;
+  character.localSuggestion = poiId;
+  persistRender();
+});
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
@@ -158,6 +170,7 @@ function resumeOffline() {
   if (!character) return;
   const pending = character.autonomy.pendingBranch;
   const result = network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, availableFruitIds: availableFruitIds() }));
+  if (sharedState.status === "local") network.persistLocalWorld();
   claimPendingFruit(character);
   if (result.ticks || pending !== character.autonomy.pendingBranch) { persistRender(true); if (character.location?.atSea) scoutFugitive(character); }
 }
@@ -185,6 +198,7 @@ if (character) {
   ensureBlockOneData(character);
   const pending = character.autonomy.pendingBranch;
   const offline = network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, availableFruitIds: availableFruitIds() }));
+  if (sharedState.status === "local") network.persistLocalWorld();
   claimPendingFruit(character);
   if (offline.ticks || pending !== character.autonomy.pendingBranch) saveGame(character);
   paint();
@@ -280,9 +294,28 @@ listen(document, "onepiece:hud-redirect", (event) => {
 });
 listen(document, "onepiece:hud-trade", (event) => {
   if (!character || character.status === "dead") return;
-  const result = trade(character, event.detail?.id, event.detail?.action);
+  const localWorld = sharedState.status === "local" ? sharedState.world : null;
+  const result = trade(character, event.detail?.id, event.detail?.action, localWorld);
+  const persisted = result.ok && localWorld ? network.persistLocalWorld() : true;
   persistRender();
-  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: persisted ? result.message : `${result.message} No se pudo guardar el mundo local.` } }));
+});
+listen(document, "onepiece:hud-territory-claim", (event) => {
+  if (!character || sharedState.status !== "local") return;
+  const result = network.mutateLocalWorld((world) => claimLocalSovereignty(world, character, event.detail?.islandId, Number(event.detail?.taxRate)));
+  if (result?.ok) persistRender(true);
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
+});
+listen(document, "onepiece:hud-territory-blockade", (event) => {
+  if (!character || sharedState.status !== "local") return;
+  const berries = character.berries;
+  const result = network.mutateLocalWorld((world) => startNavalBlockade(world, character, event.detail?.islandId, {
+    durationDays: Number(event.detail?.durationDays),
+    day: Number(world.last_cycle_day ?? character.world.day) || 0
+  }));
+  if (result?.ok) persistRender(true);
+  else if (character.berries !== berries) character.berries = berries;
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
 });
 listen(document, "onepiece:hud-open-pantheon", openPantheon);
 listen(document, "onepiece:hud-network-refresh", () => { network.sync(); });

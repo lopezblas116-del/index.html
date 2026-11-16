@@ -1,11 +1,13 @@
 import { getMapIslands } from "./map.js";
 import { createLocalFruitLedger } from "./devil_fruits.js";
+import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 
 export function createLocalWorld() {
   return {
     islands_control: getMapIslands().map((island) => ({
       island_id: island.id, name: island.name, faction: island.control,
-      owner_id: null, owner_name: null, taxes: 0, chaos: 0
+      owner_id: null, owner_name: null, tax_rate: 0, taxes: 0, treasury: 0,
+      chaos: 0, blockade_until_day: 0, besieged_by: null
     })),
     global_events: [], bounties_leaderboard: [], fallen_captains: [],
     bosses: [{ name: "Arlong", status: "active", island_id: "arlong" }],
@@ -13,9 +15,93 @@ export function createLocalWorld() {
   };
 }
 
+function controlledIsland(world, islandId) {
+  return world?.islands_control?.find((island) => island.island_id === islandId) || null;
+}
+
+function recordWorldEvent(world, event) {
+  world.global_events.unshift(event);
+  world.global_events = world.global_events.slice(0, 100);
+}
+
+export function assessPortTax(world, islandId, amount, payerId = null) {
+  const island = controlledIsland(world, islandId);
+  const gross = Math.max(0, Math.floor(Number(amount) || 0));
+  const taxRate = island?.owner_id && island.owner_id === payerId
+    ? 0
+    : Math.max(0, Math.min(20, Number(island?.tax_rate) || 0));
+  const tax = Math.min(gross, Math.floor(gross * taxRate / 100));
+  if (island) {
+    island.taxes = (Number(island.taxes) || 0) + tax;
+    island.treasury = (Number(island.treasury) || 0) + tax;
+  }
+  return { gross, tax, net: gross - tax, taxRate, ownerId: island?.owner_id || null };
+}
+
+export function claimLocalSovereignty(world, captain, islandId, taxRate = 5) {
+  const island = controlledIsland(world, islandId);
+  const rate = Number(taxRate);
+  if (!island || !captain || captain.status === "dead" || captain.captured ||
+      captain.location?.atSea || captain.location?.island !== island.name) {
+    return { ok: false, message: "La soberanía solo puede reclamarse desde el puerto visitado." };
+  }
+  if (!Number.isInteger(rate) || rate < 0 || rate > 20) {
+    return { ok: false, message: "El impuesto debe ser un entero entre 0% y 20%." };
+  }
+  if (island.owner_id && island.owner_id !== captain.id) {
+    return { ok: false, message: `${island.name} ya pertenece a otra flota.` };
+  }
+  island.owner_id = captain.id;
+  island.owner_name = captain.name;
+  island.faction = "Tripulación";
+  island.tax_rate = rate;
+  island.chaos = 0;
+  island.blockade_until_day = 0;
+  island.besieged_by = null;
+  const text = `${captain.name} establece soberanía sobre ${island.name} y fija un impuesto portuario del ${rate}%.`;
+  recordWorldEvent(world, { event_id: `sovereignty-${island.island_id}-${captain.id}-${Date.now()}`, type: "island_conquered", text, location: island.name, created_at: new Date().toISOString() });
+  dispatchTypedEvent(EVENT_TYPES.islandConquered, { islandId: island.island_id, ownerId: captain.id });
+  return { ok: true, island, message: text };
+}
+
+export function startNavalBlockade(world, captain, islandId, { durationDays = 1, day = 0 } = {}) {
+  const island = controlledIsland(world, islandId);
+  const mapIsland = getMapIslands(captain).find((entry) => entry.id === islandId);
+  const duration = Number(durationDays);
+  const distance = mapIsland && captain?.mapPosition
+    ? Math.hypot(mapIsland.x - captain.mapPosition.x, mapIsland.y - captain.mapPosition.y)
+    : Infinity;
+  if (!island || !mapIsland || !captain || captain.status === "dead" || !captain.location?.atSea ||
+      distance > 100 || !Number.isInteger(duration) || duration < 1 || duration > 7) {
+    return { ok: false, message: "El bloqueo requiere navegar junto a una isla y durar entre 1 y 7 días." };
+  }
+  if (island.owner_id === captain.id) return { ok: false, message: "No puedes bloquear un puerto bajo tu propia soberanía." };
+  const cost = 100 * duration;
+  if (Number(captain.berries) < cost) return { ok: false, message: `El bloqueo cuesta ฿${cost} Berries.` };
+  captain.berries -= cost;
+  island.blockade_until_day = Math.max(Number(island.blockade_until_day) || 0, day + duration);
+  island.besieged_by = { id: captain.id, name: captain.name };
+  const text = `${captain.name} establece un bloqueo naval frente a ${island.name} durante ${duration} día(s).`;
+  recordWorldEvent(world, { event_id: `blockade-${island.island_id}-${captain.id}-${Date.now()}`, type: "blockade", text, location: island.name, created_at: new Date().toISOString() });
+  return { ok: true, island, cost, message: text };
+}
+
+export function isPortBlockaded(world, islandId, day = 0, captainId = null) {
+  const island = controlledIsland(world, islandId);
+  return Boolean(island && island.owner_id !== captainId && island.besieged_by?.id !== captainId &&
+    Number(island.blockade_until_day) > day);
+}
+
 export function advanceLocalWorld(world, day, random = Math.random) {
   if (!Number.isInteger(day) || day <= (world.last_cycle_day ?? 0)) return false;
   for (let cycle = (world.last_cycle_day ?? 0) + 1; cycle <= day; cycle++) {
+    for (const island of world.islands_control || []) {
+      if (Number(island.blockade_until_day) > 0 && island.blockade_until_day <= cycle) {
+        island.blockade_until_day = 0;
+        island.besieged_by = null;
+        recordWorldEvent(world, { event_id: `blockade-lifted-${island.island_id}-${cycle}`, type: "blockade", text: `El bloqueo naval de ${island.name} ha terminado.`, location: island.name, created_at: new Date().toISOString() });
+      }
+    }
     for (const boss of world.bosses) {
       if (boss.status !== "imprisoned" || random() >= 0.05) continue;
       boss.status = "fugitive";
@@ -42,6 +128,7 @@ export function applyLocalAction(world, action, actor) {
       if (island.chaos >= 70) {
         island.faction = "Marina"; island.owner_id = null; island.owner_name = null; island.chaos = 0;
         text = `⚓ Buster Call: la Marina recupera ${island.name}.`;
+        dispatchTypedEvent(EVENT_TYPES.busterCallStarted, { islandId: island.island_id, islandName: island.name });
       }
     }
     if (island?.island_id === "arlong") {
@@ -57,6 +144,7 @@ export function applyLocalAction(world, action, actor) {
     if (!entry.yonkou && data.bounty > 1_000_000_000 && islands >= 2) {
       entry.yonkou = true;
       text = `👑 ${actor.name} es declarado YONKOU por el Gobierno.`;
+      dispatchTypedEvent(EVENT_TYPES.yonkouDeclared, { captainId: actor.id, captainName: actor.name });
     }
   } else if (action.type === "boss_defeated") {
     const boss = world.bosses.find((entry) => entry.name === data.boss && entry.status === "fugitive");
