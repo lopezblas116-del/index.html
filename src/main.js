@@ -7,6 +7,7 @@ import {
   renderGame, resetWizard, showSetup
 } from "./ui.js";
 import { initWorldMap, renderMap, resizeMap } from "./map.js";
+import { initHud, renderHud } from "./hud.js";
 
 let character = loadGame();
 let timerId = null;
@@ -18,10 +19,10 @@ const listen = (element, type, handler, options) => {
 function paint() {
   if (!character) return;
   renderGame(character);
-  // renderGame reveals the game container before the canvas measures its size.
   initWorldMap();
   resizeMap();
   renderMap(character);
+  renderHud(character);
 }
 function scheduleTick() {
   clearTimeout(timerId);
@@ -42,6 +43,7 @@ function persistRender(reschedule = false) {
 }
 
 initWizard();
+initHud();
 if (character) {
   paint();
   if (character.status !== "dead") scheduleTick();
@@ -61,6 +63,11 @@ listen(document, "onepiece:map-destination", (event) => {
     x: event.detail.x,
     y: event.detail.y
   };
+  persistRender();
+});
+listen(document, "onepiece:hud-whisper", (event) => {
+  if (!character || character.status === "dead") return;
+  sendWhisper(character, event.detail?.text || "");
   persistRender();
 });
 
