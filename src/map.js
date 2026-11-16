@@ -42,6 +42,29 @@ function prepareIslands(character) {
   const offset = seededIndex(character?.id, DYNAMIC_ISLANDS.length);
   islands = [...FIXED_ISLANDS, ...DYNAMIC_ISLANDS.map((island, index) => ({ ...island, x: island.x + ((offset + index) % 3 - 1) * 22, y: island.y + ((offset * (index + 1)) % 3 - 1) * 18 }))];
 }
+export function newsLocation(entry, character) {
+  if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };
+  const point = entry.coordinates;
+  if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) {
+    return { x: point.x, y: point.y, name: entry.location || "Zona del evento" };
+  }
+  const matchingTreasure = character?.systems?.treasureMaps?.find((map) => entry.type === "treasure-map" && entry.text?.includes(map.clue));
+  if (Number.isFinite(matchingTreasure?.x) && Number.isFinite(matchingTreasure?.y)) {
+    return { x: matchingTreasure.x, y: matchingTreasure.y, name: matchingTreasure.island || "Tesoro oculto" };
+  }
+  prepareIslands(character);
+  const places = [...islands].sort((a, b) => b.name.length - a.name.length);
+  const island = entry.location
+    ? places.find((place) => place.name.toLocaleLowerCase("es") === String(entry.location).toLocaleLowerCase("es"))
+    : places.find((place) => String(entry.text ?? "").toLocaleLowerCase("es").includes(place.name.toLocaleLowerCase("es")));
+  return island ? { ...island } : null;
+}
+export function focusMap(point) {
+  if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
+  camera.x = -point.x;
+  camera.y = -point.y;
+  drawMap();
+}
 function resize() {
   if (!canvas || !ctx) return;
   // Use CSS-pixel viewport dimensions so map pointer coordinates and canvas coordinates match.
@@ -112,4 +135,4 @@ function onPointerUp(event) { if (!pointer || pointer.id !== event.pointerId) re
 function onWheel(event) { event.preventDefault(); const before = toWorld(pointerPosition(event)); camera.zoom = clamp(camera.zoom * (event.deltaY < 0 ? 1.12 : 0.89), 0.55, 2.4); const after = toWorld(pointerPosition(event)); camera.x += after.x - before.x; camera.y += after.y - before.y; drawMap(); }
 export function initMap() { if (initialized) return; canvas = document.getElementById("world-map"); if (!canvas) return; ctx = canvas.getContext("2d"); if (!ctx) return; initialized = true; canvas.addEventListener("pointerdown", onPointerDown); canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointercancel", onPointerUp); canvas.addEventListener("wheel", onWheel, { passive: false }); document.getElementById("map-reset-view")?.addEventListener("click", () => { camera = { x: 0, y: 0, zoom: 1 }; drawMap(); }); window.addEventListener("resize", resize); resize(); }
 export function initWorldMap() { return initMap(); }
-export function renderMap(character) { initMap(); if (!initialized) return; characterState = character; prepareIslands(character); selected = character.navigationTarget ? islands.find((island) => island.id === character.navigationTarget.id || island.name === character.navigationTarget.name) ?? null : selected; drawMap(); }
+export function renderMap(character) { initMap(); if (!initialized) return; characterState = character; prepareIslands(character); const target = character.navigationTarget; selected = target?.type === "news" && Number.isFinite(target.x) && Number.isFinite(target.y) ? target : target ? islands.find((island) => island.id === target.id || island.name === target.name) ?? (Number.isFinite(target.x) && Number.isFinite(target.y) ? target : null) : null; drawMap(); }

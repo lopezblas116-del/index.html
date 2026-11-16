@@ -6,7 +6,7 @@ import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui.js";
-import { initWorldMap, renderMap, resizeMap } from "./map.js";
+import { focusMap, initWorldMap, renderMap, resizeMap } from "./map.js";
 import { initHud, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
@@ -121,4 +121,11 @@ listen(document, "onepiece:hud-draft-will", () => {
 listen(document, "onepiece:hud-set-climate", (event) => {
   if (!character || character.status === "dead" || !setClimateZone(character, event.detail?.zone)) return;
   persistRender();
+});
+listen(document, "onepiece:hud-investigate-news", (event) => {
+  const location = event.detail?.location;
+  if (!character || character.status === "dead" || !Number.isFinite(location?.x) || !Number.isFinite(location?.y)) return;
+  character.navigationTarget = { ...location, type: "news" };
+  persistRender();
+  focusMap(location);
 });

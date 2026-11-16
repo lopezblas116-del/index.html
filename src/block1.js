@@ -22,11 +22,15 @@ export function ensureBlockOneData(character) {
   character.world.news ??= [];
   character.world.pantheon ??= [];
   character.log ??= [];
+  character.whisper ??= { affinity: 55, rebellion: 45 };
+  character.whisper.energy = clamp(character.whisper.energy ?? 3, 0, 3);
+  character.whisper.itemSuggestions ??= [];
+  character.whisper.priorityItems ??= [];
   return character;
 }
 function addNotice(character, type, title, text) {
   ensureBlockOneData(character);
-  character.world.news.unshift({ type, title, text: `${title}: ${text}`, day: character.world.day || 0, era: character.world.era || "Era de los Grandes Descubrimientos", time: new Date().toISOString() });
+  character.world.news.unshift({ type, title, text: `${title}: ${text}`, location: character.location?.island, day: character.world.day || 0, era: character.world.era || "Era de los Grandes Descubrimientos", time: new Date().toISOString() });
   character.world.news = character.world.news.slice(0, 60);
 }
 function log(character, message) {
@@ -121,6 +125,92 @@ export function whisperAdviceFor(character, entry) {
   if (traits.includes("astuto")) return `Vende ${name} al mejor postor, o escóndelo en el cofre.`;
   return `Guarda ${name} en el cofre hasta saber su valor.`;
 }
+const sameItem = (a, b) => a.kind === b.kind && a.name === b.name;
+const ATTRIBUTE_LABELS = { strength: "Fuerza", agility: "Agilidad", ingenuity: "Ingenio" };
+const distrustWarning = "El avatar desconfía de tu sugerencia sobre este objeto";
+
+export function suggestTraining(character, attribute) {
+  ensureBlockOneData(character);
+  if (!Object.hasOwn(ATTRIBUTE_LABELS, attribute)) return { ok: false, message: "Elige un atributo válido." };
+  if (character.whisper.trainingSuggestion) return { ok: false, message: "Ya hay una sugerencia de entrenamiento pendiente para el próximo puerto." };
+  if (character.whisper.energy < 1) return { ok: false, message: "No queda Energía de Susurro. Recuperarás una al llegar al próximo puerto." };
+  character.whisper.energy -= 1;
+  character.whisper.trainingSuggestion = { attribute, fromIsland: character.location?.island };
+  const message = `🗣️ Sugieres entrenar ${ATTRIBUTE_LABELS[attribute]} en el próximo puerto.`;
+  log(character, message);
+  return { ok: true, message };
+}
+
+export function suggestChestItem(character, ref, action) {
+  ensureBlockOneData(character);
+  const entry = listChestItems(character).find((item) => sameItem(item, ref ?? {}));
+  if (!entry) return { ok: false, message: "Ese objeto ya no está en el cofre." };
+  const item = { kind: entry.kind, name: entry.name };
+  const suggestions = character.whisper.itemSuggestions;
+  const priorities = character.whisper.priorityItems;
+  if (action === "sell") {
+    if (priorities.some((priority) => sameItem(priority, item))) {
+      return { ok: false, message: "El objeto está marcado como prioritario y no se sugerirá su venta." };
+    }
+    if (suggestions.some((suggestion) => sameItem(suggestion, item))) {
+      return { ok: false, message: "Ya existe una sugerencia de venta pendiente para este objeto." };
+    }
+    suggestions.push({ ...item, fromIsland: character.location?.island });
+  } else if (action === "priority") {
+    if (!priorities.some((priority) => sameItem(priority, item))) priorities.push(item);
+    character.whisper.itemSuggestions = suggestions.filter((suggestion) => !sameItem(suggestion, item));
+  } else {
+    return { ok: false, message: "Acción no disponible para este objeto." };
+  }
+  const message = action === "sell"
+    ? `🗣️ Sugieres vender ${entry.name} en el próximo puerto.`
+    : `⭐ Sugieres conservar ${entry.name} como objeto prioritario.`;
+  log(character, message);
+  if (character.whisper.rebellion > 60) {
+    log(character, `⚠️ ${distrustWarning}.`);
+    return { ok: true, message: distrustWarning };
+  }
+  return { ok: true, message };
+}
+
+export function resolvePortSuggestions(character, previousIsland, random = Math.random) {
+  ensureBlockOneData(character);
+  if (!previousIsland || !character.location?.island || previousIsland === character.location.island || character.status === "dead") return;
+  character.whisper.energy = Math.min(3, character.whisper.energy + 1);
+  const obeys = () => random() * 100 < clamp(Number(character.whisper.affinity ?? 55) - Math.max(0, Number(character.whisper.rebellion ?? 45) - 60), 5, 95);
+  const training = character.whisper.trainingSuggestion;
+  if (training && training.fromIsland !== character.location.island) {
+    if (Object.hasOwn(ATTRIBUTE_LABELS, training.attribute) && obeys()) {
+      character.stats[training.attribute] += 1;
+      log(character, `🏋️ ${character.name} sigue el consejo y entrena ${ATTRIBUTE_LABELS[training.attribute]} en ${character.location.island}.`);
+    } else log(character, `🗣️ ${character.name} decide no seguir la sugerencia de entrenamiento.`);
+    delete character.whisper.trainingSuggestion;
+  }
+  const pending = character.whisper.itemSuggestions;
+  character.whisper.itemSuggestions = [];
+  for (const suggestion of pending) {
+    if (suggestion.fromIsland === character.location.island) {
+      character.whisper.itemSuggestions.push(suggestion);
+      continue;
+    }
+    const entry = listChestItems(character).find((item) => sameItem(item, suggestion));
+    if (!entry || character.whisper.priorityItems.some((item) => sameItem(item, suggestion))) {
+      log(character, `📦 ${suggestion.name} no se vende: ya no está disponible o es prioritario.`);
+      continue;
+    }
+    if (!obeys()) {
+      log(character, `🗣️ ${character.name} decide conservar ${entry.name} en lugar de venderlo.`);
+      continue;
+    }
+    if (entry.kind === "provision") character.inventory.provisions -= 1;
+    else {
+      const items = entry.kind === "equipment" ? character.inventory.equipment : character.inventory.items;
+      items.splice(items.indexOf(entry.name), 1);
+    }
+    character.berries += 25;
+    log(character, `🏷️ ${character.name} vende ${entry.name} en ${character.location.island} por ฿25.`);
+  }
+}
 export function useChestItem(character, ref, action) {
   ensureBlockOneData(character);
   const entry = listChestItems(character).find((item) => item.kind === ref?.kind && item.name === ref?.name);
@@ -168,6 +258,14 @@ export function initBlock1({ getCharacter, onChange } = {}) {
   document.addEventListener("onepiece:hud-chest-item", (event) => update((character) => { processChestItem(character, event.detail?.item); }));
   document.addEventListener("onepiece:hud-chest-use", (event) => update((character) => {
     const result = useChestItem(character, event.detail?.ref, event.detail?.action);
+    return { toast: result.message };
+  }));
+  document.addEventListener("onepiece:hud-training-suggestion", (event) => update((character) => {
+    const result = suggestTraining(character, event.detail?.attribute);
+    return { toast: result.message };
+  }));
+  document.addEventListener("onepiece:hud-item-suggestion", (event) => update((character) => {
+    const result = suggestChestItem(character, event.detail?.ref, event.detail?.action);
     return { toast: result.message };
   }));
   document.addEventListener("onepiece:hud-contract-decision", (event) => update((character) => {

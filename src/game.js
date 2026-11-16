@@ -1,4 +1,5 @@
 import { generateTreasureMap } from "./systems.js";
+import { resolvePortSuggestions } from "./block1.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -92,7 +93,7 @@ function normalize(character) {
   character.autonomy.mode = character.autonomy.paused ? "paused" : "active";
   character.autonomy.tickCount ??= 0;
   character.whisper ??= { affinity: 55, rebellion: 45 };
-  character.whisper.affinity = clamp(Number(character.whisper.affinity) || 55, 0, 100);
+  character.whisper.affinity = clamp(Number(character.whisper.affinity ?? 55), 0, 100);
   character.whisper.rebellion = clamp(Number(character.whisper.rebellion ?? (100 - character.whisper.affinity)), 0, 100);
   character.soulCard ??= { dream: "Libertad", traits: { pros: [], cons: [] } };
   character.soulCard.traits ??= { pros: [], cons: [] };
@@ -299,8 +300,10 @@ function rest(character) {
 export function performAction(character, action) {
   if (character.status === "dead") return "El avatar está en el Panteón; crea un heredero para continuar.";
   const handlers = { navigate, train, searchFruit, rest };
+  const previousIsland = character.location?.island;
   const message = handlers[action] ? handlers[action](character) : "Acción desconocida.";
   addLog(character, message);
+  if (action === "navigate") resolvePortSuggestions(character, previousIsland);
   return message;
 }
 function factionEvent(character) {

@@ -180,7 +180,7 @@ export function generateTreasureMap(character, reason = "herencia") {
   };
   character.systems.dangerMapCreated = true;
   character.systems.treasureMaps.unshift(map);
-  character.world.news.unshift({ type: "treasure-map", text: `🗺 ${map.clue}`, day: character.world.day || 0 });
+  character.world.news.unshift({ type: "treasure-map", text: `🗺 ${map.clue}`, coordinates: { x: map.x, y: map.y }, location: map.island, day: character.world.day || 0 });
   character.world.news = character.world.news.slice(0, 30);
   character.log.unshift({ time: map.createdAt, message: `🗺 ${map.clue} (${reason}).` });
   return map;

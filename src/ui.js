@@ -1,4 +1,4 @@
-import { initMap, renderMap, resizeMap } from "./map.js";
+import { initMap, newsLocation, renderMap, resizeMap } from "./map.js";
 import { ensureAdvancedSystems } from "./systems.js";
 
 const byId = (id) => document.getElementById(id);
@@ -11,6 +11,101 @@ const safe = (value, fallback = "—") => value ?? fallback;
 const listen = (element, type, handler, options) => {
   if (element) element.addEventListener(type, handler, options);
 };
+
+export function renderPsychology(container, character, selection, onSuggest) {
+  const card = document.createElement("section");
+  card.className = "psychology-card";
+  const heading = document.createElement("h3");
+  heading.textContent = "🧠 ANALIZAR PSICOLOGÍA";
+  const subject = document.createElement("p");
+  subject.textContent = `Análisis: ${selection.label}`;
+  const state = document.createElement("p");
+  state.textContent = `Sintonía: ${character.whisper?.affinity ?? 55}% · Rebeldía: ${character.whisper?.rebellion ?? 45}% · Energía de Susurro: ${character.whisper?.energy ?? 3}/3`;
+  const label = document.createElement("label");
+  label.textContent = "Atributo a entrenar en el próximo puerto";
+  const select = document.createElement("select");
+  for (const [value, text] of [["strength", "Fuerza"], ["agility", "Agilidad"], ["ingenuity", "Ingenio"]]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    select.append(option);
+  }
+  select.value = selection.attribute || "strength";
+  label.append(select);
+  const help = document.createElement("p");
+  help.textContent = "Cuesta 1 energía. Se recupera 1 al llegar a otro puerto; el avatar puede aceptar o rechazar el consejo.";
+  if (character.whisper?.trainingSuggestion) {
+    help.textContent += " Ya hay un consejo pendiente para el próximo puerto.";
+  }
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "one-hud-action";
+  button.textContent = "🗣️ Orientar Entrenamiento";
+  button.disabled = character.status === "dead" || (character.whisper?.energy ?? 3) < 1 || Boolean(character.whisper?.trainingSuggestion);
+  button.addEventListener("click", () => onSuggest(select.value));
+  card.append(heading, subject, state, label, help, button);
+  container.append(card);
+}
+
+export function renderNewspaper(container, character, onInvestigate) {
+  const world = character.world ?? {};
+  const sections = [
+    { label: "Crónica de la Era", items: world.news ?? [], empty: "No hay crónicas todavía." },
+    { label: "Necrológica", items: (world.pantheon ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · Generación ${entry.generation || 1}`, location: entry.location })), empty: "No se han registrado caídos." },
+    { label: "Carteles SE BUSCA", items: character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [], empty: "No hay carteles activos para este avatar." }
+  ];
+  const tabs = document.createElement("div");
+  tabs.className = "one-hud-tabs";
+  const body = document.createElement("div");
+  sections.forEach((section, index) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.textContent = section.label;
+    tab.setAttribute("aria-selected", String(index === 0));
+    const panel = document.createElement("section");
+    panel.className = "one-hud-tab-panel";
+    panel.hidden = index !== 0;
+    if (!section.items.length) {
+      const empty = document.createElement("p");
+      empty.textContent = section.empty;
+      panel.append(empty);
+    }
+    for (const entry of section.items) {
+      const location = newsLocation(entry, character);
+      const details = document.createElement("details");
+      details.className = "news-card";
+      const summary = document.createElement("summary");
+      summary.textContent = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
+      const detail = document.createElement("div");
+      detail.className = "news-card-detail";
+      const coordinates = document.createElement("p");
+      coordinates.textContent = location
+        ? `${location.name} · Coordenadas del mapa: X ${location.x}, Y ${location.y}`
+        : "Coordenadas desconocidas para este evento.";
+      const investigate = document.createElement("button");
+      investigate.type = "button";
+      investigate.className = "one-hud-action";
+      investigate.textContent = "🔍 Investigar Zona";
+      investigate.disabled = !location || character.status === "dead";
+      if (location) investigate.addEventListener("click", () => onInvestigate(location));
+      detail.append(coordinates, investigate);
+      if (location) {
+        const note = document.createElement("p");
+        note.textContent = "Marca la zona en el mapa; la expedición autónoma sigue su ruta actual.";
+        detail.append(note);
+      }
+      details.append(summary, detail);
+      panel.append(details);
+    }
+    tab.addEventListener("click", () => {
+      [...tabs.children].forEach((item, i) => item.setAttribute("aria-selected", String(i === index)));
+      [...body.children].forEach((item, i) => { item.hidden = i !== index; });
+    });
+    tabs.append(tab);
+    body.append(panel);
+  });
+  container.append(tabs, body);
+}
 
 export function showSetup() {
   const wizard = byId("wizard-container");

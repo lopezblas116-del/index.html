@@ -298,3 +298,15 @@ body.wizard-active .masthead{display:none}
 .one-hud-port-action{width:100%;margin-top:8px}
 .one-hud-testament,.one-hud-treasure-map{padding:10px;border-left:3px solid #f4b41a;background:#0b1329;line-height:1.25}
 #modal-taberna .one-hud-dialog{max-width:680px}
+
+.psychology-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:12px 0}
+.psychology-choice{padding:10px;border:1px solid rgba(244,180,26,.55);border-radius:8px;background:#0b1329;color:#fff;text-align:left}
+.psychology-choice:hover,.psychology-choice[aria-pressed="true"]{border-color:#f4b41a;box-shadow:0 0 10px rgba(244,180,26,.3)}
+.psychology-card,.news-card-detail{margin:10px 0;padding:12px;border:1px solid #f4b41a;border-radius:8px;background:#0b1329}
+.psychology-card h3{color:#f4b41a;font-size:.8rem}
+.psychology-card label{display:grid;gap:6px;color:#fff}
+.psychology-card select{background:#162238;border-color:#f4b41a;color:#fff}
+.news-card{margin:8px 0;padding:10px;border-left:3px solid #38bdf8;background:#0b1329}
+.news-card summary{cursor:pointer;color:#fff;overflow-wrap:anywhere}
+.news-card[open] summary{color:#f4b41a}
+.news-card-detail p{overflow-wrap:anywhere}
