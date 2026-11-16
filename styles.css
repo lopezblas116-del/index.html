@@ -11,7 +11,7 @@
   --crimson: #ef4444;
   --emerald: #10b981;
   --line: rgba(244, 180, 26, .3);
-  font-family: "VT323", monospace;
+  font-family: "VT323", "Courier New", monospace;
   font-size: 20px;
   color: var(--text);
   background: var(--navy);
@@ -317,5 +317,16 @@ body.wizard-active .masthead{display:none}
 #wizard-container button{min-height:48px}
 #wizard-container .option-card{min-width:48px;min-height:48px}
 .one-hud-contract-actions,.one-hud-climate-zones{display:flex;flex-wrap:wrap;gap:8px}
-.one-hud-redirect{position:absolute;left:max(12px,env(safe-area-inset-left));bottom:calc(76px + env(safe-area-inset-bottom));max-width:min(280px,calc(100vw - 100px));padding:8px 12px;pointer-events:auto}
+.one-hud-redirect{position:absolute;left:max(72px,calc(env(safe-area-inset-left) + 60px));bottom:calc(250px + env(safe-area-inset-bottom));max-width:min(220px,calc(100vw - 100px));padding:8px 12px;pointer-events:auto}
 #world-map{touch-action:none}
+
+/* A shared atmosphere token keeps the full-screen HUD in step with the globe. */
+body[data-atmosphere="day"]{background-color:#0b1329}
+body[data-atmosphere="night"]{background-image:radial-gradient(ellipse at 50% 10%,rgba(35,86,145,.2),transparent 58%),linear-gradient(180deg,#071225,#0b1329)}
+body[data-atmosphere="mist"]{background-image:linear-gradient(115deg,rgba(170,220,224,.08),transparent 38%,rgba(170,220,224,.1)),linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px)}
+body[data-atmosphere="night"] #one-hud .one-hud-brand,
+body[data-atmosphere="night"] #one-hud .one-hud-zoom,
+body[data-atmosphere="mist"] #one-hud .one-hud-brand,
+body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(11,19,41,.9)}
+body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(170,220,224,.12)}
+@media(max-width:600px){#bottom-nav{font-size:11px}}

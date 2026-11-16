@@ -1,12 +1,12 @@
 // The IDs correspond to the existing map, so saved locations remain compatible.
 export const ISLAND_DATA = {
-  dawn: { biome: "Bosque costero", specialty: "wood", mission: "Proteger la aldea", control: "Marina" },
-  shells: { biome: "Puerto fortificado", specialty: "weapon", mission: "Liberar la base", control: "Marina" },
+  dawn: { biome: "Colinas verdes y costa", specialty: "wood", mission: "Proteger la aldea", control: "Marina", landmark: "Villa Foosha", architecture: "foosha" },
+  shells: { biome: "Puerto fortificado", specialty: "weapon", mission: "Liberar la base", control: "Marina", architecture: "fortress" },
   orange: { biome: "Archipiélago templado", specialty: "water", mission: "Recuperar el mapa de navegación", control: "Tirano" },
   syrup: { biome: "Bosque y costa", specialty: "wood", mission: "Defender la aldea", control: "Marina" },
-  baratie: { biome: "Restaurante flotante", specialty: "rum", mission: "Escoltar el barco restaurante", control: "Marina" },
-  arlong: { biome: "Arrecife tropical", specialty: "water", mission: "Liberar la isla", control: "Tirano", boss: "Arlong" },
-  loguetown: { biome: "Ciudad portuaria", specialty: "weapon", mission: "El asalto de Loguetown", control: "Marina" },
+  baratie: { biome: "Restaurante flotante", specialty: "rum", mission: "Escoltar el barco restaurante", control: "Marina", architecture: "baratie" },
+  arlong: { biome: "Arrecife tropical", specialty: "water", mission: "Liberar la isla", control: "Tirano", boss: "Arlong", architecture: "arlong" },
+  loguetown: { biome: "Ciudad portuaria", specialty: "weapon", mission: "El asalto de Loguetown", control: "Marina", architecture: "loguetown" },
   ohara: { biome: "Bosque de eruditos", specialty: "wood", mission: "Proteger el legado de Ohara", control: "Marina" },
   kano: { biome: "Montañas y jardines", specialty: "weapon", mission: "Escoltar una caravana", control: "Tirano" },
   flevance: { biome: "Ciudad nevada", specialty: "water", mission: "Ayudar a los supervivientes", control: "Marina" },

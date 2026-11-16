@@ -1,5 +1,6 @@
 import { getMapIslands } from "./map.js";
 import { routeFor } from "./game.js";
+import { islandDetails } from "./islands_data.js";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -8,21 +9,23 @@ const radians = (point) => ({
   lon: (point.x / WIDTH - 0.5) * Math.PI * 2,
   lat: (0.5 - point.y / HEIGHT) * Math.PI
 });
-let canvas, ctx, character, width = 0, height = 0, radius = 0, pointer;
-let longitude = -2.05, latitude = 0.25, islands = [], animation, frame;
-let boatPosition;
+let canvas, ctx, character, width = 0, height = 0, radius = 0;
+let longitude = -2.05, latitude = 0.25, islands = [], animation;
+let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
 
 function project(lon, lat) {
   const delta = lon - longitude;
   const x = Math.cos(lat) * Math.sin(delta);
   const y = Math.sin(lat) * Math.cos(latitude) - Math.cos(lat) * Math.cos(delta) * Math.sin(latitude);
   const z = Math.sin(lat) * Math.sin(latitude) + Math.cos(lat) * Math.cos(delta) * Math.cos(latitude);
-  return { x: width / 2 + x * radius, y: height / 2 - y * radius, visible: z > 0 };
+  const size = globeRadius();
+  return { x: width / 2 + x * size, y: height / 2 - y * size, visible: z > 0 };
 }
 function projectPoint(point) {
   const { lon, lat } = radians(point);
   return project(lon, lat);
 }
+function globeRadius() { return radius * zoom; }
 function traceLine(points, color, lineWidth) {
   ctx.beginPath();
   let visible = false;
@@ -46,29 +49,131 @@ function meridian(lon, color, size) {
 function drawPoint(point, label, icon, color) {
   const p = projectPoint(point);
   if (!p.visible) return;
+  const scale = clamp(0.7 + zoom * 0.3, 0.7, 1.8);
   ctx.fillStyle = color;
-  ctx.fillRect(Math.round(p.x - 4), Math.round(p.y - 4), 8, 8);
-  ctx.font = "bold 12px monospace";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#fff";
-  ctx.shadowColor = "#0b1329";
-  ctx.shadowBlur = 5;
-  ctx.fillText(`${icon} ${label}`, p.x, p.y + 19);
-  ctx.shadowBlur = 0;
+  ctx.fillRect(Math.round(p.x - 3.5 * scale), Math.round(p.y - 3.5 * scale), 7 * scale, 7 * scale);
+}
+function roundedRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x - w / 2, y - h / 2, w, h);
+}
+function drawArchitecture(island, point, now) {
+  const type = island.architecture || islandDetails(island).architecture;
+  if (!type || zoom < 1.55 || !point.visible) return;
+  const size = clamp(zoom * 5, 8, 19);
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.lineWidth = Math.max(1, zoom * 0.65);
+  if (type === "foosha") {
+    ctx.fillStyle = "#6b9b50"; ctx.beginPath(); ctx.ellipse(-size, size * .2, size * 1.1, size * .5, 0, 0, Math.PI * 2); ctx.fill();
+    roundedRect(size * .3, size * .45, size * 1.1, size * .38, "#a77a45");
+    roundedRect(size * .35, size * .14, size * .45, size * .3, "#e4c17a");
+    ctx.strokeStyle = "#c5a36d";
+    for (const x of [-size * 1.4, size * 1.65]) {
+      ctx.beginPath(); ctx.moveTo(x, size * .4); ctx.lineTo(x, -size * .5); ctx.stroke();
+      ctx.save();
+      ctx.translate(x, -size * .5);
+      ctx.rotate(now / 450);
+      for (let blade = 0; blade < 4; blade++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(size * .32, -size * .08); ctx.lineTo(0, -size * .45); ctx.closePath(); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.strokeStyle = "#dbb879"; ctx.beginPath(); ctx.moveTo(-size * 1.7, size * .7); ctx.lineTo(size * 1.8, size * .7); ctx.stroke();
+  } else if (type === "fortress") {
+    roundedRect(0, 0, size * 2.4, size * 1.55, "#687784");
+    roundedRect(0, -size * .9, size * .7, size * 1.35, "#9aa7ad");
+    for (const x of [-size * .8, size * .8]) roundedRect(x, -size * .45, size * .42, size * .75, "#7f8e98");
+    ctx.strokeStyle = "#d8dfe1"; ctx.beginPath(); ctx.moveTo(0, -size * 1.55); ctx.lineTo(0, -size * 1.1); ctx.stroke();
+    ctx.fillStyle = "#f4b41a"; ctx.beginPath(); ctx.moveTo(0, -size * 1.53); ctx.lineTo(size * .65, -size * 1.32); ctx.lineTo(0, -size * 1.12); ctx.fill();
+  } else if (type === "baratie") {
+    ctx.fillStyle = "#aa7044"; ctx.beginPath(); ctx.ellipse(0, size * .22, size * 1.45, size * .58, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#c08a50"; ctx.beginPath(); ctx.moveTo(-size, 0); ctx.lineTo(-size * 1.85, -size * .45); ctx.lineTo(-size * 1.28, size * .12); ctx.fill();
+    roundedRect(0, -size * .28, size * 1.25, size * .75, "#5b8290");
+    ctx.fillStyle = "#ffcf67";
+    for (const x of [-size * .5, 0, size * .5]) { ctx.beginPath(); ctx.arc(x, -size * .3, size * .09, 0, Math.PI * 2); ctx.fill(); }
+  } else if (type === "arlong") {
+    roundedRect(0, size * .2, size * 2.1, size * .55, "#d46a45");
+    roundedRect(0, -size * .55, size * 1.55, size * .9, "#3d7b91");
+    ctx.fillStyle = "#bd4f3e";
+    ctx.beginPath(); ctx.moveTo(-size, -size * .7); ctx.lineTo(0, -size * 1.6); ctx.lineTo(size, -size * .7); ctx.closePath(); ctx.fill();
+    for (const x of [-size * 1.55, size * 1.55]) { ctx.fillStyle = "#6eaa56"; ctx.beginPath(); ctx.arc(x, size * .35, size * .35, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#f58e35"; ctx.beginPath(); ctx.arc(x + size * .06, size * .32, size * .12, 0, Math.PI * 2); ctx.fill(); }
+  } else if (type === "loguetown") {
+    roundedRect(0, size * .34, size * 2.05, size * 1.18, "#989b9b");
+    ctx.strokeStyle = "#d0cbc0"; ctx.strokeRect(-size * .72, -size * .18, size * 1.44, size * .88);
+    ctx.strokeRect(-size * .9, -size * .36, size * 1.8, size * 1.22);
+    roundedRect(0, size * .22, size * .2, size * .46, "#463f3c");
+    ctx.fillStyle = "#bdcbd0"; ctx.globalAlpha = .35;
+    for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.ellipse(-size + i * size * .5, -size * .95 + (i % 2) * size * .18, size * .48, size * .13, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function drawIslandLabels() {
+  const selected = character?.navigationTarget;
+  const currentName = character?.location?.island;
+  const labels = [];
+  for (const island of islands) {
+    const point = projectPoint(island);
+    if (!point.visible) continue;
+    const selectedIsland = selected?.id === island.id || selected?.name === island.name;
+    const currentIsland = currentName === island.name;
+    if (zoom < 1.22 && !selectedIsland && !currentIsland) continue;
+    const text = island.landmark || island.name;
+    const font = zoom > 1.7 ? 11 : 10;
+    const w = Math.min(140, text.length * font * .62 + 20);
+    const rect = { x: point.x - w / 2, y: point.y + 8, w, h: 17 };
+    if (!selectedIsland && !currentIsland && labels.some((other) => Math.abs(rect.x - other.x) < (rect.w + other.w) / 2 && Math.abs(rect.y - other.y) < 18)) continue;
+    labels.push(rect);
+    ctx.fillStyle = "rgba(5,14,29,.76)";
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.font = `bold ${font}px monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = selectedIsland ? "#f4b41a" : "#f2f6f7";
+    ctx.fillText(text, point.x, rect.y + rect.h / 2, rect.w - 6);
+  }
+}
+function drawNightSky(now) {
+  if (!character) return;
+  const hour = Math.floor((Number(character.autonomy?.tickCount) || 0) % 24);
+  const night = hour >= 19 || hour < 6;
+  const calm = character.travel?.climate === "calm-belt";
+  const tint = night ? "#07142a" : calm ? "#2a7380" : "#198094";
+  ctx.save();
+  ctx.globalAlpha = night ? .24 : .13;
+  ctx.fillStyle = tint;
+  ctx.beginPath(); ctx.arc(width / 2, height / 2, globeRadius(), 0, Math.PI * 2); ctx.fill();
+  if (night) {
+    ctx.globalAlpha = .75;
+    for (let i = 0; i < 36; i++) {
+      const x = ((i * 197 + 31) % 997) / 997 * width;
+      const y = ((i * 313 + 19) % 991) / 991 * height;
+      const twinkle = .45 + .45 * Math.sin(now / 750 + i * 1.7);
+      ctx.globalAlpha = twinkle;
+      ctx.fillStyle = "#d8f4ff";
+      ctx.fillRect(x, y, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+    }
+  }
+  ctx.restore();
+}
+function scheduleFrame() {
+  if (frame === null) frame = requestAnimationFrame(animate);
 }
 function routeDestination() {
-  if (animation?.to) return animation.to;
   if (character?.redirectTarget) return character.redirectTarget;
-  if (character?.mission?.status !== "complete") return null;
+  if (character?.location?.atSea && character.navigationTarget) return character.navigationTarget;
   const route = routeFor(character.originSea);
-  return islands.find((island) => island.name === route[character.location.routeIndex + 1]);
+  return islands.find((island) => island.name === route[character.location.routeIndex + 1]) ?? (animation?.to || null);
 }
 function drawRoute(from, to) {
   const dx = ((to.x - from.x + WIDTH * 1.5) % WIDTH) - WIDTH / 2;
   const points = Array.from({ length: 49 }, (_, i) => radians({ x: (from.x + dx * i / 48 + WIDTH) % WIDTH, y: from.y + (to.y - from.y) * i / 48 }));
-  ctx.setLineDash([5, 6]);
+  ctx.setLineDash([5, 7]);
+  ctx.lineDashOffset = -dashOffset;
   traceLine(points, "#f4b41a", 2);
   ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
 }
 function drawBoat(point, destination) {
   const p = projectPoint(point);
@@ -94,17 +199,18 @@ function drawSeaLabel(point, label) {
   ctx.textAlign = "center";
   ctx.fillText(label, p.x, p.y);
 }
-function render() {
+function render(now = performance.now()) {
   if (!ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#0b1329";
   ctx.fillRect(0, 0, width, height);
-  const gradient = ctx.createRadialGradient(width / 2 - radius * 0.3, height / 2 - radius * 0.35, radius * 0.05, width / 2, height / 2, radius);
+  const size = globeRadius();
+  const gradient = ctx.createRadialGradient(width / 2 - size * 0.3, height / 2 - size * 0.35, size * 0.05, width / 2, height / 2, size);
   gradient.addColorStop(0, "#287080");
   gradient.addColorStop(0.65, "#163e59");
   gradient.addColorStop(1, "#07172c");
   ctx.beginPath();
-  ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+  ctx.arc(width / 2, height / 2, size, 0, Math.PI * 2);
   ctx.fillStyle = gradient;
   ctx.fill();
   ctx.save();
@@ -120,7 +226,12 @@ function render() {
   drawSeaLabel({ x: 120, y: 610 }, "WEST BLUE");
   drawSeaLabel({ x: 950, y: 100 }, "NORTH BLUE");
   drawSeaLabel({ x: 950, y: 650 }, "SOUTH BLUE");
-  for (const island of islands) drawPoint(island, island.name, "■", "#a9cb78");
+  for (const island of islands) {
+    const point = projectPoint(island);
+    drawPoint(island, island.name, "■", "#a9cb78");
+    drawArchitecture(island, point, now);
+  }
+  drawIslandLabels();
   const target = character?.navigationTarget;
   if (Number.isFinite(target?.x) && Number.isFinite(target?.y)) drawPoint(target, target.name || "Rumbo", "◎", "#f4b41a");
   if (boatPosition) {
@@ -128,16 +239,35 @@ function render() {
     if (destination) drawRoute(boatPosition, destination);
     drawBoat(boatPosition, destination);
   }
+  const climate = character?.travel?.climate;
+  if (climate === "calm-belt") {
+    const drift = (now / 120) % Math.max(width, 1);
+    ctx.globalAlpha = .12;
+    for (let i = 0; i < 5; i++) {
+      const y = height / 2 + (i - 2) * size * .14;
+      const fog = ctx.createLinearGradient(0, y - 28, 0, y + 28);
+      fog.addColorStop(0, "transparent"); fog.addColorStop(.5, "#d3eef0"); fog.addColorStop(1, "transparent");
+      ctx.fillStyle = fog;
+      ctx.fillRect(-width + (drift + i * 130) % width, y - 28, width, 56);
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
+  drawNightSky(now);
   ctx.beginPath();
-  ctx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+  ctx.arc(width / 2, height / 2, size, 0, Math.PI * 2);
   ctx.strokeStyle = "#f4b41a";
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.fillStyle = "#f4b41a";
   ctx.font = "bold 12px monospace";
   ctx.textAlign = "center";
-  ctx.fillText("GRAND LINE · RED LINE · FRANJA DE CALMA", width / 2, Math.max(20, height / 2 - radius - 12));
+  if (zoom < 1.38) {
+    ctx.fillText("GRAND LINE · RED LINE · FRANJA DE CALMA", width / 2, Math.max(20, height / 2 - size - 12));
+  } else {
+    ctx.font = "bold 11px monospace";
+    ctx.fillText(`ZOOM ${zoom.toFixed(1)}× · ${character?.location?.island || "MAR ABIERTO"}`, width / 2, 22);
+  }
 }
 function positionFor(c) {
   if (Number.isFinite(c?.mapPosition?.x) && Number.isFinite(c?.mapPosition?.y)) return { ...c.mapPosition };
@@ -145,22 +275,26 @@ function positionFor(c) {
 }
 function animate(now) {
   frame = null;
-  if (!animation || !character || character.autonomy?.paused || character.status === "dead") return;
-  const t = clamp((now - animation.started) / animation.duration, 0, 1);
-  const eased = t * t * (3 - 2 * t);
-  const dx = ((animation.to.x - animation.from.x + WIDTH * 1.5) % WIDTH) - WIDTH / 2;
-  boatPosition = { x: (animation.from.x + dx * eased + WIDTH) % WIDTH, y: animation.from.y + (animation.to.y - animation.from.y) * eased };
-  render();
-  if (t < 1) frame = requestAnimationFrame(animate);
-  else animation = null;
+  if (Math.abs(targetZoom - zoom) > .003) zoom += (targetZoom - zoom) * .22;
+  else zoom = targetZoom;
+  if (animation && character && !character.autonomy?.paused && character.status !== "dead") {
+    const t = clamp((now - animation.started) / animation.duration, 0, 1);
+    const eased = t * t * (3 - 2 * t);
+    const dx = ((animation.to.x - animation.from.x + WIDTH * 1.5) % WIDTH) - WIDTH / 2;
+    boatPosition = { x: (animation.from.x + dx * eased + WIDTH) % WIDTH, y: animation.from.y + (animation.to.y - animation.from.y) * eased };
+    if (t >= 1) animation = null;
+  }
+  dashOffset = (dashOffset + .45) % 24;
+  render(now);
+  if (animation || Math.abs(targetZoom - zoom) > .003 || routeDestination() || character?.travel?.climate === "calm-belt") scheduleFrame();
 }
 function screenPoint(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function unproject(point) {
-  const x = (point.x - width / 2) / radius;
-  const y = -(point.y - height / 2) / radius;
+  const x = (point.x - width / 2) / globeRadius();
+  const y = -(point.y - height / 2) / globeRadius();
   const distance = x * x + y * y;
   if (distance > 1) return null;
   const z = Math.sqrt(1 - distance);
@@ -171,33 +305,47 @@ function unproject(point) {
 function onDown(event) {
   if (event.button !== undefined && event.button !== 0) return;
   event.preventDefault();
-  pointer = { id: event.pointerId, start: screenPoint(event), last: screenPoint(event), moved: false };
+  const point = screenPoint(event);
+  pointers.set(event.pointerId, { start: point, last: point, moved: false });
   canvas.setPointerCapture?.(event.pointerId);
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinchStart = { distance: Math.hypot(a.last.x - b.last.x, a.last.y - b.last.y), zoom: targetZoom };
+  }
 }
 function onMove(event) {
-  if (!pointer || pointer.id !== event.pointerId) return;
+  const pointer = pointers.get(event.pointerId);
+  if (!pointer) return;
   event.preventDefault();
   const point = screenPoint(event);
+  const deltaX = point.x - pointer.last.x;
+  const deltaY = point.y - pointer.last.y;
   if (Math.hypot(point.x - pointer.start.x, point.y - pointer.start.y) > 5) pointer.moved = true;
-  if (pointer.moved) {
-    longitude -= (point.x - pointer.last.x) / radius;
-    latitude = clamp(latitude + (point.y - pointer.last.y) / radius, -1.35, 1.35);
+  pointer.last = point;
+  if (pointers.size >= 2 && pinchStart) {
+    const [a, b] = [...pointers.values()];
+    const distance = Math.hypot(a.last.x - b.last.x, a.last.y - b.last.y);
+    zoomMap(pinchStart.zoom * distance / Math.max(1, pinchStart.distance));
+  } else if (pointer.moved) {
+    longitude -= deltaX / globeRadius();
+    latitude = clamp(latitude + deltaY / globeRadius(), -1.35, 1.35);
     render();
   }
-  pointer.last = point;
 }
 function onUp(event) {
-  if (!pointer || pointer.id !== event.pointerId) return;
+  const pointer = pointers.get(event.pointerId);
+  if (!pointer) return;
   event.preventDefault();
-  const moved = pointer.moved;
-  pointer = null;
-  if (moved) return;
+  const wasPinching = pointers.size > 1 || Boolean(pinchStart);
+  pointers.delete(event.pointerId);
+  if (pointers.size < 2) pinchStart = null;
+  if (wasPinching || pointer.moved) return;
   const screen = screenPoint(event);
   const point = unproject(screen);
   if (!point) return;
   const island = islands.find((item) => {
     const p = projectPoint(item);
-    return p.visible && Math.hypot(screen.x - p.x, screen.y - p.y) < 18;
+    return p.visible && Math.hypot(screen.x - p.x, screen.y - p.y) < Math.max(18, zoom * 11);
   });
   canvas.dispatchEvent(new CustomEvent("onepiece:map-destination", { bubbles: true, detail: island ?? { ...point, name: "Mar abierto", sea: "Mar abierto" } }));
 }
@@ -209,6 +357,13 @@ export function resizeMap() {
   canvas.height = height;
   radius = Math.max(70, Math.min(width * 0.44, height * 0.37));
   render();
+}
+export function zoomMap(value) {
+  targetZoom = clamp(Number(value) || 1, 0.72, 3.2);
+  scheduleFrame();
+}
+export function adjustZoom(direction) {
+  zoomMap(targetZoom * (direction > 0 ? 1.28 : 1 / 1.28));
 }
 export function focusMap(point) {
   if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
@@ -226,9 +381,11 @@ export function initMap() {
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);
-  canvas.addEventListener("pointercancel", () => { pointer = null; });
-  canvas.addEventListener("wheel", (event) => event.preventDefault(), { passive: false });
-  document.getElementById("map-reset-view")?.addEventListener("click", () => focusMap(positionFor(character)));
+  canvas.addEventListener("pointercancel", (event) => { pointers.delete(event.pointerId); pinchStart = null; });
+  canvas.addEventListener("wheel", (event) => { event.preventDefault(); zoomMap(targetZoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12)); }, { passive: false });
+  document.getElementById("map-reset-view")?.addEventListener("click", () => { zoomMap(1); focusMap(positionFor(character)); });
+  document.addEventListener("onepiece:map-zoom", (event) => adjustZoom(event.detail?.direction));
+  document.addEventListener("onepiece:map-fit", () => zoomMap(1));
   window.addEventListener("resize", resizeMap);
   resizeMap();
 }
@@ -246,7 +403,7 @@ export function renderMap(c) {
     if (!animation || animation.to.x !== next.x || animation.to.y !== next.y) {
       animation = { from: previous, to: next, started: performance.now(), duration: c.travel?.speedMultiplier === 0.5 ? 6000 : 3000 };
       if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(animate);
+        frame = requestAnimationFrame(animate);
     }
   } else if (!previous || c.autonomy?.paused || c.status === "dead") {
     boatPosition = next;
@@ -255,4 +412,5 @@ export function renderMap(c) {
     frame = null;
   }
   render();
+  if (routeDestination() || character.travel?.climate === "calm-belt") scheduleFrame();
 }
