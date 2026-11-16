@@ -1,7 +1,8 @@
 import { SUPABASE_CONFIG } from "./network-config.js";
 import { advanceLocalWorld, applyLocalAction, createLocalWorld } from "./geopolitics.js";
+import { advanceFruitCycle, claimLocalFruit, createLocalFruitLedger, releaseLocalFruit } from "./devil_fruits.js";
 
-const TABLES = ["islands_control", "global_events", "bounties_leaderboard", "fallen_captains", "bosses"];
+const TABLES = ["islands_control", "global_events", "bounties_leaderboard", "fallen_captains", "bosses", "devil_fruits"];
 
 export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.fetch, storage } = {}) {
   if (storage === undefined) {
@@ -13,6 +14,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   const queueKey = `one-latam-world-outbox:${scope}`;
   const worldKey = "one-latam-local-world";
   let world = createLocalWorld();
+  world.devil_fruits ??= createLocalFruitLedger();
   let status = "local";
   let error = "";
   let session = null;
@@ -30,6 +32,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
       if (saved) {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.islands_control) || !Array.isArray(parsed.global_events) || !Array.isArray(parsed.bounties_leaderboard) || !Array.isArray(parsed.fallen_captains) || !Array.isArray(parsed.bosses)) throw new Error("Mundo local inválido.");
+        parsed.devil_fruits ??= createLocalFruitLedger();
         world = parsed;
       }
     } catch { status = "offline"; error = "No se pudo leer el mundo local guardado."; }
@@ -107,7 +110,8 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
       }
       const results = await Promise.all(TABLES.map((table) => {
         const order = table === "global_events" || table === "fallen_captains" ? "&order=created_at.desc" : table === "bounties_leaderboard" ? "&order=bounty.desc" : "";
-        return request(`/rest/v1/${table}?select=*&limit=100${order}`, {}, session.access_token);
+        const fields = table === "devil_fruits" ? "id,name,type,technique,bonus,x,y,state" : "*";
+        return request(`/rest/v1/${table}?select=${fields}&limit=100${order}`, {}, session.access_token);
       }));
       world = Object.fromEntries(TABLES.map((table, i) => [table, results[i]]));
       setStatus("online");
@@ -155,7 +159,49 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
     advanceCycle(day) {
       if (configured || configError) return;
       if (world.last_cycle_day == null) world.last_cycle_day = Math.max(0, day - 1);
-      if (advanceLocalWorld(world, day)) { saveLocalWorld(); notify(); }
+      const changed = advanceLocalWorld(world, day);
+      const reborn = advanceFruitCycle(world.devil_fruits, day);
+      if (reborn) {
+        world.global_events.unshift({ event_id: `fruit-rebirth-${day}`, type: "fruit", text: "🌊 Una Akuma no Mi reencarnó en algún punto remoto del mar.", created_at: new Date().toISOString() });
+      }
+      if (changed || reborn) { saveLocalWorld(); notify(); }
+    },
+    async claimFruit(id, captainId, point) {
+      if (configured) {
+        try {
+          await scheduleSync();
+          await authenticate();
+          const fruit = await request("/rest/v1/rpc/claim_devil_fruit", { method: "POST", body: JSON.stringify({ p_fruit_id: id, p_captain_id: captainId, p_x: point.x, p_y: point.y }) }, session.access_token);
+          if (fruit) {
+            const entry = world.devil_fruits?.find((item) => item.id === id);
+            if (entry) { entry.state = "owned"; entry.owner_id = captainId; entry.captain_id = captainId; notify(); }
+          }
+          return fruit;
+        } catch (reason) { setStatus("offline", reason instanceof Error ? reason.message : "No se pudo reclamar la fruta."); return null; }
+      }
+      if (configError) return null;
+      const fruit = claimLocalFruit(world.devil_fruits, id, captainId, point);
+      if (fruit) { saveLocalWorld(); notify(); }
+      return fruit;
+    },
+    async releaseFruit(id, captainId) {
+      if (configured) {
+        try {
+          await scheduleSync();
+          await authenticate();
+          const released = await request("/rest/v1/rpc/release_devil_fruit", { method: "POST", body: JSON.stringify({ p_fruit_id: id, p_captain_id: captainId }) }, session.access_token);
+          if (released) {
+            const entry = world.devil_fruits?.find((item) => item.id === id);
+            if (entry) entry.state = "reincarnating";
+            notify();
+          }
+          return Boolean(released);
+        } catch (reason) { setStatus("offline", reason instanceof Error ? reason.message : "No se pudo liberar la fruta."); return false; }
+      }
+      if (configError) return false;
+      const released = releaseLocalFruit(world.devil_fruits, id, captainId, world.last_cycle_day || 0);
+      if (released) { saveLocalWorld(); notify(); }
+      return released;
     },
     async scout(x, y) {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return null;

@@ -1,11 +1,13 @@
 import { ensureBlockOneData } from "./block1.js";
 import { getMapIslands } from "./map.js";
+import { cargoCapacity } from "./races.js";
 
 const GOODS = {
   wood: { label: "Madera", price: 20, kind: "items" },
   water: { label: "Agua", price: 10, kind: "water" },
   rum: { label: "Ron", price: 18, kind: "items" },
-  weapon: { label: "Arma de puerto", price: 60, kind: "equipment" }
+  weapon: { label: "Arma de puerto", price: 60, kind: "equipment" },
+  reinforcedHull: { label: "Casco reforzado", price: 500, kind: "ship" }
 };
 const ENEMIES = ["Barco Pirata", "Marina", "Monstruo Marino"];
 const log = (character, message) => {
@@ -21,7 +23,8 @@ export function marketPrices(character) {
   return Object.fromEntries(Object.entries(GOODS).map(([id, good]) => {
     const change = (hash(`${port}:${day}:${id}`) % 41 - 20) / 100;
     const specialty = island?.specialty === id ? 0.75 : 1;
-    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty * 0.6)) }];
+    const discrimination = island?.segregated && character.race && character.race !== "human" ? 1.5 : 1;
+    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty * discrimination)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty / discrimination * 0.6)) }];
   }));
 }
 export function trade(character, id, action) {
@@ -31,10 +34,14 @@ export function trade(character, id, action) {
   if (!Object.hasOwn(prices, id) || !["buy", "sell"].includes(action)) return { ok: false, message: "Operación de mercado inválida." };
   const good = prices[id];
   const inv = character.inventory;
+  const carried = inv.items.length + inv.equipment.length + inv.provisions;
+  if (action === "buy" && carried >= cargoCapacity(character.race)) return { ok: false, message: "La capacidad de carga de esta raza está completa." };
+  if (action === "buy" && id === "reinforcedHull" && character.race === "fishman" && getMapIslands(character).find((island) => island.name === character.location.island)?.segregated) return { ok: false, message: "El astillero rechaza atender a esta raza en este puerto." };
   if (action === "buy") {
     if (character.berries < good.buy) return { ok: false, message: "No tienes suficientes Berries." };
     character.berries -= good.buy;
-    if (good.kind === "water") inv.water = (Number(inv.water) || 0) + 1;
+    if (good.kind === "ship") character.ship.reinforced = true;
+    else if (good.kind === "water") inv.water = (Number(inv.water) || 0) + 1;
     else inv[good.kind].push(good.label);
     log(character, `⚓ Compra ${good.label} por ฿${good.buy} en ${character.location.island}.`);
     return { ok: true, message: `Compraste ${good.label} por ฿${good.buy}.` };

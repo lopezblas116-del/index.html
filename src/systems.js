@@ -62,7 +62,7 @@ export function discoverAtSea(character, random = Math.random) {
   ensureAdvancedSystems(character);
   if (character.status === "dead" || !character.location?.atSea || !character.mapPosition) return null;
   const discoveries = character.systems.discoveries;
-  const chance = Math.min(0.08, 0.003 + (character.stats.ingenuity || 0) * 0.001 + (character.soulCard.hiddenTalent === "Cartografía" ? 0.01 : 0));
+  const chance = Math.min(0.08, (0.003 + (character.stats.ingenuity || 0) * 0.001 + (character.soulCard.hiddenTalent === "Cartografía" ? 0.01 : 0)) * (1 + (character.racialLearning?.talentBonus || 0)));
   if (random() >= chance) return null;
   const alignment = character.soulCard.alignment;
   const id = `sea-${alignment.toLocaleLowerCase("es")}`;
@@ -193,7 +193,7 @@ export function advanceAdvancedSystems(character, { action = "", previousIsland 
   else if (travel.docked) travel.logPoseCharge = clamp(travel.logPoseCharge + 10);
 
   if (action === "navigate") {
-    const multiplier = climate === "calm-belt" ? 2 : 1;
+    const multiplier = (climate === "calm-belt" && character.race !== "fishman" ? 2 : 1) * (character.race === "giant" ? 2 : 1);
     const provisions = character.inventory ?? (character.inventory = { provisions: 0, water: 0 });
     const foodUsed = Math.min(Number(provisions.provisions) || 0, 1);
     const waterUsed = Math.min(Number(provisions.water) || 0, multiplier);
@@ -203,9 +203,27 @@ export function advanceAdvancedSystems(character, { action = "", previousIsland 
     if (climate === "grand-line") {
       character.ship.health = Math.max(0, character.ship.health - 1);
       if (travel.weather === "storm" && character.ship.health <= character.ship.maxHealth * 0.7) {
-        const damage = 4 + Math.floor(Math.random() * 8);
+        const damage = (4 + Math.floor(Math.random() * 8)) * (character.race === "giant" && !character.ship.reinforced ? 2 : 1);
         character.ship.health = Math.max(0, character.ship.health - damage);
         character.log.unshift({ time: new Date().toISOString(), message: `🌩 La tormenta daña la carabela (-${damage} integridad; ${character.ship.health}% restante).` });
+      }
+    }
+
+    if (character.race === "mink" && (/Whiskey Peak|desierto|árido/i.test(character.location?.island || "") || character.climateZone === "dry")) {
+      character.stats.health = Math.max(0, character.stats.health - 3);
+      character.log.unshift({ time: new Date().toISOString(), message: "🏜 El clima seco agota a la Mink (-3 HP)." });
+    }
+    if (character.race === "sky" && character.originSea !== "Grand Line" && Math.random() < 0.08) {
+      character.stats.health = Math.max(0, character.stats.health - 2);
+      character.log.unshift({ time: new Date().toISOString(), message: "🌊 La densidad del Mar Azul causa malestar al habitante del Cielo (-2 HP)." });
+    }
+    if (character.location?.atSea && character.fruit) {
+      const rescued = character.crew.length > 0 && Math.random() < 0.7;
+      if (rescued) {
+        character.log.unshift({ time: new Date().toISOString(), message: `🛟 La tripulación rescata a ${character.name}; una Akuma no Mi le impide nadar.` });
+      } else {
+        character.stats.health = 0;
+        character.log.unshift({ time: new Date().toISOString(), message: `🌊 ${character.name} cae al mar y no logra nadar por el poder de su Akuma no Mi.` });
       }
     }
   }

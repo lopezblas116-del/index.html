@@ -1,6 +1,7 @@
 import { newsLocation } from "./map.js";
 import { initMap, renderMap, resizeMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
+import { RACES } from "./races.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -341,6 +342,7 @@ function updateWizardSummary() {
     "summary-name": form.elements.namedItem("name")?.value.trim() || "Aventurero",
     "summary-handle": form.elements.namedItem("handle")?.value.trim() || "@usuario",
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
+    "summary-race": form.querySelector('[name="race"] option:checked')?.textContent || "Humano",
     "summary-sea": "Aleatorio",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
@@ -419,6 +421,7 @@ export function initWizard() {
   });
   form.addEventListener("input", updateWizardSummary);
   form.addEventListener("change", (event) => {
+    if (event.target.name === "race" && byId("race-description")) byId("race-description").textContent = RACES[event.target.value]?.tagline || "";
     if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
       const list = `${event.target.name}-list`;
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
