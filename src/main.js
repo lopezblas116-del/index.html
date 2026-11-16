@@ -1,6 +1,6 @@
 import {
   SAVE_KEY, PULSE_MS, confrontFugitive, createCharacter, createHeir,
-  loadGame, resolveAutonomousBranch, resolveBranch, saveGame, sendWhisper, setAutonomyPaused, simulateOffline
+  loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
   closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
@@ -19,6 +19,7 @@ import { SUPABASE_CONFIG } from "./network-config.js";
 import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantPort } from "./politics.js";
 import { removeStorage } from "./storage_adapter.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
+import { sendConsciousnessWhisper } from "./chat_engine.js";
 
 let character = loadGame();
 const network = createNetwork();
@@ -197,7 +198,7 @@ listen(document, "onepiece:map-destination", (event) => {
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
   const before = publicSnapshot(character);
-  sendWhisper(character, event.detail?.text || "");
+  sendConsciousnessWhisper(character, event.detail?.text || "");
   publishChanges(before, character, true);
   if (character.location?.atSea) scoutFugitive(character);
   persistRender();
@@ -215,7 +216,7 @@ listen(byId("character-form"), "submit", (event) => {
   ensureBlockOneData(character);
   persistRender(true);
 });
-listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const before = publicSnapshot(character); sendWhisper(character, input.value); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
+listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const before = publicSnapshot(character); sendConsciousnessWhisper(character, input.value); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
 listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
 listen(document.querySelector("[data-close-pantheon]"), "click", closePantheon);
 listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal);
@@ -223,7 +224,7 @@ listen(document.querySelector("[data-open-heir]"), "click", () => { const modal 
 function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
-  returnToGlobalMap();
+  returnToGlobalMap(true);
   removeStorage(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();

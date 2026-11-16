@@ -4,7 +4,9 @@ GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de dato
 
 ## Módulos del cliente
 
-`src/config.js` centraliza paleta, claves y contratos; `src/storage_adapter.js` es la única capa que accede al almacenamiento del navegador. `src/event_dispatcher.js` valida y distribuye eventos de bitácora/noticias/chat, y `src/chat_engine.js` mantiene el Chat Global local y sincronizable junto con el historial del Nexo de Conciencia. Los catálogos descriptivos viven en `src/data/islands_data.json` y `src/data/missions_data.json`; la lógica de mapa y navegación los consume por separado.
+`src/config.js` centraliza paleta, claves y contratos; `src/storage_adapter.js` es la única capa que accede al almacenamiento del navegador. `src/network.js` gestiona la sincronización con Supabase y usa ese adaptador para sus datos locales. `src/event_dispatcher.js` valida y distribuye eventos de bitácora/noticias/chat, `src/chat_engine.js` mantiene el Chat Global y el historial privado de susurros, y `src/time_engine.js` calcula el avance del reloj. Los catálogos descriptivos, incluidos los habitantes visuales de los puertos, viven en `src/data/islands_data.json` y `src/data/missions_data.json`.
+
+Acerca el mapa con la rueda o un pellizco sobre el marcador de una isla para entrar en su vista urbana; aleja para regresar al globo. También se puede seleccionar una isla con un toque. Los habitantes se animan solo mientras su vista está visible y se detienen al abrir un modal o activar movimiento reducido. La selección de un destino se puede proponer desde Más > Vista mundial.
 
 ## Conectar Supabase
 

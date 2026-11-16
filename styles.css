@@ -313,16 +313,13 @@ body.wizard-active .masthead{display:none}
 #wizard-container button{min-height:48px}
 #wizard-container .option-card{min-width:48px;min-height:48px}
 .one-hud-contract-actions,.one-hud-climate-zones{display:flex;flex-wrap:wrap;gap:8px}
-.one-hud-redirect{position:absolute;left:max(72px,calc(env(safe-area-inset-left) + 60px));bottom:calc(250px + env(safe-area-inset-bottom));max-width:min(220px,calc(100vw - 100px));padding:8px 12px;pointer-events:auto}
 #world-map{touch-action:none}
 
 /* A shared atmosphere token keeps the full-screen HUD in step with the globe. */
 body[data-atmosphere="day"]{background-color:#0b1329}
 body[data-atmosphere="night"]{background-image:radial-gradient(ellipse at 50% 10%,rgba(35,86,145,.2),transparent 58%),linear-gradient(180deg,#071225,#0b1329)}
 body[data-atmosphere="mist"]{background-image:linear-gradient(115deg,rgba(170,220,224,.08),transparent 38%,rgba(170,220,224,.1)),linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px)}
-body[data-atmosphere="night"] #one-hud .one-hud-brand,
 body[data-atmosphere="night"] #one-hud .one-hud-zoom,
-body[data-atmosphere="mist"] #one-hud .one-hud-brand,
 body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(11,19,41,.9)}
 body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(170,220,224,.12)}
 @media(max-width:600px){#bottom-nav{font-size:11px}}
@@ -361,7 +358,6 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 #island-hotspots{position:absolute;inset:0;z-index:1}
 .island-hotspot{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1}
 .island-message{position:absolute;top:100%;left:0;right:0;min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
-body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-controls,body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-redirect{display:none!important}
 @media(max-width:600px){#island-view{padding:112px 10px 76px}.island-heading{align-items:start}.island-heading button{font-size:15px;max-width:145px}.island-heading p{font-size:15px}.island-hotspot{padding:4px 6px;font-size:15px}}
 
 /* Painted parchment and pinned notices make the information panels feel physical. */
@@ -387,6 +383,8 @@ body[data-camera-state="ISLAND_VIEW"] #one-hud .one-hud-controls,body[data-camer
 /* Brass fittings and engraved iconography unify the HUD with the sea chart. */
 #one-hud .nautical-icon,.one-hud-tabs .nautical-icon,.island-hotspot .nautical-icon{display:block;width:24px;height:24px;flex:0 0 24px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
 #one-hud .one-hud-round,#one-hud .one-hud-plus{border:2px ridge #9c752d;background:linear-gradient(145deg,#29354a,#0c172b 70%);box-shadow:inset 0 0 0 1px rgba(244,180,26,.22),0 7px 20px #0008}
+#top-actions .one-hud-round{border-radius:50%}
+#hud-header [data-hud-location]{display:block;overflow-wrap:anywhere}
 #one-hud .one-hud-round:hover,#one-hud .one-hud-plus:hover{border-color:#f4b41a;background:linear-gradient(145deg,#3a4658,#162238)}
 #one-hud .one-hud-round .nautical-icon,#one-hud .one-hud-plus .nautical-icon{width:24px;height:24px;color:#e5bd69;stroke-width:1.7}
 #one-hud .one-hud-plus{color:#e5bd69}

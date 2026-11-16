@@ -97,7 +97,7 @@ function ship(ctx, x, y, flag) {
   box(ctx, x + 13, y + 22, 48, 4, "#c29a6b");
 }
 
-export function drawIslandSceneContext(ctx, island, character) {
+export function drawIslandSceneContext(ctx, island, character, now = 0) {
   const scene = island.localScene;
   const palette = PALETTES[scene.theme] || PALETTES.green;
   const seed = scene.seed;
@@ -179,6 +179,18 @@ export function drawIslandSceneContext(ctx, island, character) {
     box(ctx, 535, 205, 27, 30, "#385b72");
     for (let i = 0; i < 4; i++) box(ctx, 540, 209 + i * 5, 15, 2, "#b4d7d2");
   }
+  (island.npcs || []).forEach((npc, index) => {
+    const x = 170 + index * 190 + Math.sin(now / 1700 + index * 2) * 34;
+    const y = 172 + index * 20;
+    box(ctx, x + 7, y + 34, 20, 4, "rgba(0,0,0,.25)");
+    drawPixelAvatar(ctx, npc, { x, y, scale: .8, fullBody: true });
+    if (ctx.fillText) {
+      ctx.fillStyle = "#18263a";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(npc.name, x + 13, y - 2);
+    }
+  });
   if (character) {
     box(ctx, 275, 260, 31, 6, "rgba(0,0,0,.25)");
     drawPixelAvatar(ctx, character.appearance, { x: 267, y: 211, scale: 1.15, fullBody: true });

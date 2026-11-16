@@ -5,6 +5,7 @@ import { ensureBlockOneData } from "../src/block1.js";
 import { advanceAdvancedSystems, ensureAdvancedSystems } from "../src/systems.js";
 import { advanceLocalWorld, applyLocalAction, createLocalWorld } from "../src/geopolitics.js";
 import { createNetwork } from "../src/network.js";
+import { getMapIslands } from "../src/map.js";
 
 function captain() {
   const c = createCharacter({ name: "Ana Marea", originSea: "East Blue", traits: ["Valiente", "Leal"] });
@@ -12,6 +13,15 @@ function captain() {
   ensureAdvancedSystems(c);
   return c;
 }
+
+test("new captains spawn at the mapped starting port in each sea", () => {
+  for (const sea of ["East Blue", "West Blue", "North Blue", "South Blue"]) {
+    const character = createCharacter({ name: "Navegante", originSea: sea });
+    const island = getMapIslands(character).find((item) => item.name === character.location.island);
+    assert.ok(island, `Missing starting port for ${sea}`);
+    assert.deepEqual(character.mapPosition, { x: island.x, y: island.y });
+  }
+});
 
 test("the 1:4 clock retains fractions between saves and rolls over at midnight", () => {
   const c = captain();

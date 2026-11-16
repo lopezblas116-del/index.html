@@ -69,7 +69,7 @@ export function initIslandView() {
       byId("island-back")?.focus();
     }
   });
-  listen(byId("island-back"), "click", returnToGlobalMap);
+  listen(byId("island-back"), "click", () => returnToGlobalMap());
 }
 
 export function renderIslandView(character) {

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getMapIslands } from "../src/map.js";
 import { ISLAND_DATA } from "../src/islands_data.js";
-import { drawIslandScene, drawPixelAvatar } from "../src/island_renderer.js";
+import { drawIslandScene, drawIslandSceneContext, drawPixelAvatar } from "../src/island_renderer.js";
 
 test("each mapped island has its own stable scene and island-specific options", () => {
   const islands = getMapIslands({ id: "captain" });
@@ -64,4 +64,19 @@ test("full-body sprite adds legs without changing the portrait sprite", () => {
   calls.length = 0;
   drawPixelAvatar(ctx, {});
   assert.ok(!calls.some(([, y]) => y >= 32));
+});
+
+test("themed NPCs come from island data and walk between frames", () => {
+  const islands = getMapIslands();
+  for (const [id, names] of [["dawn", ["Makino", "Dadan"]], ["shells", ["Capitán Morgan", "Helmeppo"]], ["baratie", ["Zeff"]], ["arlong", ["Arlong", "Gyojin"]], ["loguetown", ["Capitán Smoker", "Tashigi"]]]) {
+    assert.deepEqual(islands.find((item) => item.id === id).npcs.map((npc) => npc.name), names);
+  }
+  const island = islands.find((item) => item.id === "dawn");
+  const render = (time) => {
+    const labels = [];
+    const ctx = { fillRect() {}, fillText: (...args) => labels.push(args) };
+    drawIslandSceneContext(ctx, island, null, time);
+    return labels;
+  };
+  assert.notEqual(render(0)[0][1], render(1000)[0][1]);
 });

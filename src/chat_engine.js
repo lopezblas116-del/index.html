@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from "./config.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { readJSON, writeJSON } from "./storage_adapter.js";
+import { sendWhisper } from "./game.js";
 
 const MAX_MESSAGES = 100;
 const MAX_LENGTH = 280;
@@ -54,7 +55,25 @@ export function postGlobalChat(character, text, storage) {
 }
 
 export function getWhisperHistory(character) {
+  if (Array.isArray(character?.whisper?.history)) return character.whisper.history.slice(0, 30);
   return (character?.log ?? [])
     .filter((entry) => /susurr|susurro|reflexi[oó]n|consejo/i.test(entry.message || ""))
+    .map((entry) => ({ ...entry, status: "Registrado" }))
     .slice(0, 30);
+}
+
+export function sendConsciousnessWhisper(character, text) {
+  const phrase = String(text ?? "").trim().slice(0, 160);
+  if (!character || character.status === "dead" || !phrase) return null;
+  const history = getWhisperHistory(character);
+  const result = sendWhisper(character, phrase);
+  character.whisper.history ??= history;
+  character.whisper.history.unshift({
+    time: new Date().toISOString(),
+    message: phrase,
+    status: result.obeyed ? "Aceptado" : "Ignorado",
+    response: character.log.find((entry) => entry.message.includes(`«${phrase}»`))?.message || ""
+  });
+  character.whisper.history = character.whisper.history.slice(0, 30);
+  return result;
 }

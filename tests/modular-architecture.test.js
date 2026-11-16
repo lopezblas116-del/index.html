@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import islandData from "../src/data/islands_data.json" with { type: "json" };
 import missionData from "../src/data/missions_data.json" with { type: "json" };
 import { CONTRACTS, PALETTE, STORAGE_KEYS } from "../src/config.js";
-import { getGlobalChat, postGlobalChat } from "../src/chat_engine.js";
+import { getGlobalChat, postGlobalChat, getWhisperHistory, sendConsciousnessWhisper } from "../src/chat_engine.js";
 import { dispatchTypedEvent, onTypedEvent } from "../src/event_dispatcher.js";
 import { readJSON, removeStorage, writeJSON } from "../src/storage_adapter.js";
 import { ensureBlockOneData } from "../src/block1.js";
@@ -64,6 +64,19 @@ test("global chat persists locally, emits typed events, and merges synchronized 
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
   }
+});
+
+test("whisper outcomes and avatar responses survive serialization", () => {
+  const captain = createCharacter({ name: "Navegante" });
+  captain.log.unshift({ message: "Un susurro antiguo.", time: "2020-01-01" });
+  assert.equal(sendConsciousnessWhisper(captain, " "), null);
+  const result = sendConsciousnessWhisper(captain, "palabras incomprensibles");
+  assert.equal(result.obeyed, false);
+  const [entry] = getWhisperHistory(JSON.parse(JSON.stringify(captain)));
+  assert.equal(entry.status, "Ignorado");
+  assert.match(entry.response, /no fue comprendido/);
+  assert.equal(entry.message, "palabras incomprensibles");
+  assert.ok(getWhisperHistory(captain).some((item) => item.message === "Un susurro antiguo." && item.status === "Registrado"));
 });
 
 test("typed event dispatcher rejects unknown types and malformed payloads", () => {

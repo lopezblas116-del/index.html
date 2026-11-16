@@ -13,9 +13,12 @@ const radians = (point) => ({
 let canvas, ctx, character, width = 0, height = 0, radius = 0;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
+let zoomFocus = null, zoomAnchor = null;
+const ISLAND_ZOOM = 2.2;
 export const GLOBAL_MAP = "GLOBAL_MAP";
 export const ISLAND_VIEW = "ISLAND_VIEW";
 let cameraState = GLOBAL_MAP, transition = null, savedCamera = null, localIsland = null, localRenderKey = "";
+let lastIslandFrame = 0;
 let modalOpen = false;
 const mapCovered = () => modalOpen || Boolean(document.querySelector?.("dialog[open]"));
 export function getCameraState() { return cameraState; }
@@ -351,23 +354,23 @@ function render(now = performance.now()) {
   if (!ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
   const chart = ctx.createLinearGradient(0, 0, width, height);
-  chart.addColorStop(0, "#e5d4ac");
-  chart.addColorStop(.48, "#d7c292");
-  chart.addColorStop(1, "#c8ad78");
+  chart.addColorStop(0, "#0b1329");
+  chart.addColorStop(.48, "#12243a");
+  chart.addColorStop(1, "#0b1329");
   ctx.fillStyle = chart;
   ctx.fillRect(0, 0, width, height);
   for (let i = 0; i < 460; i++) {
     const x = (i * 197 + 41) % width, y = (i * 313 + 17) % height;
-    ctx.fillStyle = i % 3 ? "rgba(104,76,43,.07)" : "rgba(255,249,220,.16)";
+    ctx.fillStyle = i % 3 ? "rgba(118,166,169,.08)" : "rgba(255,249,220,.16)";
     ctx.fillRect(x, y, i % 7 === 0 ? 2 : 1, 1);
   }
   for (let y = height * .16; y < height; y += 84) {
-    ctx.strokeStyle = "rgba(89,111,102,.14)";
+    ctx.strokeStyle = "rgba(155,191,181,.14)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
   }
   for (let x = width * .12; x < width; x += 96) {
-    ctx.strokeStyle = "rgba(89,111,102,.12)";
+    ctx.strokeStyle = "rgba(155,191,181,.12)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
   }
@@ -449,9 +452,9 @@ function render(now = performance.now()) {
 function atIsland(island) {
   return Boolean(character && character.status !== "dead" && !character.captured && !character.location?.atSea && character.location?.island === island.name);
 }
-function islandFrame(island, progress = 1) {
+function islandFrame(island, progress = 1, now = 0, sceneRect = null) {
   const scene = document.querySelector?.(".island-scene");
-  const rect = scene?.getBoundingClientRect();
+  const rect = sceneRect || scene?.getBoundingClientRect();
   if (!rect || !rect.width || !rect.height) return;
   const blend = clamp((progress - .44) / .56, 0, 1);
   if (!blend) return;
@@ -466,16 +469,19 @@ function islandFrame(island, progress = 1) {
   ctx.fillRect(0, 0, width, height);
   ctx.translate(x - rect.width * size / 2, y - rect.height * size / 2);
   ctx.scale(rect.width * size / ISLAND_SCENE_WIDTH, rect.height * size / ISLAND_SCENE_HEIGHT);
-  drawIslandSceneContext(ctx, island, atIsland(island) ? character : null);
+  drawIslandSceneContext(ctx, island, atIsland(island) ? character : null, now);
   ctx.restore();
 }
 function sceneKey(island) {
   return JSON.stringify([island.id, atIsland(island), character?.appearance]);
 }
-function renderLocalIsland() {
+function renderLocalIsland(now = performance.now()) {
   if (!localIsland) return;
-  islandFrame(localIsland);
+  islandFrame(localIsland, 1, now);
   localRenderKey = sceneKey(localIsland);
+}
+function animateIsland() {
+  return Boolean(localIsland?.npcs?.length && !document.body?.classList?.contains("reduced-motion"));
 }
 function suspendTransition() {
   if (transition && transition.suspendedAt == null) transition.suspendedAt = performance.now();
@@ -490,6 +496,8 @@ function resumeRendering() {
     scheduleFrame();
   } else if (cameraState === ISLAND_VIEW) {
     renderLocalIsland();
+    lastIslandFrame = performance.now();
+    if (animateIsland()) scheduleFrame();
   } else {
     render();
     if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
@@ -509,18 +517,31 @@ function animate(now) {
     latitude = transition.fromLat + (transition.toLat - transition.fromLat) * eased;
     zoom = transition.fromZoom + (transition.toZoom - transition.fromZoom) * eased;
     render(now);
-    islandFrame(transition.island, t);
+    islandFrame(transition.island, transition.returning ? 1 - t : t, now, transition.sceneRect);
     if (t < 1) { scheduleFrame(); return; }
     const island = transition.island;
+    const returning = transition.returning;
     transition = null;
+    if (returning) {
+      targetZoom = zoom;
+      if (animation || shouldAnimateRoute()) scheduleFrame();
+      return;
+    }
     cameraState = ISLAND_VIEW;
     localIsland = island;
+    targetZoom = zoom;
+    lastIslandFrame = now;
     localRenderKey = sceneKey(island);
     canvas.setAttribute("aria-label", `Ciudad y puerto de ${island.landmark || island.name}, vista pixel art`);
     document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState, island } }));
+    if (animateIsland()) scheduleFrame();
     return;
   }
-  if (cameraState !== GLOBAL_MAP) return;
+  if (cameraState === ISLAND_VIEW) {
+    if (now - lastIslandFrame >= 80) { renderLocalIsland(now); lastIslandFrame = now; }
+    if (animateIsland()) scheduleFrame();
+    return;
+  }
   if (Math.abs(targetZoom - zoom) > .003) zoom += (targetZoom - zoom) * .22;
   else zoom = targetZoom;
   if (animation && character && !character.autonomy?.paused && character.status !== "dead") {
@@ -549,7 +570,7 @@ function unproject(point) {
   return { x: Math.round((((lon / (2 * Math.PI) + 0.5) % 1 + 1) % 1) * WIDTH), y: Math.round((0.5 - lat / Math.PI) * HEIGHT) };
 }
 function onDown(event) {
-  if (cameraState !== GLOBAL_MAP || transition || (event.button !== undefined && event.button !== 0)) return;
+  if (transition || (event.button !== undefined && event.button !== 0)) return;
   event.preventDefault();
   const point = screenPoint(event);
   pointers.set(event.pointerId, { start: point, last: point, moved: false });
@@ -573,8 +594,12 @@ function onMove(event) {
   if (pointers.size >= 2 && pinchStart) {
     const [a, b] = [...pointers.values()];
     const distance = Math.hypot(a.last.x - b.last.x, a.last.y - b.last.y);
-    zoomMap(pinchStart.zoom * distance / Math.max(1, pinchStart.distance));
-  } else if (pointer.moved) {
+    const value = pinchStart.zoom * distance / Math.max(1, pinchStart.distance);
+    if (cameraState === ISLAND_VIEW) {
+      if (value < pinchStart.zoom * .85) returnToGlobalMap();
+    } else zoomMap(value, { x: (a.last.x + b.last.x) / 2, y: (a.last.y + b.last.y) / 2 });
+  } else if (pointer.moved && cameraState === GLOBAL_MAP) {
+    zoomFocus = zoomAnchor = null;
     longitude -= deltaX / globeRadius();
     latitude = clamp(latitude + deltaY / globeRadius(), -1.35, 1.35);
     render();
@@ -588,6 +613,7 @@ function onUp(event) {
   pointers.delete(event.pointerId);
   if (pointers.size < 2) pinchStart = null;
   if (wasPinching || pointer.moved) return;
+  if (cameraState !== GLOBAL_MAP) return;
   const screen = screenPoint(event);
   const point = unproject(screen);
   if (!point) return;
@@ -612,7 +638,12 @@ function enterIslandView(island) {
   pinchStart = null;
   scheduleFrame();
 }
-export function returnToGlobalMap() {
+export function returnToGlobalMap(immediate = false) {
+  const island = localIsland;
+  const previous = savedCamera;
+  const canAnimate = !immediate && cameraState === ISLAND_VIEW && island && previous;
+  const sceneRect = canAnimate ? document.querySelector?.(".island-scene")?.getBoundingClientRect() : null;
+  if (immediate) stopFrame();
   transition = null;
   pointers.clear();
   pinchStart = null;
@@ -620,15 +651,21 @@ export function returnToGlobalMap() {
   localIsland = null;
   localRenderKey = "";
   canvas?.setAttribute("aria-label", "Globo interactivo de los cuatro mares, la Red Line y la Grand Line");
-  if (savedCamera) {
-    longitude = savedCamera.longitude;
-    latitude = savedCamera.latitude;
-    zoom = targetZoom = savedCamera.zoom;
+  if (previous) {
+    if (canAnimate) {
+      transition = { island, returning: true, started: performance.now(), fromLon: longitude,
+        deltaLon: Math.atan2(Math.sin(previous.longitude - longitude), Math.cos(previous.longitude - longitude)),
+        fromLat: latitude, toLat: previous.latitude, fromZoom: zoom, toZoom: Math.min(previous.zoom, 1.8), sceneRect };
+    } else {
+      longitude = previous.longitude;
+      latitude = previous.latitude;
+      zoom = targetZoom = previous.zoom;
+    }
     savedCamera = null;
   }
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
-  if (!mapCovered() && !document.hidden) render();
-  if (character && (animation || shouldAnimateRoute())) scheduleFrame();
+  if (!mapCovered() && !document.hidden && !transition) render();
+  if (transition || (!immediate && character && (animation || shouldAnimateRoute()))) scheduleFrame();
 }
 export function resizeMap() {
   if (!canvas || !ctx) return;
@@ -645,9 +682,27 @@ export function resizeMap() {
     else render();
   }
 }
-export function zoomMap(value) {
-  if (cameraState !== GLOBAL_MAP || transition) return;
-  targetZoom = clamp(Number(value) || 1, 0.72, 3.2);
+export function zoomMap(value, anchor = { x: width / 2, y: height / 2 }) {
+  if (transition) return;
+  if (cameraState === ISLAND_VIEW) {
+    if (value < targetZoom) returnToGlobalMap();
+    return;
+  }
+  const nextZoom = clamp(Number(value) || 1, 0.72, 3.2);
+  if (zoomAnchor && Math.hypot(anchor.x - zoomAnchor.x, anchor.y - zoomAnchor.y) > 40) zoomFocus = zoomAnchor = null;
+  if (nextZoom > targetZoom && !zoomFocus) {
+    let nearest = null, distance = 40;
+    for (const island of islands) {
+      const point = projectPoint(island);
+      const d = Math.hypot(anchor.x - point.x, anchor.y - point.y);
+      if (point.visible && d < distance) { nearest = island; distance = d; }
+    }
+    zoomFocus = nearest;
+    zoomAnchor = nearest ? anchor : null;
+  }
+  if (nextZoom < targetZoom) zoomFocus = zoomAnchor = null;
+  targetZoom = nextZoom;
+  if (targetZoom >= ISLAND_ZOOM && zoomFocus) { const island = zoomFocus; zoomFocus = zoomAnchor = null; enterIslandView(island); return; }
   scheduleFrame();
 }
 export function adjustZoom(direction) {
@@ -655,10 +710,11 @@ export function adjustZoom(direction) {
 }
 export function focusMap(point) {
   if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) return;
-  if (cameraState !== GLOBAL_MAP || transition) returnToGlobalMap();
+  if (cameraState !== GLOBAL_MAP || transition) returnToGlobalMap(true);
   const position = radians(point);
   longitude = position.lon;
   latitude = clamp(position.lat, -1.35, 1.35);
+  zoomFocus = zoomAnchor = null;
   render();
 }
 export function initMap() {
@@ -671,7 +727,7 @@ export function initMap() {
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);
   canvas.addEventListener("pointercancel", (event) => { pointers.delete(event.pointerId); pinchStart = null; });
-  canvas.addEventListener("wheel", (event) => { event.preventDefault(); zoomMap(targetZoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12)); }, { passive: false });
+  canvas.addEventListener("wheel", (event) => { event.preventDefault(); zoomMap(targetZoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12), screenPoint(event)); }, { passive: false });
   document.getElementById("map-reset-view")?.addEventListener("click", () => { zoomMap(1); focusMap(positionFor(character)); });
   document.addEventListener("onepiece:map-zoom", (event) => adjustZoom(event.detail?.direction));
   document.addEventListener("onepiece:map-fit", () => zoomMap(1));
@@ -701,6 +757,11 @@ export function renderMap(c) {
   character = c;
   islands = getMapIslands(c);
   const next = positionFor(c);
+  if (!previous && next) {
+    const position = radians(next);
+    longitude = position.lon;
+    latitude = clamp(position.lat, -1.35, 1.35);
+  }
   if (next && previous && (next.x !== previous.x || next.y !== previous.y) && !c.autonomy?.paused && c.status !== "dead") {
     if (!animation || animation.to.x !== next.x || animation.to.y !== next.y) {
       animation = { from: previous, to: next, started: performance.now(), duration: c.travel?.speedMultiplier === 0.5 ? 6000 : 3000 };
@@ -716,5 +777,5 @@ export function renderMap(c) {
     if (cameraState === ISLAND_VIEW && localIsland && sceneKey(localIsland) !== localRenderKey) renderLocalIsland();
     else if (cameraState === GLOBAL_MAP && !transition) render();
   }
-  if (cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute())) scheduleFrame();
+  if ((cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute())) || (cameraState === ISLAND_VIEW && animateIsland())) scheduleFrame();
 }

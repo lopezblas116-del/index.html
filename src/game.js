@@ -9,6 +9,7 @@ import { maybeCaptureAtAuction } from "./politics.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 import { PULSE_MS, STORAGE_KEYS } from "./config.js";
 import { readStorage, writeJSON } from "./storage_adapter.js";
+import { advanceClock, MINUTES_PER_PULSE } from "./time_engine.js";
 
 const ERAS = [
   "Era de los Grandes Descubrimientos",
@@ -43,6 +44,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
   const conquerorPotential = Math.random() < 0.003;
   const family = displayName.split(/\s+/).at(-1) || displayName;
   const route = routeFor(originSea);
+  const spawn = getMapIslands({}).find((island) => island.name === route[0]);
   return {
     version: 3,
     id: globalThis.crypto?.randomUUID?.() ?? `captain-${Date.now()}`,
@@ -53,6 +55,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     originSea,
     appearance: { skin: appearance.skin || "Clara", hair: appearance.hair || "Negro", accessory: appearance.accessory || "Bandana" },
     location: { region: originSea, island: route[0], routeIndex: 0 },
+    mapPosition: spawn ? { x: spawn.x, y: spawn.y } : undefined,
     logPose: { alignment: 0, required: 3 },
     mission: { ...missionFor({ originSea, location: { routeIndex: 0 } }), completed: 0 },
     fruit: null,
@@ -122,7 +125,7 @@ function normalize(character) {
   character.world.news ??= [];
   character.world.pantheon ??= [];
   character.world.day ??= 0;
-  character.world.minuteOfDay ??= (character.autonomy.tickCount * 5) % 1440;
+  character.world.minuteOfDay ??= (character.autonomy.tickCount * MINUTES_PER_PULSE) % 1440;
   character.status ??= "alive";
   character.reputation ??= character.bounty ?? 0;
   character.bounty ??= 0;
@@ -445,11 +448,7 @@ export function resolveAutonomousBranch(character) {
 export function autonomousTick(character, { interactive = false, now = Date.now(), availableFruitIds } = {}) {
   if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
   character.autonomy.tickCount += 1;
-  character.world.minuteOfDay = (Number(character.world.minuteOfDay) || 0) + 5;
-  const newDay = character.world.minuteOfDay >= 1440;
-  if (newDay) { character.world.minuteOfDay -= 1440; character.world.day = (Number(character.world.day) || 0) + 1; }
-  character.world.year = Math.floor(character.world.day / 365) + 1;
-  character.world.era = ERAS[Math.min(Math.floor((character.world.year - 1) / 5), ERAS.length - 1)];
+  const newDay = advanceClock(character.world, ERAS);
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);

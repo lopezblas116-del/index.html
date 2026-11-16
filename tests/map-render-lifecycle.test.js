@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCharacter } from "../src/game.js";
-import { renderMap, focusMap, getCameraState, returnToGlobalMap, GLOBAL_MAP, ISLAND_VIEW } from "../src/world3d.js";
+import { renderMap, focusMap, getCameraState, zoomMap, GLOBAL_MAP, ISLAND_VIEW } from "../src/world3d.js";
 import { getMapIslands } from "../src/map.js";
 
 test("the globe stops drawing at port and while a modal is open", () => {
@@ -78,16 +78,9 @@ test("the globe stops drawing at port and while a modal is open", () => {
     renderMap(character);
     const island = getMapIslands(character).find((item) => item.id === "shells");
     focusMap(island);
-    for (const type of ["pointerdown", "pointerup"]) {
-      const event = new Event(type, { cancelable: true });
-      Object.defineProperties(event, {
-        pointerId: { value: 1 }, button: { value: 0 },
-        clientX: { value: 195 }, clientY: { value: 422 }
-      });
-      canvas.dispatchEvent(event);
-    }
+    zoomMap(2.3);
     assert.equal(getCameraState(), GLOBAL_MAP);
-    assert.equal(frames.size, 1, "clicking an island starts a canvas animation");
+    assert.equal(frames.size, 1, "zooming over an island starts a canvas animation without a click");
     const runFrame = (time) => {
       const [id, callback] = frames.entries().next().value;
       frames.delete(id);
@@ -99,9 +92,19 @@ test("the globe stops drawing at port and while a modal is open", () => {
     assert.ok(sceneScales > 0, "the city is blended into the globe on the same canvas");
     runFrame(start + 1600);
     assert.equal(getCameraState(), ISLAND_VIEW);
-    assert.equal(frames.size, 0, "the settled city does not keep animating");
-    returnToGlobalMap();
+    assert.equal(frames.size, 1, "inhabitants animate while the city is visible");
+    document.dispatchEvent(new CustomEvent("onepiece:modal-visibility", { detail: { open: true } }));
+    assert.equal(frames.size, 0, "the city pauses behind a modal");
+    document.dispatchEvent(new CustomEvent("onepiece:modal-visibility", { detail: { open: false } }));
+    assert.equal(frames.size, 1);
+    zoomMap(1);
     assert.equal(getCameraState(), GLOBAL_MAP);
+    const reverse = performance.now();
+    const beforeReverse = sceneScales;
+    runFrame(reverse + 400);
+    assert.ok(sceneScales > beforeReverse, "zooming out blends the city back onto the globe");
+    runFrame(reverse + 1600);
+    assert.equal(frames.size, 0, "the docked globe becomes idle after zooming out");
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete globalThis[key];
