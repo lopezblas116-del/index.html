@@ -247,9 +247,9 @@ export function renderGame(character) {
   const healthBar = byId("health-bar");
   if (healthBar) { healthBar.max = character.stats?.maxHealth ?? 100; healthBar.value = character.stats?.health ?? 0; }
 
-  const tick = Number(character.autonomy?.tickCount) || 0;
+  const minute = Number(world.minuteOfDay) || 0;
   const clock = byId("game-clock");
-  if (clock) clock.textContent = `Día ${(Number(world.day) || 0) + 1} · ${String(Math.floor(tick % 24)).padStart(2, "0")}:${String(Math.floor((tick * 5) % 60)).padStart(2, "0")}`;
+  if (clock) clock.textContent = `Día ${(Number(world.day) || 0) + 1} · ${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
   const headerStatus = byId("header-avatar-status");
   if (headerStatus) {
     headerStatus.textContent = dead ? "● Avatar caído" : paused ? "● Avatar en pausa" : "● Avatar activo";
@@ -341,7 +341,7 @@ function updateWizardSummary() {
     "summary-name": form.elements.namedItem("name")?.value.trim() || "Aventurero",
     "summary-handle": form.elements.namedItem("handle")?.value.trim() || "@usuario",
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
-    "summary-sea": form.elements.namedItem("originSea")?.value || "East Blue",
+    "summary-sea": "Aleatorio",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"

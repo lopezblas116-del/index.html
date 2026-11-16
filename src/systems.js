@@ -70,6 +70,10 @@ export function discoverAtSea(character, random = Math.random) {
   const item = alignment === "Justicia" ? "Diario de una guardia olvidada" : alignment === "Caos" ? "Fragmento de piedra antigua" : "Mapa de la Era Anterior";
   const clue = `Las mareas recuerdan ${alignment.toLocaleLowerCase("es")} donde nadie mira. X:${Math.round(character.mapPosition.x)} Y:${Math.round(character.mapPosition.y)}.`;
   const discovery = { id, item, clue, coordinates: { ...character.mapPosition } };
+  if (!character.soulCard.talentRevealed) {
+    character.soulCard.talentRevealed = true;
+    character.log.unshift({ time: new Date().toISOString(), message: `[BITÁCORA] En la búsqueda aflora su talento nato: ${character.soulCard.hiddenTalent}.` });
+  }
   discoveries.push(discovery);
   character.inventory.items.push(item);
   character.log.unshift({ time: new Date().toISOString(), message: `[MISTERIO] ${clue}` });
@@ -209,6 +213,12 @@ export function advanceAdvancedSystems(character, { action = "", previousIsland 
   const stress = character.nauticalStress;
   const nearDeath = character.stats.health / Math.max(1, character.stats.maxHealth) <= 0.2;
   const calmBeltDay = climate === "calm-belt";
+  if ((nearDeath || (calmBeltDay && stress.calmBeltDays >= 2)) && character.soulCard.latentTrait) {
+    const trait = character.soulCard.latentTrait;
+    character.soulCard.traits.cons.push(trait);
+    character.soulCard.latentTrait = null;
+    character.log.unshift({ time: new Date().toISOString(), message: `[BITÁCORA] Bajo presión aflora un rasgo latente: ${trait}.` });
+  }
   if (calmBeltDay) stress.calmBeltDays += 1;
   const stressChange = (nearDeath ? 8 : 0) + (calmBeltDay ? 5 : 0) - (!nearDeath && !calmBeltDay && character.stats.health > character.stats.maxHealth * 0.7 ? 1 : 0);
   if (stressChange) stress.value = clamp(stress.value + stressChange);

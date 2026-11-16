@@ -38,6 +38,7 @@ const MISSION_NAMES = [
 ];
 const ENEMIES = ["piratas rivales", "Marines", "Cazarrecompensas", "agentes del Gobierno", "una banda local"];
 const TRAITS = ["Valiente", "Astuto", "Impulsivo", "Prudente", "Agresivo", "Honrado", "Rebelde", "Leal"];
+export const PULSE_MS = 75_000;
 export const SAVE_KEY = "one-latam-rpg-beta-1";
 const rand = (max) => Math.floor(Math.random() * max);
 const pick = (items) => items[rand(items.length)];
@@ -51,10 +52,11 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea = "East Blue", dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
   const randomTraits = TRAITS.filter((entry) => !chosenTraits.includes(entry));
+  originSea = ROUTES[originSea] ? originSea : pick(Object.keys(ROUTES));
   const normalizedFaction = faction === "Marina" ? "Marine" : faction;
   const family = displayName.split(/\s+/).at(-1) || displayName;
   const route = routeFor(originSea);
@@ -80,11 +82,11 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     level: 1,
     experience: 0,
     stats: { health: 100, maxHealth: 100, strength: 5, agility: 5, ingenuity: 5 },
-    soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [pick(randomTraits)] } },
+    soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [] }, latentTrait: pick(randomTraits), hiddenTalent: pick(["Cartografía", "Instinto de Tormenta", "Oído Antiguo"]) },
     lineage: { family, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 },
     autonomy: { mode: "active", paused: false, tickCount: 0 },
     whisper: { affinity: 55, rebellion: 45 },
-    world: { day: 0, year: 1, era: ERAS[0], news: [], pantheon: [] },
+    world: { day: 0, minuteOfDay: 0, year: 1, era: ERAS[0], news: [], pantheon: [] },
     status: "alive",
     log: [{ time: new Date().toISOString(), message: `¡${displayName} (${username}) inicia su aventura en ${route[0]}, ${originSea}! Sueño: ${dream}.` }]
   };
@@ -125,6 +127,7 @@ function normalize(character) {
   character.world.news ??= [];
   character.world.pantheon ??= [];
   character.world.day ??= 0;
+  character.world.minuteOfDay ??= (character.autonomy.tickCount * 5) % 1440;
   character.status ??= "alive";
   character.reputation ??= character.bounty ?? 0;
   character.bounty ??= 0;
@@ -142,7 +145,7 @@ export function loadGame() {
   catch { return null; }
 }
 export function saveGame(character) {
-  try { character.autonomy.lastSavedAt = Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(character)); return true; }
+  try { character.autonomy.lastSavedAt = Date.now(); character.autonomy.lastPulseAt ??= character.autonomy.lastSavedAt; localStorage.setItem(SAVE_KEY, JSON.stringify(character)); return true; }
   catch { return false; }
 }
 export function addLog(character, message) {
@@ -387,36 +390,66 @@ function factionEvent(character) {
   if (character.faction === "Marine" && Math.random() < 0.4) { character.captures += 1; character.berries += 25; updateRank(character); }
   else if (character.faction === "Pirata" && Math.random() < 0.35) addReputation(character, 15000, "incidente entre facciones");
 }
-export function autonomousTick(character) {
+export function resolveBranch(character, choice, source = "jugador") {
+  const branch = character.autonomy?.pendingBranch;
+  if (!branch || !["help", "pass"].includes(choice) || character.status === "dead") return false;
+  delete character.autonomy.pendingBranch;
+  if (choice === "help") {
+    const cost = Math.min(1, character.inventory.water);
+    character.inventory.water -= cost;
+    addLog(character, `📓 ${source === "jugador" ? "Tu decisión" : "Su instinto"}: ${character.name} comparte ${cost} ración de agua con unos náufragos.`);
+  } else addLog(character, `📓 ${source === "jugador" ? "Tu decisión" : "Su instinto"}: ${character.name} mantiene el rumbo y reserva sus provisiones.`);
+  return true;
+}
+export function resolveAutonomousBranch(character) {
+  const traits = traitsOf(character);
+  const help = traits.some((trait) => ["leal", "honrado", "valiente"].includes(trait)) && character.inventory.water > 0;
+  return resolveBranch(character, help ? "help" : "pass", "avatar");
+}
+export function autonomousTick(character, { interactive = false, now = Date.now() } = {}) {
   if (character.status === "dead" || character.autonomy.paused) return null;
   character.autonomy.tickCount += 1;
-  character.world.day = (Number(character.world.day) || 0) + 1;
+  character.world.minuteOfDay = (Number(character.world.minuteOfDay) || 0) + 5;
+  const newDay = character.world.minuteOfDay >= 1440;
+  if (newDay) { character.world.minuteOfDay -= 1440; character.world.day = (Number(character.world.day) || 0) + 1; }
   character.world.year = Math.floor(character.world.day / 365) + 1;
   character.world.era = ERAS[Math.min(Math.floor((character.world.year - 1) / 5), ERAS.length - 1)];
-  const news = character.world.day % 7 === 0 || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
+  const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);
   const action = decideAction(character);
   addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
   const message = performAction(character, action);
+  if (character.status !== "dead" && character.crew?.length && Math.random() < 0.12) {
+    const member = pick(character.crew);
+    const change = character.nauticalStress?.value > 70 ? -2 : 1;
+    member.loyalty = clamp((Number(member.loyalty) || 0) + change, 0, 100);
+    addLog(character, `📓 ${member.name} ${change < 0 ? "se inquieta por la tensión a bordo" : "comparte una guardia tranquila"}; lealtad ${member.loyalty}%.`);
+  }
+  if (character.status !== "dead" && !character.autonomy.pendingBranch && Math.random() < 0.025) {
+    character.autonomy.pendingBranch = { kind: "castaways", deadline: now + 60_000 };
+    addLog(character, "📓 Una señal de náufragos aparece en el horizonte.");
+    if (!interactive) resolveAutonomousBranch(character);
+  }
   if (character.status !== "dead" && Math.random() < 0.12) addReputation(character, 1000, "rumores en el periódico");
   return { action, message };
 }
 export function simulateOffline(character, now = Date.now(), observer) {
-  const saved = Number(character.autonomy?.lastSavedAt);
+  const saved = Number(character.autonomy?.lastPulseAt ?? character.autonomy?.lastSavedAt);
   if (!Number.isFinite(saved) || saved <= 0 || character.autonomy?.paused || character.status === "dead") return { ticks: 0, capped: false };
   const elapsed = Math.max(0, now - saved);
+  if (character.autonomy.pendingBranch && (!observer?.interactive || character.autonomy.pendingBranch.deadline <= now)) resolveAutonomousBranch(character);
   const maxElapsed = 8 * 60 * 60 * 1000;
-  const ticks = Math.floor(Math.min(elapsed, maxElapsed) / 7500);
+  const ticks = Math.floor(Math.min(elapsed, maxElapsed) / PULSE_MS);
   let completed = 0;
   while (completed < ticks && character.status !== "dead") {
     const before = observer?.before?.(character);
-    autonomousTick(character);
+    autonomousTick(character, { interactive: Boolean(observer?.interactive && completed === ticks - 1), now });
     observer?.after?.(before, character);
     completed += 1;
   }
-  character.autonomy.lastSavedAt = now;
-  if (completed) addLog(character, `⏳ Simulación fuera de línea: ${completed} ciclos${elapsed > maxElapsed ? " (límite: 8 horas)" : ""}.`);
+  character.autonomy.lastPulseAt = elapsed > maxElapsed ? now : saved + ticks * PULSE_MS;
+  if (completed && !observer?.interactive) addLog(character, `⏳ Simulación fuera de línea: ${completed} ciclos${elapsed > maxElapsed ? " (límite: 8 horas)" : ""}.`);
   return { ticks: completed, capped: elapsed > maxElapsed };
 }
 function decideAction(character) {
@@ -463,23 +496,31 @@ export function sendWhisper(character, text) {
   return { obeyed: false, action, chance };
 }
 export function setAutonomyPaused(character, paused) {
+  const now = Date.now();
+  const wasPaused = character.autonomy.paused;
   character.autonomy.paused = Boolean(paused);
   character.autonomy.mode = character.autonomy.paused ? "paused" : "active";
+  if (!wasPaused && character.autonomy.paused) character.autonomy.pulseRemainder = clamp(now - (character.autonomy.lastPulseAt ?? now), 0, PULSE_MS - 1);
+  if (wasPaused && !character.autonomy.paused) {
+    character.autonomy.lastPulseAt = now - (character.autonomy.pulseRemainder || 0);
+    delete character.autonomy.pulseRemainder;
+  }
   addLog(character, character.autonomy.paused ? "El avatar pone el mundo en pausa." : "El avatar reanuda su camino.");
 }
 export function createHeir(predecessor, { name, username } = {}) {
   if (predecessor.status !== "dead") return null;
   const family = predecessor.lineage.family || predecessor.name;
-  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, originSea: predecessor.originSea, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: predecessor.soulCard.traits.pros.slice(0, 2), appearance: predecessor.appearance });
+  const first = pick(TRAITS);
+  const second = pick(TRAITS.filter((trait) => trait !== first));
+  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: [first, second], appearance: predecessor.appearance });
   heir.lineage = { family, generation: predecessor.lineage.generation + 1, inheritedFrom: predecessor.id, legacyChest: [...predecessor.lineage.legacyChest], inheritedReputation: Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3) };
-  heir.reputation = heir.lineage.inheritedReputation;
-  heir.bounty = heir.faction === "Pirata" ? heir.lineage.inheritedReputation : 0;
+  const ancestralTraits = [...predecessor.soulCard.traits.pros, ...predecessor.soulCard.traits.cons, predecessor.soulCard.latentTrait].filter((trait) => trait && !heir.soulCard.traits.pros.includes(trait));
+  if (ancestralTraits.length && Math.random() < 0.15) heir.soulCard.latentTrait = pick(ancestralTraits);
   heir.world = predecessor.world;
   heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], discoveries: [...(predecessor.systems?.discoveries ?? [])], dangerMapCreated: false };
   heir.ancientLanguage = structuredClone(ensureAncientLanguage(predecessor));
   heir.crew = [...(predecessor.crew ?? [])];
-  heir.world.day += 1;
   heir.log = [...predecessor.log.slice(0, 25)];
-  addLog(heir, `El linaje ${family} continúa: ${heir.name} hereda ${heir.lineage.legacyChest.length} reliquias y el 30% del renombre.`);
+  addLog(heir, `El linaje ${family} continúa: ${heir.name} hereda ${heir.lineage.legacyChest.length} reliquias; los puertos recuerdan a sus antepasados.`);
   return heir;
 }

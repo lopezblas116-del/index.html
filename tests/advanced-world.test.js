@@ -18,8 +18,8 @@ function character(options = {}) {
 
 test("alignment migrates and route suggestions can be accepted or refused", () => {
   const generated = createCharacter({ name: "Rasgos", traits: ["Valiente", "Astuto"] });
-  assert.equal(generated.soulCard.traits.cons.length, 1);
-  assert.ok(!generated.soulCard.traits.pros.includes(generated.soulCard.traits.cons[0]));
+  assert.equal(generated.soulCard.traits.cons.length, 0);
+  assert.ok(!generated.soulCard.traits.pros.includes(generated.soulCard.latentTrait));
   const c = character({ alignment: "Justicia" });
   assert.equal(c.soulCard.alignment, "Justicia");
   delete c.soulCard.alignment;

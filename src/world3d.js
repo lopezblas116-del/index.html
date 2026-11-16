@@ -136,7 +136,7 @@ function drawIslandLabels() {
 }
 function drawNightSky(now) {
   if (!character) return;
-  const hour = Math.floor((Number(character.autonomy?.tickCount) || 0) % 24);
+  const hour = Math.floor((Number(character.world?.minuteOfDay) || 0) / 60);
   const night = hour >= 19 || hour < 6;
   const calm = character.travel?.climate === "calm-belt";
   const tint = night ? "#07142a" : calm ? "#2a7380" : "#198094";

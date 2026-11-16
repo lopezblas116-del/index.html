@@ -1,6 +1,6 @@
 # Mundo compartido
 
-GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de datos configurada: Vista Mundial indica «Simulación local» y el estado geopolítico local vive en memoria. El avatar y su inventario siguen en `localStorage`.
+GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de datos configurada: Vista Mundial indica «Simulación local» y el avatar, su inventario y el estado geopolítico local se guardan en `localStorage`. El mundo local persiste al reiniciar el avatar; borrar los datos del sitio lo elimina.
 
 ## Conectar Supabase
 
@@ -19,6 +19,8 @@ GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de dato
 Vista Mundial muestra el estado de conexión y cualquier error. El cliente consulta el mundo cada 30 segundos y al recuperar la conexión. Los eventos públicos sin texto del susurro se conservan en una cola local hasta recibir confirmación; al conectarse se reintentan con identificadores idempotentes. Si el almacenamiento del navegador falla, la interfaz avisa que la cola solo existe durante la sesión. Sin configuración, no se envían eventos y la simulación local no se comparte.
 
 Al volver a abrir o activar la página, la partida simula hasta ocho horas de acciones pendientes, siempre que no estuviera pausada ni terminada; el límite se registra en la bitácora. Las acciones públicas simuladas se agregan a la cola para sincronizarlas al reconectar.
+
+El reloj personal avanza cinco minutos de juego por cada 75 segundos reales: una hora de juego por cada 15 minutos reales. Los pulsos parciales se conservan entre guardados. Las decisiones mostradas al jugador esperan 60 segundos; si vencen o la partida se recupera sin conexión, el avatar decide según sus rasgos. Los ciclos de fuga locales se procesan al avanzar un día de juego. El reloj personal no es un reloj compartido autoritativo: el ciclo de servidor de Supabase requiere `pg_cron` como se describe arriba.
 
 ## Límites de confianza
 

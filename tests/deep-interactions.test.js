@@ -6,7 +6,7 @@ import { newsLocation } from "../src/map.js";
 import { generateTreasureMap } from "../src/systems.js";
 
 function character() {
-  const c = createCharacter({ name: "Prueba", traits: ["Valiente", "Astuto"] });
+  const c = createCharacter({ name: "Prueba", originSea: "East Blue", traits: ["Valiente", "Astuto"] });
   ensureBlockOneData(c);
   c.inventory.items.push("Perla");
   return c;

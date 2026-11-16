@@ -330,3 +330,13 @@ body[data-atmosphere="mist"] #one-hud .one-hud-brand,
 body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(11,19,41,.9)}
 body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(170,220,224,.12)}
 @media(max-width:600px){#bottom-nav{font-size:11px}}
+
+#modal-perfil .one-hud-dialog{color:#30251a;background:#e8d4a0;border:4px double #93661c;box-shadow:inset 0 0 28px #8d632f55,0 24px 70px #0009;font-family:"Comic Sans MS",cursive}
+#modal-perfil .one-hud-heading,#modal-perfil .one-hud-stats strong,#modal-perfil .one-hud-meter strong{color:#69450e}
+#modal-perfil .one-hud-stats div,#modal-perfil .one-hud-meter{color:#30251a;background:#f4e4bc;border-color:#a78643}
+#modal-perfil .soul-portrait{display:grid;place-items:center;width:92px;height:92px;margin:0 auto;border:3px dotted #93661c;border-radius:50%;background:#162238;color:#f4b41a;font:48px monospace}
+#modal-perfil .soul-portrait canvas{width:72px;height:72px;image-rendering:pixelated}
+#modal-perfil .soul-motto{text-align:center;font-style:italic;overflow-wrap:anywhere}
+.one-hud-branch{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;width:min(380px,calc(100vw - 32px));padding:14px;border:2px solid #f4b41a;border-radius:12px;background:#162238;box-shadow:0 12px 32px #0009;pointer-events:auto}
+.one-hud-branch[hidden]{display:none}
+.one-hud-branch p{margin:0 0 8px}.one-hud-branch button{margin:4px}

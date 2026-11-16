@@ -1,6 +1,6 @@
 import {
-  SAVE_KEY, autonomousTick, confrontFugitive, createCharacter, createHeir,
-  loadGame, saveGame, sendWhisper, setAutonomyPaused, simulateOffline
+  SAVE_KEY, PULSE_MS, confrontFugitive, createCharacter, createHeir,
+  loadGame, resolveAutonomousBranch, resolveBranch, saveGame, sendWhisper, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
@@ -20,8 +20,8 @@ let character = loadGame();
 const network = createNetwork();
 let sharedState = network.snapshot();
 let timerId = null;
+let branchTimer = null;
 let scouting = false;
-const nextDelay = () => 5000 + Math.random() * 5000;
 const byId = (id) => document.getElementById(id);
 const listen = (element, type, handler, options) => { if (element) element.addEventListener(type, handler, options); };
 function paint() {
@@ -34,17 +34,18 @@ function paint() {
   resizeMap();
   renderMap(character);
   renderHud(character);
+  clearTimeout(branchTimer);
+  const pending = character.autonomy?.pendingBranch;
+  if (pending && !character.autonomy.paused) {
+    branchTimer = setTimeout(() => {
+      if (character?.autonomy?.pendingBranch === pending && resolveAutonomousBranch(character)) persistRender();
+    }, Math.max(0, pending.deadline - Date.now()));
+  }
 }
 function publicSnapshot(c) {
-  return { completed: c.mission?.completed || 0, contracts: (c.activeContracts || []).filter((item) => item.status === "completed").length, bounty: c.bounty || 0, status: c.status, firstLog: c.log?.[0] };
+  return { day: c.world?.day || 0, completed: c.mission?.completed || 0, contracts: (c.activeContracts || []).filter((item) => item.status === "completed").length, bounty: c.bounty || 0, status: c.status, firstLog: c.log?.[0] };
 }
-function publishChanges(before, c, whispered = false) {
-  if (!c || !before) return;
-  const island = c.location?.atSea ? "alta mar" : c.location?.island;
-  if ((c.mission?.completed || 0) > before.completed) {
-    network.publish("mission", { island, faction: c.faction }, c);
-  }
-  async function scoutFugitive(actor) {
+async function scoutFugitive(actor) {
     if (scouting || !actor?.location?.atSea || !actor.mapPosition || actor.status === "dead") return;
     const { x, y } = actor.mapPosition;
     scouting = true;
@@ -57,6 +58,13 @@ function publishChanges(before, c, whispered = false) {
       if (result?.wins) network.publish("boss_defeated", { boss: name, x, y }, actor);
       persistRender(true);
     } finally { scouting = false; }
+}
+function publishChanges(before, c, whispered = false) {
+  if (!c || !before) return;
+  if ((c.world?.day || 0) > before.day) network.advanceCycle(c.world.day);
+  const island = c.location?.atSea ? "alta mar" : c.location?.island;
+  if ((c.mission?.completed || 0) > before.completed) {
+    network.publish("mission", { island, faction: c.faction }, c);
   }
   if ((c.activeContracts || []).filter((item) => item.status === "completed").length > before.contracts) {
     network.publish("contract", { island, completed: true }, c);
@@ -79,14 +87,12 @@ function scheduleTick() {
   if (!character || character.status === "dead" || character.autonomy?.paused) return;
   timerId = setTimeout(() => {
     if (!character || character.status === "dead" || character.autonomy?.paused) return;
-    const before = publicSnapshot(character);
-    autonomousTick(character);
-    publishChanges(before, character);
+    network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges, interactive: !document.hidden && navigator.onLine }));
     if (character.location?.atSea) scoutFugitive(character);
     saveGame(character);
     paint();
     scheduleTick();
-  }, nextDelay());
+  }, Math.max(0, (character.autonomy.lastPulseAt ?? Date.now()) + PULSE_MS - Date.now()));
 }
 function persistRender(reschedule = false) {
   if (!character) return;
@@ -104,16 +110,18 @@ network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
 function resumeOffline() {
   if (!character) return;
+  const pending = character.autonomy.pendingBranch;
   const result = network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges }));
-  if (result.ticks) { persistRender(true); if (character.location?.atSea) scoutFugitive(character); }
+  if (result.ticks || pending !== character.autonomy.pendingBranch) { persistRender(true); if (character.location?.atSea) scoutFugitive(character); }
 }
 window.addEventListener("online", () => { resumeOffline(); network.sync(); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) resumeOffline(); });
 setInterval(() => network.sync(), 30000);
 if (character) {
   ensureBlockOneData(character);
+  const pending = character.autonomy.pendingBranch;
   const offline = network.batch(() => simulateOffline(character, Date.now(), { before: publicSnapshot, after: publishChanges }));
-  if (offline.ticks) saveGame(character);
+  if (offline.ticks || pending !== character.autonomy.pendingBranch) saveGame(character);
   paint();
   if (character.status !== "dead") scheduleTick();
 } else showSetup();
@@ -138,7 +146,11 @@ listen(byId("character-form"), "submit", (event) => {
   const data = new FormData(event.currentTarget);
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), originSea: String(data.get("originSea") || "East Blue"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: { skin: String(data.get("skin") || "Clara"), hair: String(data.get("hair") || "Negro"), accessory: String(data.get("accessory") || "Bandana") } });
+  if (sharedState.status === "local") {
+    character.world.day = sharedState.world?.last_cycle_day || 0;
+    character.world.year = Math.floor(character.world.day / 365) + 1;
+  }
   ensureBlockOneData(character);
   persistRender(true);
 });
@@ -151,6 +163,7 @@ listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal)
 listen(document.querySelector("[data-open-heir]"), "click", () => { const modal = byId("legacy-modal"); if (modal && !modal.open) modal.showModal(); });
 function startNewGame() {
   clearTimeout(timerId);
+  clearTimeout(branchTimer);
   localStorage.removeItem(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();
@@ -160,8 +173,16 @@ function startNewGame() {
   resetWizard();
   showSetup();
 }
-listen(byId("reset-button"), "click", () => { if (window.confirm("¿Empezar una nueva partida? Se borrará la partida y el Panteón guardados en este navegador.")) startNewGame(); });
+listen(byId("reset-button"), "click", () => { if (window.confirm("¿Empezar una nueva partida? Se borrará el avatar actual; el mundo local se conservará.")) startNewGame(); });
 listen(document, "onepiece:hud-new-game", startNewGame);
+listen(document, "onepiece:hud-branch-choice", (event) => {
+  if (!character || character.autonomy?.paused || !character.autonomy?.pendingBranch) return;
+  const resolved = character.autonomy.pendingBranch.deadline <= Date.now()
+    ? resolveAutonomousBranch(character)
+    : resolveBranch(character, event.detail?.choice);
+  if (!resolved) return;
+  persistRender();
+});
 listen(document, "onepiece:hud-toggle-pause", () => {
   if (!character || character.status === "dead") return;
   setAutonomyPaused(character, !character.autonomy.paused);

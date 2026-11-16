@@ -37,12 +37,13 @@ test("offline simulation respects pause, elapsed time and the eight-hour cap", (
   const random = Math.random;
   try {
     Math.random = () => 0.99;
-    assert.equal(simulateOffline(c, 115000).ticks, 2);
+    assert.equal(simulateOffline(c, 250000).ticks, 2);
+    assert.equal(c.world.minuteOfDay, 10);
     c.autonomy.paused = true;
-    assert.equal(simulateOffline(c, 130000).ticks, 0);
+    assert.equal(simulateOffline(c, 325000).ticks, 0);
     c.autonomy.paused = false;
-    const result = simulateOffline(c, 115000 + 9 * 3600000);
-    assert.equal(result.ticks, 3840);
+    const result = simulateOffline(c, 250000 + 9 * 3600000);
+    assert.equal(result.ticks, 384);
     assert.equal(result.capped, true);
   } finally { Math.random = random; }
 });

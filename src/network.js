@@ -1,5 +1,5 @@
 import { SUPABASE_CONFIG } from "./network-config.js";
-import { applyLocalAction, createLocalWorld } from "./geopolitics.js";
+import { advanceLocalWorld, applyLocalAction, createLocalWorld } from "./geopolitics.js";
 
 const TABLES = ["islands_control", "global_events", "bounties_leaderboard", "fallen_captains", "bosses"];
 
@@ -11,6 +11,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   const scope = encodeURIComponent(config.url || "local");
   const sessionKey = `one-latam-supabase-session:${scope}`;
   const queueKey = `one-latam-world-outbox:${scope}`;
+  const worldKey = "one-latam-local-world";
   let world = createLocalWorld();
   let status = "local";
   let error = "";
@@ -23,6 +24,21 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   const listeners = new Set();
   const configured = Boolean(config.url && config.publishableKey);
   const configError = Boolean(config.url) !== Boolean(config.publishableKey);
+  if (!configured && !configError && storage) {
+    try {
+      const saved = storage.getItem(worldKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed.islands_control) || !Array.isArray(parsed.global_events) || !Array.isArray(parsed.bounties_leaderboard) || !Array.isArray(parsed.fallen_captains) || !Array.isArray(parsed.bosses)) throw new Error("Mundo local inválido.");
+        world = parsed;
+      }
+    } catch { status = "offline"; error = "No se pudo leer el mundo local guardado."; }
+  }
+  function saveLocalWorld() {
+    if (configured || configError || !storage) return;
+    try { storage.setItem(worldKey, JSON.stringify(world)); }
+    catch { status = "offline"; error = "No se pudo guardar el mundo local."; }
+  }
   if (configured && storage) {
     try {
       const saved = storage.getItem(queueKey);
@@ -79,7 +95,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
     catch { throw new Error("No se pudo guardar la sesión compartida en el navegador."); }
   }
   async function sync() {
-    if (!configured) { setStatus(configError ? "offline" : "local", configError ? "Configuración incompleta: se necesitan URL y clave pública." : ""); return; }
+    if (!configured) { if (configError) setStatus("offline", "Configuración incompleta: se necesitan URL y clave pública."); else notify(); return; }
     try {
       setStatus("connecting");
       await authenticate();
@@ -106,6 +122,7 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
   function publish(type, data, actor) {
     const action = { event_id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, type, data, actor: { id: actor.id, name: actor.name } };
     applyLocalAction(world, action, action.actor);
+    saveLocalWorld();
     if (configured) {
       pending.push(action);
       if (batchDepth) syncNeeded = true;
@@ -135,8 +152,15 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
         }
       }
     },
+    advanceCycle(day) {
+      if (configured || configError) return;
+      if (world.last_cycle_day == null) world.last_cycle_day = Math.max(0, day - 1);
+      if (advanceLocalWorld(world, day)) { saveLocalWorld(); notify(); }
+    },
     async scout(x, y) {
-      if (status !== "online" || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      if (!configured && !configError) return world.bosses.find((boss) => boss.status === "fugitive" && boss.secret_location && Math.hypot(x - boss.secret_location.x, y - boss.secret_location.y) <= 80)?.name ?? null;
+      if (status !== "online") return null;
       try {
         await authenticate();
         return await request("/rest/v1/rpc/scout_fugitive", { method: "POST", body: JSON.stringify({ p_x: x, p_y: y }) }, session.access_token);

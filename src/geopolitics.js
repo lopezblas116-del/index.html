@@ -11,6 +11,21 @@ export function createLocalWorld() {
   };
 }
 
+export function advanceLocalWorld(world, day, random = Math.random) {
+  if (!Number.isInteger(day) || day <= (world.last_cycle_day ?? 0)) return false;
+  for (let cycle = (world.last_cycle_day ?? 0) + 1; cycle <= day; cycle++) {
+    for (const boss of world.bosses) {
+      if (boss.status !== "imprisoned" || random() >= 0.05) continue;
+      boss.status = "fugitive";
+      boss.island_id = null;
+      boss.secret_location = { x: Math.floor(random() * 1200), y: Math.floor(random() * 760) };
+      world.global_events.unshift({ event_id: `escape-${boss.name}-${cycle}`, type: "escape", text: `🚨 Edición especial: ${boss.name} escapó de prisión y opera en paradero desconocido.`, created_at: new Date().toISOString() });
+    }
+  }
+  world.last_cycle_day = day;
+  return true;
+}
+
 export function applyLocalAction(world, action, actor) {
   if (world.global_events.some((entry) => entry.event_id === action.event_id)) return;
   const data = action.data;
@@ -40,6 +55,13 @@ export function applyLocalAction(world, action, actor) {
     if (!entry.yonkou && data.bounty > 1_000_000_000 && islands >= 2) {
       entry.yonkou = true;
       text = `👑 ${actor.name} es declarado YONKOU por el Gobierno.`;
+    }
+  } else if (action.type === "boss_defeated") {
+    const boss = world.bosses.find((entry) => entry.name === data.boss && entry.status === "fugitive");
+    if (boss?.secret_location && Math.hypot(data.x - boss.secret_location.x, data.y - boss.secret_location.y) <= 80) {
+      boss.status = "imprisoned";
+      delete boss.secret_location;
+      text = `⚓ ${boss.name} vuelve a presidio tras enfrentarse a ${actor.name}.`;
     }
   } else if (action.type === "death") {
     if (!world.fallen_captains.some((entry) => entry.captain_id === data.captain_id)) {
