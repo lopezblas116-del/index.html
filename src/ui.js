@@ -2,7 +2,7 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { drawPixelAvatar, ISLAND_HOTSPOTS, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -14,6 +14,28 @@ const safe = (value, fallback = "—") => value ?? fallback;
 const listen = (element, type, handler, options) => {
   if (element) element.addEventListener(type, handler, options);
 };
+const UI_ICONS = {
+  tavern: "M4 10h16v10H4z M3 7h18v3H3z M9 13h6v7H9z",
+  market: "M3 9h18l-2 11H5z M2 6h20v3H2z M8 12h3v3H8z",
+  blackmarket: "M3 9h18l-2 11H5z M2 6h20v3H2z M8 12h3v3H8z",
+  poneglyph: "M5 3h12l3 3v15H5z M8 9h9m-9 4h9m-9 4h6",
+  chest: "M4 9h16v11H4z M3 6h18v4H3z M12 10v10m-2-6h4",
+  ship: "M12 3v13M12 5H6v8h6m0-7h6v7h-6M4 17q8 6 16 0M3 21h18",
+  news: "M5 4h14v16H5zM8 8h8M8 12h8m-8 4h5",
+  bounty: "M12 3 4 7v5c0 5 4 8 8 9 4-1 8-4 8-9V7zM9 12l2 2 4-5",
+  crown: "m3 8 5 4 4-7 4 7 5-4-2 12H5z",
+  gazette: "M5 4h14v16H5zM8 8h8M8 12h8m-8 4h3m3 0h2"
+};
+function iconNode(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("nautical-icon");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", UI_ICONS[name] || UI_ICONS.ship);
+  svg.append(path);
+  return svg;
+}
 
 let islandView = null;
 let islandCharacter = null;
@@ -65,11 +87,11 @@ export function renderIslandView(character) {
   const hotspots = byId("island-hotspots");
   hotspots.replaceChildren();
   const actions = [
-    { id: "tavern", label: "🍻 Taberna" },
-    { id: "market", label: "⚓ Mercado" },
-    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "⚓ Mercado negro" }] : []),
-    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "📜 Ruinas" }] : []),
-    { id: "chest", label: "🧰 Cofre" }
+    { id: "tavern", label: "Taberna" },
+    { id: "market", label: "Mercado" },
+    ...(islandView.localScene.options.includes("blackmarket") ? [{ id: "blackmarket", label: "Mercado negro" }] : []),
+    ...(islandView.localScene.options.includes("poneglyph") ? [{ id: "poneglyph", label: "Ruinas" }] : []),
+    { id: "chest", label: "Cofre" }
   ];
   for (const action of actions) {
     const button = document.createElement("button");
@@ -77,14 +99,14 @@ export function renderIslandView(character) {
     button.className = "island-hotspot";
     button.style.left = `${ISLAND_HOTSPOTS[action.id].x / ISLAND_SCENE_WIDTH * 100}%`;
     button.style.top = `${ISLAND_HOTSPOTS[action.id].y / ISLAND_SCENE_HEIGHT * 100}%`;
-    button.textContent = action.label;
+    button.append(iconNode(action.id), document.createTextNode(action.label));
     button.addEventListener("click", () => {
       const current = isAtIsland(islandCharacter, islandView);
       if (action.id !== "chest" && !current) {
         byId("island-message").textContent = "Este lugar solo se puede visitar cuando el avatar esté atracado en esta isla.";
       } else if (action.id === "poneglyph") {
         const knowledge = islandCharacter.ancientLanguage?.knowledge || 0;
-        byId("island-message").textContent = `📜 Las ruinas guardan inscripciones antiguas. Conocimiento actual: ${knowledge}%. Los fragmentos se descubren durante la exploración.`;
+        byId("island-message").textContent = `Las ruinas guardan inscripciones antiguas. Conocimiento actual: ${knowledge}%. Los fragmentos se descubren durante la exploración.`;
       } else {
         document.dispatchEvent(new CustomEvent("onepiece:open-island-panel", { detail: { panel: action.id } }));
       }
@@ -98,7 +120,7 @@ export function renderPsychology(container, character, selection, onSuggest) {
   const card = document.createElement("section");
   card.className = "psychology-card";
   const heading = document.createElement("h3");
-  heading.textContent = "🧠 ANALIZAR PSICOLOGÍA";
+  heading.textContent = "ANALIZAR PSICOLOGÍA";
   const subject = document.createElement("p");
   subject.textContent = `Análisis: ${selection.label}`;
   const state = document.createElement("p");
@@ -122,7 +144,7 @@ export function renderPsychology(container, character, selection, onSuggest) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "one-hud-action";
-  button.textContent = "🗣️ Orientar Entrenamiento";
+  button.textContent = "Orientar Entrenamiento";
   button.disabled = character.status === "dead" || (character.whisper?.energy ?? 3) < 1 || Boolean(character.whisper?.trainingSuggestion);
   button.addEventListener("click", () => onSuggest(select.value));
   card.append(heading, subject, state, label, help, button);
@@ -134,12 +156,12 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   const shared = world.shared?.world;
   const globalEvents = shared?.global_events ?? [];
   const sections = [
-    { label: "📰 Titulares", items: [...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], empty: "No hay titulares todavía." },
-    { label: "📜 Se Busca / Bounties", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "👑 YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." },
-    { label: "💀 Gaceta & Fugas", items: [
+    { key: "news", label: "Titulares", items: [...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], empty: "No hay titulares todavía." },
+    { key: "bounty", label: "Se Busca / Bounties", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." },
+    { key: "gazette", label: "Gaceta & Fugas", items: [
       ...globalEvents.filter((entry) => ["death", "escape"].includes(entry.type)),
-      ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
-      ...(world.pantheon ?? []).map((entry) => ({ text: `☠ ${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
+      ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
+      ...(world.pantheon ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
     ], empty: "La gaceta no registra caídos ni fugas." }
   ];
   const tabs = document.createElement("div");
@@ -148,7 +170,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   sections.forEach((section, index) => {
     const tab = document.createElement("button");
     tab.type = "button";
-    tab.textContent = section.label;
+    tab.append(iconNode(section.key === "news" ? "news" : section.key === "bounty" ? "bounty" : "gazette"), document.createTextNode(section.label));
     tab.setAttribute("aria-selected", String(index === 0));
     const panel = document.createElement("section");
     panel.className = "one-hud-tab-panel";
@@ -163,7 +185,17 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       const details = document.createElement("details");
       details.className = "news-card";
       const summary = document.createElement("summary");
-      summary.textContent = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
+      const headline = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
+      if (/se busca|bounty/i.test(headline)) {
+        const portrait = document.createElement("canvas");
+        portrait.width = 32;
+        portrait.height = 32;
+        portrait.className = "news-card-portrait";
+        portrait.setAttribute("aria-hidden", "true");
+        const portraitContext = portrait.getContext("2d");
+        if (portraitContext) drawPixelAvatar(portraitContext);
+        summary.append(portrait, document.createTextNode(headline));
+      } else summary.textContent = headline;
       const detail = document.createElement("div");
       detail.className = "news-card-detail";
       const coordinates = document.createElement("p");
@@ -173,7 +205,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       const investigate = document.createElement("button");
       investigate.type = "button";
       investigate.className = "one-hud-action";
-      investigate.textContent = "🔍 Investigar Zona";
+      investigate.textContent = "Investigar Zona";
       investigate.disabled = !location || character.status === "dead";
       if (location) investigate.addEventListener("click", () => onInvestigate(location));
       detail.append(coordinates, investigate);
@@ -181,7 +213,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         const suggest = document.createElement("button");
         suggest.type = "button";
         suggest.className = "one-hud-action";
-        suggest.textContent = "🗣️ Sugerir Redirección de Rumbo";
+        suggest.textContent = "Sugerir Redirección de Rumbo";
         suggest.disabled = character.status === "dead";
         suggest.addEventListener("click", () => onSuggest(location));
         detail.append(suggest);
@@ -351,15 +383,15 @@ export function renderGame(character) {
   if (byId("world-era")) byId("world-era").textContent = world.era ?? "Era de los Grandes Descubrimientos";
   if (byId("world-clock")) byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
   const pantheon = world.pantheon ?? [];
-  renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `☠ ${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
+  renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
   const sharedFallen = character.world?.shared?.world?.fallen_captains ?? [];
-  renderList(byId("pantheon-modal-list"), [...sharedFallen, ...pantheon], "Aún no hay leyendas registradas.", (legend) => `☠ ${legend.name} · ${legend.cause || "Legado del mar"} · ${legend.island || legend.location || "mar abierto"}${(legend.maps || []).map((map) => ` · Tesoro X:${map.x} Y:${map.y}`).join("")}${(legend.notes || []).map((note) => ` · ${note.clue}`).join("")}`);
+  renderList(byId("pantheon-modal-list"), [...sharedFallen, ...pantheon], "Aún no hay leyendas registradas.", (legend) => `${legend.name} · ${legend.cause || "Legado del mar"} · ${legend.island || legend.location || "mar abierto"}${(legend.maps || []).map((map) => ` · Tesoro X:${map.x} Y:${map.y}`).join("")}${(legend.notes || []).map((note) => ` · ${note.clue}`).join("")}`);
   renderList(byId("news-list"), world.news ?? [], "El mar aguarda sus primeras noticias.", (entry) => entry.text ?? String(entry));
   if (byId("treasure-count")) byId("treasure-count").textContent = String((lineage.legacyChest ?? []).length);
-  renderList(byId("treasure-list"), lineage.legacyChest ?? [], "El cofre espera su primera reliquia.", (item) => `✦ ${item}`);
+  renderList(byId("treasure-list"), lineage.legacyChest ?? [], "El cofre espera su primera reliquia.", (item) => String(item));
 
   const mission = character.mission ?? { title: "Explorar el mar", island: character.location?.island ?? "Mar abierto", enemy: "piratas rivales", status: "active", completed: 0 };
-  if (byId("mission-title")) byId("mission-title").textContent = mission.status === "complete" ? `✅ ${mission.title} · completada` : `🎯 ${mission.title}`;
+  if (byId("mission-title")) byId("mission-title").textContent = mission.status === "complete" ? `${mission.title} · completada` : mission.title;
   if (byId("mission-text")) byId("mission-text").textContent = mission.status === "complete"
     ? `Has asegurado ${mission.island}. Navega para continuar la ruta. Misiones completadas: ${mission.completed ?? 0}.`
     : `Isla: ${mission.island} · Objetivo: enfrentarse a ${mission.enemy}. Alinea el Log Pose con ${character.logPose?.required ?? 3} acciones de navegación para iniciar el desafío.`;
@@ -372,7 +404,7 @@ export function renderGame(character) {
     route.forEach((island, index) => {
       const item = document.createElement("li");
       const currentIndex = Number(character.location?.routeIndex) || 0;
-      item.textContent = `${index < currentIndex ? "✓" : index === currentIndex ? "⚓" : "○"} ${island}`;
+      item.textContent = `${index < currentIndex ? "✓" : index === currentIndex ? "●" : "○"} ${island}`;
       item.classList.toggle("current", index === currentIndex);
       item.classList.toggle("visited", index < currentIndex);
       routeList.append(item);
