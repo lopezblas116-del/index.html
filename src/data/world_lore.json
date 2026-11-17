@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "entries": [
+    { "key": "red-line", "aliases": ["Red Line", "Línea Roja", "Continente de la Red Line"], "file": "lore/red-line.json" },
+    { "key": "grand-line", "aliases": ["Grand Line", "Paraíso", "Nuevo Mundo"], "file": "lore/grand-line.json" },
+    { "key": "calm-belt", "aliases": ["Calm Belt", "Franja de Calma", "Cinturón de la Calma"], "file": "lore/calm-belt.json" },
+    { "key": "log-pose", "aliases": ["Log Pose", "Brújula de la Grand Line"], "file": "lore/log-pose.json" },
+    { "key": "reverse-mountain", "aliases": ["Reverse Mountain", "Montaña Invertida"], "file": "lore/reverse-mountain.json" }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "key": "red-line",
+  "title": "La Red Line",
+  "description": "Un muro continental que divide los mares y obliga a buscar pasos muy concretos entre regiones.",
+  "climate": "variable",
+  "hazards": ["acantilados", "corrientes de paso", "vigilancia naval"],
+  "newsSeeds": ["paso bloqueado", "vigías en el horizonte", "corrientes contra la costa"]
+}

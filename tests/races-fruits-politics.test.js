@@ -88,12 +88,14 @@ test("political actions expose tribute, revolutionary support and global respons
   c.location.island = "Shells Town";
   const tribute = lootCelestialTribute(c, world);
   assert.equal(tribute.ok, true);
+  assert.equal(lootCelestialTribute(c, world).ok, false);
   assert.equal(shells.chaos, 0);
   network.publish(tribute.type, { island: tribute.island }, c);
   assert.equal(shells.chaos, 100);
   c.location.island = "Orange Town";
   const sabotage = sabotageTyrantPort(c, world);
   assert.equal(sabotage.ok, true);
+  assert.equal(sabotageTyrantPort(c, world).ok, false);
   network.publish(sabotage.type, { island: sabotage.island, alignment: c.soulCard.alignment }, c);
   assert.equal(world.islands_control.find((entry) => entry.island_id === "orange").chaos, 70);
   assert.equal(c.revolutionarySupport.hideout, true);

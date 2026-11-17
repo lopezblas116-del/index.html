@@ -7,6 +7,7 @@ import {
   climateFor, discoverAtSea, draftTestament, ensureAdvancedSystems,
   getTavernCandidates, suggestNavigation, tavernAction, updateCrewLoyalty
 } from "../src/systems.js";
+import { proceduralLore } from "../src/world_lore.js";
 
 function character(options = {}) {
   const c = createCharacter({ name: "Prueba", traits: ["Valiente", "Leal"], ...options });
@@ -118,4 +119,12 @@ test("crew recruitment, abandonment, and Calm Belt supplies", () => {
   assert.equal(climateFor(c), "calm-belt");
   assert.deepEqual(c.travel.lastSuppliesUsed, { food: 1, water: 2 });
   assert.equal(c.travel.speedMultiplier, 0.5);
+});
+
+test("unmapped regions receive a stable procedural climate instead of a generic default", () => {
+  const c = character();
+  c.location.region = "Archipiélago de la Bruma";
+  c.location.island = "Puerto Bruma";
+  c.location.atSea = false;
+  assert.equal(climateFor(c), proceduralLore("Puerto Bruma").climate);
 });

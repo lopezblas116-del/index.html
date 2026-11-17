@@ -30,6 +30,9 @@ jobs:
           node --check src/geopolitics.js
           node --check src/network.js
           node --check src/event_dispatcher.js
+          node --check src/world_lore.js
+          node --check src/island_encounters.js
+          node --check src/politics.js
           node --check src/hud.js
           node --check src/ui.js
           node --check src/map.js

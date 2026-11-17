@@ -89,9 +89,11 @@ test("unconfigured network stays local without network requests", async () => {
   net.subscribe(() => { updates += 1; });
   net.batch(() => {
     assert.equal(net.publish("whisper", { island: "Isla Dawn" }, { id: "a", name: "Navegante" }).status, "local");
-    net.publish("battle", { island: "Isla Dawn" }, { id: "a", name: "Navegante" });
+    net.publish("battle", { island: "Isla Dawn", reward: 350 }, { id: "a", name: "Navegante" });
   });
   assert.equal(updates, 2);
+  assert.equal(net.snapshot().world.global_events[0].reward, 350);
+  assert.equal(net.snapshot().world.global_events[0].captainName, "Navegante");
   assert.match(net.snapshot().world.global_events[1].text, /susurro/);
 });
 

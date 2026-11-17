@@ -1,0 +1,8 @@
+{
+  "key": "reverse-mountain",
+  "title": "Reverse Mountain",
+  "description": "Corrientes ascendentes desde los cuatro Blues convergen en un paso estrecho hacia la Grand Line.",
+  "climate": "grand-line",
+  "hazards": ["corrientes ascendentes", "rocas sumergidas", "navegación de precisión"],
+  "newsSeeds": ["cuatro corrientes se encuentran", "el paso ruge entre las rocas", "una travesía al límite"]
+}

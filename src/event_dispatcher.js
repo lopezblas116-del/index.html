@@ -57,10 +57,20 @@ function normalizedText(value) {
 
 function feedKey(entry, location) {
   const text = entry?.message ?? entry?.text ?? entry?.title ?? entry;
-  if (/\b(victoria|combate|batalla|pelea)\b/i.test(String(text))) {
-    return `battle:${normalizedText(entry?.location || location || "mar abierto")}`;
+  if (/battle|combat|victory/i.test(String(entry?.type || "")) ||
+      /\b(victoria|combate|batalla|pelea)\b/i.test(String(text))) {
+    const place = entry?.location || location || "mar abierto";
+    return `battle:${normalizedText(place)}:${normalizedText(entry?.captainName || entry?.actor || "")}`;
   }
   return `${entry?.type || "event"}:${normalizedText(entry?.location || location || "")}:${normalizedText(text)}`;
+}
+
+function berryReward(entry) {
+  const structured = Number(entry?.berries ?? entry?.reward);
+  if (Number.isFinite(structured) && structured > 0) return Math.floor(structured);
+  const text = String(entry?.message ?? entry?.text ?? "");
+  const amount = text.match(/฿\s*([\d.,]+)/)?.[1];
+  return amount ? Number(amount.replace(/[.,]/g, "")) || 0 : 0;
 }
 
 export function aggregateSmartFeed(entries, { location = "", name = "", limit = 80 } = {}) {
@@ -71,24 +81,28 @@ export function aggregateSmartFeed(entries, { location = "", name = "", limit = 
     const existing = groups.get(key);
     if (existing) {
       existing.count += 1;
-      existing.totalBerries += Number(String(entry?.message ?? entry?.text ?? "").match(/฿\s*([\d.,]+)/)?.[1]?.replace(/[.,]/g, "")) || 0;
+      existing.totalBerries += berryReward(entry);
       continue;
     }
     const item = { ...((entry && typeof entry === "object") ? entry : { message: String(entry ?? "") }), count: 1, totalBerries: 0 };
-    const berries = String(item.message ?? item.text ?? "").match(/฿\s*([\d.,]+)/)?.[1];
-    item.totalBerries = berries ? Number(berries.replace(/[.,]/g, "")) || 0 : 0;
-    if (/^(battle|victory|combat)/i.test(key)) {
-      item.message = `ÚLTIMA HORA: ${name ? `${name} libra ` : "Se libran "}${item.count > 1 ? `${item.count} encarnizadas batallas` : "un encarnizado combate"} en ${location || item.location || "el puerto"}${item.totalBerries ? ` y consigue ฿${item.totalBerries}` : ""}.`;
+    item.totalBerries = berryReward(item);
+    if (key.startsWith("battle:")) {
+      const captain = item.captainName || item.actor || name || "La tripulación";
+      item.message = item.count > 1
+        ? `⚔️ ÚLTIMA HORA: ${captain} dominó el puerto de ${item.location || location || "mar abierto"} tras ${item.count} batallas consecutivas${item.totalBerries ? ` y acumuló ${item.totalBerries} Berries` : ""}.`
+        : `⚔️ ÚLTIMA HORA: ${captain} libra un encarnizado combate en ${item.location || location || "mar abierto"}${item.totalBerries ? ` y consigue ฿${item.totalBerries}` : ""}.`;
     }
     groups.set(key, item);
     aggregated.push(item);
   }
   for (const item of aggregated) {
-    if (item.count > 1 && !/^ÚLTIMA HORA:/.test(item.message || "")) {
+    if (item.count > 1 && !String(item.message || "").startsWith("⚔️ ÚLTIMA HORA:")) {
       item.message = `${item.message || item.text || "Aviso del mar"} · repetido ${item.count} veces`;
-    } else if (item.count > 1 && /^ÚLTIMA HORA:/.test(item.message || "")) {
-      item.message = `ÚLTIMA HORA: ${name ? `${name} libra ` : "Se libran "}${item.count} encarnizadas batallas en ${location || item.location || "el puerto"}${item.totalBerries ? ` y consigue ฿${item.totalBerries}` : ""}.`;
+    } else if (item.count > 1 && String(item.message || "").startsWith("⚔️ ÚLTIMA HORA:")) {
+      const captain = item.captainName || item.actor || name || "La tripulación";
+      item.message = `⚔️ ÚLTIMA HORA: ${captain} dominó el puerto de ${item.location || location || "mar abierto"} tras ${item.count} batallas consecutivas${item.totalBerries ? ` y acumuló ${item.totalBerries} Berries` : ""}.`;
     }
+    if (item.count > 1 || String(item.message || "").startsWith("⚔️ ÚLTIMA HORA:")) item.text = item.message;
   }
   return aggregated.slice(0, Math.max(0, limit));
 }

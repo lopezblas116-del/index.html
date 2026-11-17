@@ -1,5 +1,6 @@
 import { getMapIslands } from "./map.js";
 import { ensureAncientLanguage } from "./ancient_language.js";
+import { proceduralLore } from "./world_lore.js";
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const hash = (value) => [...String(value)].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
@@ -178,7 +179,8 @@ export function climateFor(character) {
   const place = String(character?.location?.region ?? "").toLocaleLowerCase("es");
   if (/calm belt|franja de calma|calm.?belt/.test(place)) return "calm-belt";
   if (/grand line|para[ií]so|nuevo mundo/.test(place) || Number(character?.location?.routeIndex) >= 6) return "grand-line";
-  return "normal";
+  if (/^(east|west|north|south) blue$/.test(place)) return "normal";
+  return proceduralLore(character?.location?.island || place).climate;
 }
 
 export function climateLabel(climate) {

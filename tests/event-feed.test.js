@@ -13,9 +13,25 @@ test("smart feed condenses battles by location and sums Berry rewards", () => {
   assert.equal(feed.length, 1);
   assert.equal(feed[0].count, 3);
   assert.equal(feed[0].totalBerries, 1825);
-  assert.match(feed[0].message, /Blas libra 3 encarnizadas batallas en Loguetown/);
-  assert.match(feed[0].message, /฿1825/);
+  assert.match(feed[0].message, /Blas dominó el puerto de Loguetown tras 3 batallas consecutivas/);
+  assert.match(feed[0].message, /acumuló 1825 Berries/);
+  assert.equal(feed[0].text, feed[0].message);
   assert.equal(entries[0].message, "Victoria en el puerto · recompensa ฿1.500");
+});
+
+test("battle feed uses structured Berry rewards and keeps locations separate", () => {
+  const feed = aggregateSmartFeed([
+    { type: "combat", location: "Paraíso", reward: 150, text: "Blas Rodrigo protagoniza un combate en Paraíso." },
+    { type: "combat", location: "Paraíso", berries: 200, text: "Blas Rodrigo protagoniza un combate en Paraíso." },
+    { type: "combat", location: "Loguetown", reward: 50, text: "Blas Rodrigo protagoniza un combate en Loguetown." }
+  ], { name: "Blas Rodrigo", location: "East Blue" });
+
+  assert.equal(feed.length, 2);
+  assert.equal(feed[0].count, 2);
+  assert.equal(feed[0].totalBerries, 350);
+  assert.match(feed[0].text, /dominó el puerto de Paraíso tras 2 batallas consecutivas y acumuló 350 Berries/);
+  assert.equal(feed[1].location, "Loguetown");
+  assert.equal(feed[1].totalBerries, 50);
 });
 
 test("smart feed deduplicates identical notices and honors its result limit", () => {

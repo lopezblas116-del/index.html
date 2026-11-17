@@ -1,0 +1,8 @@
+{
+  "key": "log-pose",
+  "title": "Log Pose",
+  "description": "La aguja registra la atracción magnética de una isla; en rutas nuevas puede necesitar tiempo para estabilizarse.",
+  "climate": "variable",
+  "hazards": ["rumbo inestable", "lecturas magnéticas", "islas sin cartografiar"],
+  "newsSeeds": ["la aguja busca el norte", "un rumbo todavía sin nombre", "el magnetismo altera las cartas"]
+}

@@ -15,9 +15,13 @@ export function lootCelestialTribute(character, world) {
   if (character.status === "dead" || character.captured || character.location?.atSea || !island?.affiliated) {
     return { ok: false, message: "No hay un tributo celestial accesible en este puerto." };
   }
-  if ((Number(character.world.day) || 0) % 7 === 0) return { ok: false, message: "La Marina ya cobró el tributo de este ciclo." };
+  const day = Number(character.world.day) || 0;
+  if (Number.isFinite(Number(character.world.lastTributeDay)) && day - Number(character.world.lastTributeDay) < 7) {
+    return { ok: false, message: "La Marina ya cobró el tributo de este ciclo." };
+  }
   const berries = 300 + Math.floor(Math.random() * 201);
   const earned = awardBerries(character, berries);
+  character.world.lastTributeDay = day;
   character.world.news.unshift({ type: "politics", text: `🏴‍☠️ ${character.name} saquea el tributo celestial de ${island.name}; la Marina retira sus tropas y el puerto cae en anarquía.`, day: character.world.day, location: island.name });
   log(character, `💰 Tributo celestial saqueado en ${island.name}: +฿${earned}. La guarnición se retira.`);
   return { ok: true, type: "tribute_theft", island: island.name, berries: earned, message: `Tributo saqueado: +฿${earned}. La Marina abandona el puerto.` };
@@ -33,9 +37,14 @@ export function sabotageTyrantPort(character, world) {
   if (!["Libertad", "Caos"].includes(character.soulCard?.alignment)) {
     return { ok: false, message: "Tu brújula ideológica no encuentra apoyo revolucionario aquí." };
   }
-  character.revolutionarySupport ??= { hideout: false, supplies: 0 };
+  character.revolutionarySupport ??= { hideout: false, supplies: 0, sabotagedIslands: [] };
+  character.revolutionarySupport.sabotagedIslands ??= [];
+  if (character.revolutionarySupport.sabotagedIslands.includes(island.id)) {
+    return { ok: false, message: "La resistencia ya opera en este puerto; no necesita repetir el sabotaje." };
+  }
   character.revolutionarySupport.hideout = true;
   character.revolutionarySupport.supplies += 1;
+  character.revolutionarySupport.sabotagedIslands.push(island.id);
   character.inventory.items.push("Suministro revolucionario");
   character.world.news.unshift({ type: "revolutionary", text: `🕊 La resistencia clandestina abre un refugio en ${island.name}.`, day: character.world.day, location: island.name });
   log(character, `🕊 Sabotaje en ${island.name}: el Ejército Revolucionario ofrece un refugio y suministros.`);

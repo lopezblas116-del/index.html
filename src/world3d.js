@@ -314,8 +314,11 @@ function drawRegionalChart(now) {
     minY: clamp(minY - paddingY, 0, HEIGHT),
     maxY: clamp(maxY + paddingY, 0, HEIGHT)
   };
-  const left = 16, top = 38, chartWidth = Math.max(1, width - 32), chartHeight = Math.max(1, height - 122);
-  const mapLeft = left + 20, mapTop = top + 44, mapWidth = chartWidth - 40, mapHeight = chartHeight - 64;
+  const left = Math.min(68, Math.max(12, width * 0.18));
+  const top = 74;
+  const chartWidth = Math.max(1, width - left - 14);
+  const chartHeight = Math.max(1, height - top - 208);
+  const mapLeft = left + 18, mapTop = top + 54, mapWidth = Math.max(1, chartWidth - 36), mapHeight = Math.max(1, chartHeight - 72);
   const alpha = clamp((zoom - 1.24) / (ISLAND_ZOOM - 1.24), 0.12, 0.88);
   const pointFor = (point) => ({
     x: mapLeft + (point.x - bounds.minX) / Math.max(1, bounds.maxX - bounds.minX) * mapWidth,
@@ -333,7 +336,7 @@ function drawRegionalChart(now) {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#f4b41a";
-  ctx.fillText(`CARTA NÁUTICA REGIONAL · ${region.toLocaleUpperCase("es")} · LOG POSE`, width / 2, top + 8, chartWidth - 24);
+  ctx.fillText(`CARTA · ${region.toLocaleUpperCase("es")} · LOG POSE`, left + chartWidth / 2, top + 8, chartWidth - 62);
   ctx.strokeStyle = "rgba(122,169,174,.22)";
   for (let i = 1; i < 10; i++) {
     const gx = mapLeft + mapWidth * i / 10, gy = mapTop + mapHeight * i / 8;
@@ -350,13 +353,31 @@ function drawRegionalChart(now) {
     ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
     ctx.setLineDash([]);
   }
+  const occupiedLabels = [];
   for (const point of points) {
     ctx.fillStyle = point.island.name === character?.location?.island ? "#f4b41a" : "#a9cb78";
     ctx.fillRect(point.x - 4, point.y - 4, 8, 8);
-    ctx.fillStyle = "#edf2e8";
     ctx.font = "9px monospace";
     ctx.textAlign = "left";
-    ctx.fillText(point.island.name, point.x + 7, point.y - 5, Math.min(120, chartWidth * 0.33));
+    const label = point.island.name;
+    const measuredWidth = ctx.measureText?.(label)?.width ?? label.length * 5;
+    const labelWidth = Math.min(measuredWidth, Math.max(24, mapWidth * 0.42));
+    const candidates = [
+      { x: point.x + 7, y: point.y - 5 },
+      { x: point.x + 7, y: point.y + 10 },
+      { x: point.x - labelWidth - 7, y: point.y - 5 },
+      { x: point.x - labelWidth - 7, y: point.y + 10 }
+    ];
+    const labelBox = candidates.map(({ x, y }) => ({ x, y: y - 9, width: labelWidth, height: 11 }))
+      .find((box) => box.x >= mapLeft && box.x + box.width <= mapLeft + mapWidth &&
+        box.y >= mapTop && box.y + box.height <= mapTop + mapHeight &&
+        !occupiedLabels.some((used) => box.x < used.x + used.width + 3 && box.x + box.width + 3 > used.x &&
+          box.y < used.y + used.height + 3 && box.y + box.height + 3 > used.y));
+    if (labelBox) {
+      occupiedLabels.push(labelBox);
+      ctx.fillStyle = "#edf2e8";
+      ctx.fillText(label, labelBox.x, labelBox.y + 9, labelBox.width);
+    }
   }
   if (from) {
     ctx.fillStyle = "#f4b41a";
@@ -382,7 +403,7 @@ function drawRegionalChart(now) {
   ctx.fillStyle = "rgba(233,239,222,.78)";
   ctx.font = "9px monospace";
   ctx.textAlign = "left";
-  ctx.fillText("RUTA DEL AVATAR · FLOTAS EN TRÁNSITO", mapLeft, top + chartHeight - 14);
+  ctx.fillText("RUTA DEL AVATAR · FLOTAS EN TRÁNSITO", mapLeft, top + 38, Math.max(1, chartWidth - 62));
   ctx.restore();
 }
 function scheduleFrame() {

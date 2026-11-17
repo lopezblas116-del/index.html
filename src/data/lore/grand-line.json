@@ -1,0 +1,8 @@
+{
+  "key": "grand-line",
+  "title": "La Grand Line",
+  "description": "Una ruta de corrientes cambiantes y climas extremos donde cada isla puede imponer sus propias reglas.",
+  "climate": "grand-line",
+  "hazards": ["tormentas repentinas", "corrientes magnéticas", "rutas impredecibles"],
+  "newsSeeds": ["el Log Pose tiembla", "una tormenta corta el horizonte", "la corriente cambia de rumbo"]
+}

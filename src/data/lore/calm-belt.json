@@ -1,0 +1,8 @@
+{
+  "key": "calm-belt",
+  "title": "Calm Belt",
+  "description": "Una franja sin viento donde avanzar exige provisiones, paciencia y una tripulación preparada.",
+  "climate": "calm-belt",
+  "hazards": ["ausencia de viento", "deriva lenta", "depredadores marinos"],
+  "newsSeeds": ["velas inmóviles", "sombras bajo la quilla", "un silencio que inquieta a la tripulación"]
+}

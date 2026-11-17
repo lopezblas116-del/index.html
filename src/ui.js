@@ -2,11 +2,13 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { avatarEmotion, drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "./island_renderer.js";
 import { canReadAncient } from "./archaeology_system.js";
 import { aggregateSmartFeed, maritimeHeadline } from "./event_dispatcher.js";
 import { animateCount } from "./vfx_engine.js";
 import { rollCreationRace } from "./character_creation.js";
+import { getLoreByKey } from "./world_lore.js";
+import { islandEncountersFor } from "./island_encounters.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -76,11 +78,49 @@ export function initIslandView() {
   listen(byId("island-back"), "click", () => returnToGlobalMap());
 }
 
+function renderIslandEncounters(island, character, present) {
+  const section = byId("island-encounters");
+  if (!section) return;
+  section.replaceChildren();
+  const encounters = present ? islandEncountersFor(island, character) : [];
+  if (!encounters.length) {
+    section.hidden = true;
+    return;
+  }
+  const heading = document.createElement("h3");
+  heading.textContent = "Encuentros del puerto";
+  section.append(heading);
+  for (const encounter of encounters) {
+    const card = document.createElement("article");
+    card.className = "island-encounter-card";
+    const title = document.createElement("h4");
+    title.textContent = encounter.title;
+    const description = document.createElement("p");
+    description.textContent = encounter.description;
+    card.append(title, description);
+    if (encounter.warning) {
+      const warning = document.createElement("p");
+      warning.className = "island-encounter-warning";
+      warning.textContent = encounter.warning;
+      card.append(warning);
+    }
+    const decide = document.createElement("button");
+    decide.type = "button";
+    decide.textContent = encounter.buttonLabel;
+    decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:hud-politics", { detail: { action: encounter.action } })));
+    card.append(decide);
+    section.append(card);
+  }
+  section.hidden = false;
+}
+
 export function renderIslandView(character) {
   islandCharacter = character;
   if (!islandView || !character) return;
   const present = isAtIsland(character, islandView);
-  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}`;
+  const localWorld = character.world?.shared?.world;
+  const islandControl = localWorld?.islands_control?.find((entry) => entry.island_id === islandView.id);
+  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
   if (key === islandRenderKey) return;
   islandRenderKey = key;
   byId("island-title").textContent = islandView.landmark || islandView.name;
@@ -95,8 +135,6 @@ export function renderIslandView(character) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "island-hotspot";
-    button.style.left = `${poi.x / ISLAND_SCENE_WIDTH * 100}%`;
-    button.style.top = `${poi.y / ISLAND_SCENE_HEIGHT * 100}%`;
     button.setAttribute("aria-label", `${poi.name}; sugerencia opcional, el avatar decide si la sigue`);
     button.title = poi.name;
     const icon = poi.type === "tavern" || poi.type === "inn" ? "tavern"
@@ -116,6 +154,20 @@ export function renderIslandView(character) {
     });
     button.disabled = !isAtIsland(islandCharacter, islandView);
     hotspots.append(button);
+  }
+  renderIslandEncounters(islandView, character, present);
+  const loreNote = byId("island-lore");
+  if (loreNote) {
+    const requestedIsland = islandView.id;
+    loreNote.textContent = "La bitácora consulta las cartas locales…";
+    getLoreByKey(islandView.name).then((lore) => {
+      if (islandView?.id !== requestedIsland || !loreNote.isConnected) return;
+      loreNote.textContent = `${lore.description} Riesgos: ${lore.hazards.join(" · ")}.`;
+      loreNote.dataset.loreSource = lore.procedural ? "procedural" : "indexed";
+    }).catch((error) => {
+      if (islandView?.id !== requestedIsland || !loreNote.isConnected) return;
+      loreNote.textContent = `La carta local no está disponible: ${error.message}`;
+    });
   }
   document.dispatchEvent(new CustomEvent("onepiece:island-layout"));
 }
@@ -228,6 +280,9 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       icon.className = `news-card-icon news-card-icon-${press.category}`;
       icon.setAttribute("aria-hidden", "true");
       icon.textContent = press.icon;
+      const displayedHeadline = press.category === "battle"
+        ? entry?.message || entry?.text || press.headline
+        : press.headline;
       if (npcAppearance || /se busca|bounty/i.test(headline)) {
         const portrait = document.createElement("canvas");
         portrait.width = 64;
@@ -236,12 +291,12 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         portrait.setAttribute("aria-hidden", "true");
         const portraitContext = portrait.getContext("2d");
         if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}), { size: 64, equipment: isPlayer ? character.equipped : {}, emotion: isPlayer ? avatarEmotion(character) : "neutral" });
-        summary.append(icon, portrait, document.createTextNode(press.headline));
-      } else summary.append(icon, document.createTextNode(press.headline));
+        summary.append(icon, portrait, document.createTextNode(displayedHeadline));
+      } else summary.append(icon, document.createTextNode(displayedHeadline));
       const detail = document.createElement("div");
       detail.className = "news-card-detail";
       const story = entry?.text || entry?.message;
-      if (story && story !== press.headline) {
+      if (story && story !== displayedHeadline) {
         const paragraph = document.createElement("p");
         paragraph.textContent = story;
         detail.append(paragraph);
@@ -292,6 +347,18 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
     body.append(panel);
   });
   container.append(tabs, body);
+  const loreHint = document.createElement("aside");
+  loreHint.className = "news-lore-note";
+  loreHint.textContent = "La Gaceta consulta las cartas de la región…";
+  container.append(loreHint);
+  const loreQuery = character.location?.island || character.location?.region;
+  getLoreByKey(loreQuery).then((lore) => {
+    if (!loreHint.isConnected) return;
+    const seed = lore.newsSeeds[(Number(character.world?.day) || 0) % lore.newsSeeds.length];
+    loreHint.textContent = `Rumores de ${lore.title}: ${seed}. Riesgo de la ruta: ${lore.hazards[0]}.`;
+  }).catch((error) => {
+    if (loreHint.isConnected) loreHint.textContent = `Las cartas de prensa no están disponibles: ${error.message}`;
+  });
 }
 
 export function showSetup() {

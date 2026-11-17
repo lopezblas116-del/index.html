@@ -57,7 +57,7 @@ function paint() {
   }
 }
 function publicSnapshot(c) {
-  return { day: c.world?.day || 0, completed: c.mission?.completed || 0, contracts: (c.activeContracts || []).filter((item) => item.status === "completed").length, bounty: c.bounty || 0, status: c.status, firstLog: c.log?.[0] };
+  return { day: c.world?.day || 0, completed: c.mission?.completed || 0, contracts: (c.activeContracts || []).filter((item) => item.status === "completed").length, bounty: c.bounty || 0, berries: c.berries || 0, status: c.status, firstLog: c.log?.[0] };
 }
 function availableFruitIds() {
   return (sharedState.world?.devil_fruits || []).filter((fruit) => fruit.state === "wild").map((fruit) => fruit.id);
@@ -129,7 +129,7 @@ function publishChanges(before, c, whispered = false) {
     emitVfx("victory");
   }
   if (newLogs.some((entry) => /^\[COMBATE\] Encuentro|^⚔ Victoria|^Derrota contra/.test(entry.message))) {
-    network.publish("battle", { island }, c);
+    network.publish("battle", { island, reward: Math.max(0, (Number(c.berries) || 0) - before.berries) }, c);
   }
   if (c.bounty !== before.bounty || (c.mission?.completed || 0) > before.completed) {
     network.publish("bounty", { captain_id: c.id, bounty: c.bounty }, c);
