@@ -2,6 +2,12 @@
 
 GitHub Pages sirve solamente el cliente. Por defecto no hay ninguna base de datos configurada: Vista Mundial indica «Simulación local» y el avatar, su inventario y el estado geopolítico local se guardan en `localStorage`. El mundo local persiste al reiniciar el avatar; borrar los datos del sitio lo elimina.
 
+## Desarrollo y publicación
+
+Se necesita Node.js 22. Ejecuta `npm ci` y `npm run dev` para desarrollar, `npm test` para las pruebas y `npm run build` para generar `dist/`. `npm run preview` permite comprobar la compilación local. El globo usa Three.js y requiere WebGL; el mapa regional, las rutas y la vista de isla se dibujan en una capa Canvas sobre el planeta.
+
+GitHub Actions compila y comprueba la aplicación en cada push o pull request a `main`; los push publican el contenido de `dist/` en GitHub Pages. En los ajustes de Pages, la fuente debe ser **GitHub Actions**. La compilación incluye el índice de lore y sus fragmentos en `src/data/` dentro del sitio publicado para conservar la consulta bajo demanda.
+
 ## Módulos del cliente
 
 `src/config.js` centraliza paleta, claves, contratos y parámetros de simulación; `src/storage_adapter.js` es la única capa que accede al almacenamiento del navegador. `src/network.js` gestiona la sincronización con Supabase y usa ese adaptador para sus datos locales. `src/event_dispatcher.js` valida eventos tipados; `src/chat_engine.js` mantiene el Chat Global y el historial privado de susurros; `src/time_engine.js` calcula el avance del reloj; `src/ai_engine.js` conserva la psique, las necesidades, los dilemas y la bitácora diaria; `src/geopolitics.js` gestiona el estado territorial local; `src/race_system.js` reúne atributos y trato portuario; y `src/power_systems.js` integra el registro de frutas únicas con el perfil de Haki. Coordenadas, POI, distritos, habitantes, rutas, noticias y dilemas viven en los catálogos JSON bajo `src/data/`.

@@ -2,6 +2,7 @@ import { getMapIslands, PLANETARY_GEOGRAPHY } from "./map.js";
 import { routeFor } from "./game.js";
 import { islandDetails } from "./islands_data.js";
 import { avatarAction, avatarEmotion, drawIslandSceneContext, drawPixelAvatar, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { createPlanetRenderer } from "./ui/canvas3d.js";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -12,6 +13,7 @@ const radians = (point) => ({
   lat: (0.5 - point.y / HEIGHT) * Math.PI
 });
 let canvas, ctx, character, lodLabel, width = 0, height = 0, radius = 0;
+let planetRenderer;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
 let zoomFocus = null, zoomAnchor = null;
@@ -67,42 +69,6 @@ function traceLine(points, color, lineWidth) {
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.stroke();
-}
-function parallel(lat, color, size) {
-  traceLine(Array.from({ length: 181 }, (_, i) => ({ lon: -Math.PI + i * Math.PI / 90, lat })), color, size);
-}
-function meridian(lon, color, size) {
-  traceLine(Array.from({ length: 91 }, (_, i) => ({ lon, lat: -Math.PI / 2 + i * Math.PI / 90 })), color, size);
-}
-function drawRedLineMeridian(lon) {
-  const halfWidth = 0.105;
-  const rows = 90;
-  for (let i = 0; i < rows; i++) {
-    const lat1 = -Math.PI / 2 + i * Math.PI / rows;
-    const lat2 = -Math.PI / 2 + (i + 1) * Math.PI / rows;
-    const points = [
-      project(lon - halfWidth, lat1), project(lon + halfWidth, lat1),
-      project(lon + halfWidth, lat2), project(lon - halfWidth, lat2)
-    ];
-    if (points.every((point) => point.visible)) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let j = 1; j < points.length; j++) ctx.lineTo(points[j].x, points[j].y);
-      ctx.closePath();
-      ctx.fillStyle = i % 2 ? "#874238" : "#77372f";
-      ctx.fill();
-      if (i % 3 === 0) {
-        ctx.strokeStyle = "rgba(211,144,99,.3)";
-        ctx.lineWidth = Math.max(1, radius * zoom * .003);
-        ctx.beginPath();
-        ctx.moveTo(points[0].x + (points[3].x - points[0].x) * .28, points[0].y + (points[3].y - points[0].y) * .28);
-        ctx.lineTo(points[1].x + (points[2].x - points[1].x) * .68, points[1].y + (points[2].y - points[1].y) * .68);
-        ctx.stroke();
-      }
-    }
-  }
-  traceLine(Array.from({ length: 91 }, (_, i) => ({ lon: lon - halfWidth, lat: -Math.PI / 2 + i * Math.PI / 90 })), "rgba(223,145,98,.62)", Math.max(1, radius * zoom * .009));
-  traceLine(Array.from({ length: 91 }, (_, i) => ({ lon: lon + halfWidth, lat: -Math.PI / 2 + i * Math.PI / 90 })), "rgba(68,39,39,.7)", Math.max(1, radius * zoom * .01));
 }
 function drawPoint(point, label, icon, color) {
   drawIslandSprite(point, color);
@@ -538,36 +504,10 @@ function drawCompassRose(x, y, radius) {
 function render(now = performance.now()) {
   if (!ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
-  const chart = ctx.createLinearGradient(0, 0, width, height);
-  chart.addColorStop(0, "#0b1329");
-  chart.addColorStop(.48, "#12243a");
-  chart.addColorStop(1, "#0b1329");
-  ctx.fillStyle = chart;
-  ctx.fillRect(0, 0, width, height);
-  for (let i = 0; i < 460; i++) {
-    const x = (i * 197 + 41) % width, y = (i * 313 + 17) % height;
-    ctx.fillStyle = i % 3 ? "rgba(118,166,169,.08)" : "rgba(255,249,220,.16)";
-    ctx.fillRect(x, y, i % 7 === 0 ? 2 : 1, 1);
-  }
-  for (let y = height * .16; y < height; y += 84) {
-    ctx.strokeStyle = "rgba(155,191,181,.14)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-  }
-  for (let x = width * .12; x < width; x += 96) {
-    ctx.strokeStyle = "rgba(155,191,181,.12)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-  }
   const size = globeRadius();
-  const gradient = ctx.createRadialGradient(width / 2 - size * 0.3, height / 2 - size * 0.35, size * 0.05, width / 2, height / 2, size);
-  gradient.addColorStop(0, "#537d7a");
-  gradient.addColorStop(0.65, "#31666b");
-  gradient.addColorStop(1, "#193f4a");
+  planetRenderer?.draw({ width, height, radius: size, longitude, latitude, now });
   ctx.beginPath();
   ctx.arc(width / 2, height / 2, size, 0, Math.PI * 2);
-  ctx.fillStyle = gradient;
-  ctx.fill();
   ctx.save();
   ctx.clip();
   for (let i = 0; i < 96; i++) {
@@ -578,12 +518,6 @@ function render(now = performance.now()) {
     ctx.fillStyle = i % 5 === 0 ? "rgba(239,223,181,.28)" : "rgba(223,208,166,.14)";
     ctx.fillRect(point.x, point.y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
   }
-  for (const latitude of PLANETARY_GEOGRAPHY.calmBelts) parallel(latitude, "rgba(209,193,151,.22)", radius * 0.13);
-  parallel(PLANETARY_GEOGRAPHY.grandLineLatitude, "rgba(115,191,172,.55)", radius * 0.16);
-  drawRedLineMeridian(PLANETARY_GEOGRAPHY.redLineMeridians[0]);
-  drawRedLineMeridian(PLANETARY_GEOGRAPHY.redLineMeridians[1]);
-  for (let lat = -Math.PI / 3; lat <= Math.PI / 3; lat += Math.PI / 6) parallel(lat, "rgba(231,216,178,.2)", 1);
-  for (let lon = -Math.PI; lon < Math.PI; lon += Math.PI / 6) meridian(lon, "rgba(231,216,178,.2)", 1);
   drawAmbientEffects(now);
   for (const sea of PLANETARY_GEOGRAPHY.blues) drawSeaLabel(sea, sea.name);
   drawSeaLabel(PLANETARY_GEOGRAPHY.reverseMountain, "REVERSE MOUNTAIN");
@@ -960,6 +894,10 @@ export function initMap() {
   lodLabel = document.getElementById("map-lod-readout");
   ctx = canvas.getContext("2d");
   if (!ctx) { canvas = null; throw new Error("No se pudo inicializar el globo náutico."); }
+  if (typeof HTMLCanvasElement !== "undefined" && canvas instanceof HTMLCanvasElement) {
+    planetRenderer = createPlanetRenderer();
+    canvas.parentElement.insertBefore(planetRenderer.element, canvas);
+  }
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);

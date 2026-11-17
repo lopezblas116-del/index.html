@@ -199,8 +199,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden}
 #game-container .game-grid,#game-container .main-column{position:absolute;inset:0;display:block;width:100%;height:100%;margin:0;overflow:hidden}
 #game-container .main-column{pointer-events:none}
 #game-container .character-panel,#game-container .main-column>:not(#map-panel){display:none!important}
-#game-container #map-panel{position:absolute;inset:0;z-index:0;width:100%;height:100%;margin:0;padding:0;overflow:hidden;border:0;border-radius:0;background:#0b1329;box-shadow:none;pointer-events:auto}
-#game-container canvas#world-map,#game-container #worldMapCanvas,#game-container .world-map{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;margin:0;border:0;border-radius:0;background:#0b1329;touch-action:none}
+#game-container #map-panel{position:absolute;inset:0;z-index:0;width:100%;height:100%;margin:0;padding:0;overflow:hidden;border:0;border-radius:0;background:linear-gradient(rgba(155,191,181,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(155,191,181,.1) 1px,transparent 1px),radial-gradient(ellipse at center,#12243a,#0b1329);background-size:96px 84px,96px 84px,auto;box-shadow:none;pointer-events:auto}
+#game-container #planet-map,#game-container canvas#world-map,#game-container #worldMapCanvas,#game-container .world-map{position:absolute;inset:0;display:block;width:100%;height:100%;margin:0;border:0;border-radius:0;background:transparent}
+#game-container #planet-map{z-index:0;pointer-events:none}
+#game-container canvas#world-map,#game-container #worldMapCanvas,#game-container .world-map{z-index:1;touch-action:none}
 body:has(#game-container:not([hidden])){position:fixed;inset:0;overflow:hidden}
 /* Block 1: autonomous chest, geonautical contracts and era newspaper. */
 .block1-section{margin:16px 0 0;padding-top:12px;border-top:1px solid rgba(244,180,26,.35)}

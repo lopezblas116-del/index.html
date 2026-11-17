@@ -1,4 +1,6 @@
-const INDEX_URL = new URL("./data/world_lore.json", import.meta.url);
+const INDEX_URL = globalThis.document?.baseURI
+  ? new URL("./src/data/world_lore.json", globalThis.document.baseURI)
+  : new URL("./data/" + "world_lore.json", import.meta.url);
 const normalize = (value) => String(value ?? "").normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es")
   .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
