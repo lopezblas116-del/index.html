@@ -12,7 +12,7 @@ const radians = (point) => ({
   lon: (point.x / WIDTH - 0.5) * Math.PI * 2,
   lat: (0.5 - point.y / HEIGHT) * Math.PI
 });
-let canvas, ctx, character, lodLabel, width = 0, height = 0, radius = 0;
+let canvas, ctx, character, width = 0, height = 0, radius = 0;
 let planetRenderer;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
@@ -556,22 +556,7 @@ function render(now = performance.now()) {
   ctx.lineWidth = 2;
   ctx.stroke();
   drawCompassRose(width * .16, height * .74, clamp(Math.min(width, height) * .045, 18, 38));
-  ctx.fillStyle = "#f4b41a";
-  ctx.font = "bold 12px monospace";
-  ctx.textAlign = "center";
-  if (zoom < 1.28) {
-    ctx.fillText("GLOBO PLANETARIO · RED LINE · GRAND LINE · 4 BLUES", width / 2, Math.max(20, height / 2 - size - 12));
-  } else {
-    ctx.font = "bold 11px monospace";
-    ctx.fillText(`CÁMARA MESO · LOG POSE · ${character?.location?.island || "MAR ABIERTO"}`, width / 2, 22);
-  }
   drawRegionalChart(now);
-  if (lodLabel) {
-    const text = zoom < 1.28
-      ? "NIVEL MACRO · GLOBO PLANETARIO"
-      : `NIVEL MESO · CARTA REGIONAL · ${character?.location?.island || "MAR ABIERTO"}`;
-    if (lodLabel.textContent !== text) lodLabel.textContent = text;
-  }
 }
 function atIsland(island) {
   return Boolean(character && character.status !== "dead" && !character.captured && !character.location?.atSea && character.location?.island === island.name);
@@ -664,7 +649,6 @@ function animate(now) {
     localRenderKey = sceneKey(island);
     canvas.setAttribute("aria-label", `Ciudad y puerto de ${island.landmark || island.name}, vista pixel art`);
     document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState, island } }));
-    if (lodLabel) lodLabel.textContent = `NIVEL MICRO · ISLA · ${island.name.toLocaleUpperCase("es")}`;
     if (animateIsland()) scheduleFrame();
     return;
   }
@@ -833,7 +817,6 @@ export function returnToGlobalMap(immediate = false) {
     savedCamera = null;
   }
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
-  if (lodLabel) lodLabel.textContent = "NIVEL MACRO · GLOBO PLANETARIO";
   if (!mapCovered() && !document.hidden && !transition) render();
   if (transition || (!immediate && character && (animation || shouldAnimateRoute() || ambientMotionEnabled()))) scheduleFrame();
 }
@@ -891,7 +874,6 @@ export function initMap() {
   if (canvas) return;
   canvas = document.getElementById("world-map");
   if (!canvas) return;
-  lodLabel = document.getElementById("map-lod-readout");
   ctx = canvas.getContext("2d");
   if (!ctx) { canvas = null; throw new Error("No se pudo inicializar el globo náutico."); }
   if (typeof HTMLCanvasElement !== "undefined" && canvas instanceof HTMLCanvasElement) {
@@ -903,7 +885,6 @@ export function initMap() {
   canvas.addEventListener("pointerup", onUp);
   canvas.addEventListener("pointercancel", (event) => { pointers.delete(event.pointerId); pinchStart = null; });
   canvas.addEventListener("wheel", (event) => { event.preventDefault(); zoomMap(targetZoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12), screenPoint(event)); }, { passive: false });
-  document.getElementById("map-reset-view")?.addEventListener("click", () => { zoomMap(1); focusMap(positionFor(character)); });
   document.addEventListener("onepiece:map-zoom", (event) => adjustZoom(event.detail?.direction));
   document.addEventListener("onepiece:map-fit", () => zoomMap(1));
   document.addEventListener("onepiece:island-layout", () => {

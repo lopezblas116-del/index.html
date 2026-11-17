@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCharacter, createHeir, performAction, routeFor } from "../src/game.js";
-import { inferLatentTrait, isBiographyValid, rollCreationRace } from "../src/character_creation.js";
+import { generateRandomOrigin, inferLatentTrait, isBiographyValid, rollCreationRace } from "../src/character_creation.js";
 import { ensureAdvancedSystems, getTavernCandidates, hasNauticalCrew, performDockyardAction, tavernAction } from "../src/systems.js";
 import { chooseAutonomousAction } from "../src/ai_engine.js";
 import { advanceLocalWorld, createLocalWorld } from "../src/geopolitics.js";
@@ -11,6 +11,16 @@ test("the optional race roll preserves the 94/6 human-to-exotic odds", () => {
   assert.equal(rollCreationRace(() => [0.939, 0.5][calls++]), "human");
   calls = 0;
   assert.notEqual(rollCreationRace(() => [0.94, 0.5][calls++]), "human");
+});
+
+test("new characters receive a random race and sea at launch", () => {
+  const commonOrigin = generateRandomOrigin(() => 0);
+  assert.deepEqual(commonOrigin, { race: "human", originSea: "East Blue", allowRareRace: false });
+
+  const rareOrigin = generateRandomOrigin(() => 0.999);
+  assert.equal(rareOrigin.race, "lunarian");
+  assert.equal(rareOrigin.originSea, "North Blue");
+  assert.equal(rareOrigin.allowRareRace, true);
 });
 
 test("biography keywords assign private behavioral traits", () => {

@@ -200,6 +200,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden}
 #game-container .main-column{pointer-events:none}
 #game-container .character-panel,#game-container .main-column>:not(#map-panel){display:none!important}
 #game-container #map-panel{position:absolute;inset:0;z-index:0;width:100%;height:100%;margin:0;padding:0;overflow:hidden;border:0;border-radius:0;background:linear-gradient(rgba(155,191,181,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(155,191,181,.1) 1px,transparent 1px),radial-gradient(ellipse at center,#12243a,#0b1329);background-size:96px 84px,96px 84px,auto;box-shadow:none;pointer-events:auto}
+#canvas-container{position:absolute;inset:0;z-index:1;overflow:hidden}
 #game-container #planet-map,#game-container canvas#world-map,#game-container #worldMapCanvas,#game-container .world-map{position:absolute;inset:0;display:block;width:100%;height:100%;margin:0;border:0;border-radius:0;background:transparent}
 #game-container #planet-map{z-index:0;pointer-events:none}
 #game-container canvas#world-map,#game-container #worldMapCanvas,#game-container .world-map{z-index:1;touch-action:none}
@@ -297,7 +298,6 @@ body.wizard-active .masthead{display:none}
 .psychology-card,.news-card-detail{margin:10px 0;padding:12px;border:1px solid #f4b41a;border-radius:8px;background:#0b1329}
 .psychology-card h3{color:#f4b41a;font-size:.8rem}
 
-.map-lod-readout{margin:4px 0;color:#f4b41a;font:700 10px/1.5 monospace;letter-spacing:.08em}
 .one-hud-vitals{position:absolute;top:56px;left:50%;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(180px,42vw);transform:translateX(-50%);pointer-events:none}
 .one-hud-vitals progress{height:5px;border:1px solid rgba(244,180,26,.48);background:#07101f}
 .one-hud-vitals [data-vital="health"]::-webkit-progress-value{background:linear-gradient(90deg,#c74442,#ff7771)}
@@ -469,8 +469,7 @@ body.game-active #game-container:not([hidden]){z-index:1}
 .wizard-choice-section{margin:12px 0;padding:12px;border:1px solid rgba(244,180,26,.24);border-radius:9px;background:#0b1329}
 .wizard-choice-section h4{margin:0 0 10px;color:#f4b41a;font-size:.95rem}
 .wizard-choice-section .step-header{display:none}
-.race-reroll{display:grid;gap:6px;grid-column:1/-1}
-.race-reroll p,.story-phase p{margin:4px 0}
+.story-phase p{margin:4px 0}
 .story-phase{display:grid;gap:8px}
 .ideology-compass{--compass-angle:0deg;position:relative;display:grid;place-items:center;width:74px;height:74px;margin:2px auto 10px;border:2px solid rgba(244,180,26,.65);border-radius:50%;background:radial-gradient(circle,#21334e 0 42%,#0b1329 44%);box-shadow:0 0 16px rgba(244,180,26,.15)}
 .ideology-compass::before,.ideology-compass::after{position:absolute;color:#f4b41a;font-size:10px;font-weight:800}
@@ -489,7 +488,14 @@ body.game-active #game-container:not([hidden]){z-index:1}
 .one-hud-glyphs[data-type="blue"]{color:#75aaff}
 .one-hud-glyphs[data-type="red"]{color:#ef7777}
 .one-hud-glyphs[data-type="gold"]{color:#f4c85d}
-.one-hud-soul{padding:10px;border:1px solid rgba(244,180,26,.35);border-radius:10px;background:#0b1329}
+.one-hud-soul{padding:14px;border:2px solid #80633b;border-radius:4px;background:repeating-linear-gradient(3deg,rgba(111,79,35,.035) 0 2px,transparent 2px 6px),linear-gradient(145deg,#f6ebcf,#e0cea3);color:#2c261a;box-shadow:inset 0 0 0 3px rgba(255,255,255,.25),0 8px 24px #0007}
+.one-hud-soul h3,.one-hud-soul .one-hud-stats strong{color:#68461f}
+.one-hud-soul .one-hud-stats div{border-color:#80633b55;background:#fff3}
+.one-hud-soul .soul-motto{color:#44351e;font-family:Georgia,serif;font-style:italic}
+.one-hud-soul .soul-alignment{color:#68461f;border-color:#80633b;background:#eadbb8}
+.one-hud-soul .one-hud-soul-registration{margin:0;text-align:right;color:#68461f;font:700 .75rem Georgia,serif;letter-spacing:.08em}
+.news-card-time{flex:0 0 100%;color:#e5bd69;font:700 .72rem/1.3 monospace;letter-spacing:.02em}
+.news-card summary{flex-wrap:wrap}
 .island-hotspot[aria-label*="Poneglyph"]{border-color:rgba(244,180,26,.75)}
 @media(max-width:520px){.one-hud-item-filters{grid-template-columns:1fr}.one-hud-wanted-poster{grid-template-columns:72px minmax(0,1fr);padding:8px}.one-hud-wanted-portrait{width:66px;height:66px}}
 

@@ -120,6 +120,16 @@ export function maritimeHeadline(entry, index = 0) {
   return { icon: PRESS_ICONS[category], headline: entry?.title || variant, category };
 }
 
+export function formatMaritimeTimestamp(entry, { day = 0, minuteOfDay = 0, location = "Mar abierto" } = {}) {
+  const entryDay = Number(entry?.day);
+  const entryMinute = Number(entry?.minuteOfDay);
+  const currentDay = Number.isFinite(entryDay) ? entryDay : Number(day) || 0;
+  const currentMinute = Number.isFinite(entryMinute) ? entryMinute : Number(minuteOfDay) || 0;
+  const minutes = ((Math.floor(currentMinute) % 1440) + 1440) % 1440;
+  const place = String(entry?.location?.name || entry?.location || location || "Mar abierto").toLocaleUpperCase("es");
+  return `• ${place} · D${Math.max(0, Math.floor(currentDay)) + 1} ${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
 export function dispatchTypedEvent(type, detail, target = globalThis.document) {
   if (!TYPES.has(type)) throw new TypeError(`Tipo de evento desconocido: ${type}`);
   if (!validDetail(type, detail)) throw new TypeError(`Contenido inválido para el evento: ${type}`);

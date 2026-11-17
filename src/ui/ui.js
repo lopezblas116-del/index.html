@@ -1,12 +1,11 @@
 import { newsLocation } from "../map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "../world3d.js";
 import { ensureAdvancedSystems } from "../systems.js";
-import { RACES } from "../races.js";
 import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_renderer.js";
 import { canReadAncient } from "../archaeology_system.js";
-import { aggregateSmartFeed, maritimeHeadline } from "../event_dispatcher.js";
+import { aggregateSmartFeed, formatMaritimeTimestamp, maritimeHeadline } from "../event_dispatcher.js";
 import { animateCount } from "../vfx_engine.js";
-import { isBiographyValid, rollCreationRace } from "../character_creation.js";
+import { isBiographyValid } from "../character_creation.js";
 import { getLoreByKey } from "../world_lore.js";
 import { islandEncountersFor } from "../island_encounters.js";
 
@@ -17,6 +16,13 @@ const time = (value) => {
   return Number.isNaN(date.getTime()) ? "--:--" : new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" }).format(date);
 };
 const safe = (value, fallback = "—") => value ?? fallback;
+function isPersonalNews(entry, character) {
+  const name = String(character?.name || "");
+  const actor = String(entry?.captainName || entry?.actor || entry?.actorName || "");
+  const ownerId = String(entry?.captainId || entry?.actorId || entry?.ownerId || "");
+  const text = String(entry?.text || entry?.message || entry?.title || "");
+  return Boolean(name && (actor === name || text.includes(name))) || Boolean(character?.id && ownerId === String(character.id));
+}
 const listen = (element, type, handler, options) => {
   if (element) element.addEventListener(type, handler, options);
 };
@@ -212,10 +218,10 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   const shared = world.shared?.world;
   const globalEvents = shared?.global_events ?? [];
   const sections = [
-    { key: "news", label: "Titulares", items: aggregateSmartFeed([...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], { location: character.location?.island || "", name: character.name }), empty: "No hay titulares todavía." },
-    { key: "bounty", label: "Se Busca / Bounties", items: aggregateSmartFeed([...(shared?.bounties_leaderboard ?? []).map((entry) => ({ type: "bounty", text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ type: "bounty", text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], { name: character.name }), empty: "No hay carteles activos para este avatar." },
-    { key: "gazette", label: "Gaceta & Fugas", items: aggregateSmartFeed([
-      ...globalEvents.filter((entry) => ["death", "escape"].includes(entry.type)),
+    { key: "important", label: "Lo importante", items: aggregateSmartFeed([
+      ...globalEvents.filter((entry) => entry.type !== "global_chat"),
+      ...(world.news ?? []),
+      ...(shared?.bounties_leaderboard ?? []).map((entry) => ({ type: "bounty", text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })),
       ...(shared?.bosses ?? []).filter((boss) => boss.status === "fugitive" && boss.secret_location).map((boss) => ({
         type: "fugitive-contract",
         title: `Orden de recaptura: ${boss.name}`,
@@ -226,7 +232,13 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       })),
       ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
       ...(world.pantheon ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
-    ], { location: character.location?.island || "", name: character.name }), empty: "La gaceta no registra caídos ni fugas." }
+    ].filter((entry) => !isPersonalNews(entry, character)), { location: character.location?.island || "", name: character.name }), empty: "No hay noticias importantes todavía." },
+    { key: "personal", label: "Lo mío", items: aggregateSmartFeed([
+      ...globalEvents.filter((entry) => entry.type !== "global_chat"),
+      ...(world.news ?? [])
+    ].filter((entry) => isPersonalNews(entry, character)).concat(
+      Number(character.bounty) > 0 ? [{ type: "bounty", location: character.location?.island, text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : []
+    ), { location: character.location?.island || "", name: character.name }), empty: "Tu bitácora aún no registra titulares propios." }
   ];
   const tabs = document.createElement("div");
   tabs.className = "one-hud-tabs";
@@ -234,12 +246,12 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   sections.forEach((section, index) => {
     const tab = document.createElement("button");
     tab.type = "button";
-    tab.append(iconNode(section.key === "news" ? "news" : section.key === "bounty" ? "bounty" : "gazette"), document.createTextNode(section.label));
+    tab.append(iconNode(section.key === "important" ? "news" : "ship"), document.createTextNode(section.label));
     tab.setAttribute("aria-selected", String(index === 0));
     const panel = document.createElement("section");
     panel.className = "one-hud-tab-panel";
     panel.hidden = index !== 0;
-    if (section.key === "bounty") {
+    if (section.key === "personal" && Number(character.bounty) > 0) {
       const poster = document.createElement("article");
       poster.className = "one-hud-wanted-poster";
       const portrait = document.createElement("canvas");
@@ -280,6 +292,13 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       icon.className = `news-card-icon news-card-icon-${press.category}`;
       icon.setAttribute("aria-hidden", "true");
       icon.textContent = press.icon;
+      const timestamp = document.createElement("time");
+      timestamp.className = "news-card-time";
+      timestamp.textContent = formatMaritimeTimestamp(entry, {
+        day: world.day,
+        minuteOfDay: world.minuteOfDay,
+        location: location?.name || character.location?.island || character.location?.region || "Mar abierto"
+      });
       const displayedHeadline = press.category === "battle"
         ? entry?.message || entry?.text || press.headline
         : press.headline;
@@ -291,8 +310,8 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         portrait.setAttribute("aria-hidden", "true");
         const portraitContext = portrait.getContext("2d");
         if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}), { size: 64, equipment: isPlayer ? character.equipped : {}, emotion: isPlayer ? avatarEmotion(character) : "neutral" });
-        summary.append(icon, portrait, document.createTextNode(displayedHeadline));
-      } else summary.append(icon, document.createTextNode(displayedHeadline));
+        summary.append(timestamp, icon, portrait, document.createTextNode(displayedHeadline));
+      } else summary.append(timestamp, icon, document.createTextNode(displayedHeadline));
       const detail = document.createElement("div");
       detail.className = "news-card-detail";
       const story = entry?.text || entry?.message;
@@ -583,8 +602,6 @@ const TRAITS = [
 let wizardInitialized = false;
 let selectedTraits = [];
 let currentStep = 0;
-let raceRollsRemaining = 3;
-let raceRollCandidate = "";
 let previewFrame = 0;
 function animateWizardPreview() {
   if (previewFrame || typeof globalThis.requestAnimationFrame !== "function") return;
@@ -626,11 +643,11 @@ function configureWizardLayout(form) {
   const choiceSections = [
     { source: original[1], title: "Bando", content: moveStepContent(original[1]) },
     { source: original[2], title: "Rasgos de conducta", content: moveStepContent(original[2]) },
-    { source: direction, title: "Motivación y brújula ideológica", content: moveStepContent(direction) },
+    { source: direction, title: "Motivación y alineación", content: moveStepContent(direction) },
     { source: summary, title: "Retrato del alma", content: moveStepContent(summary) }
   ];
   const visualFields = ["name", "handle", "skin", "eyes", "hair", "outfit", "accessory"].map(getField).filter(Boolean);
-  const raceFields = ["race", "profession"].map(getField).filter(Boolean);
+  const raceFields = ["profession"].map(getField).filter(Boolean);
   const storyField = getField("story");
   const raceDescription = appearanceGrid?.querySelector("#race-description");
   const preview = appearanceGrid?.querySelector(".avatar-editor-preview");
@@ -644,36 +661,9 @@ function configureWizardLayout(form) {
 
   const raceContent = document.createElement("div");
   raceContent.className = "appearance-grid";
-  const originSelect = document.createElement("label");
-  originSelect.textContent = "Mar de origen";
-  const origin = document.createElement("select");
-  origin.name = "originSea";
-  for (const sea of ["East Blue", "West Blue", "North Blue", "South Blue"]) {
-    const option = document.createElement("option");
-    option.value = sea;
-    option.textContent = sea;
-    origin.append(option);
-  }
-  originSelect.append(origin);
-  const rerollPanel = document.createElement("div");
-  rerollPanel.className = "race-reroll";
-  const rerollButton = document.createElement("button");
-  rerollButton.id = "race-reroll";
-  rerollButton.className = "button button-secondary";
-  rerollButton.type = "button";
-  rerollButton.textContent = "Tirar raza · 3 intentos";
-  const rerollNote = document.createElement("p");
-  rerollNote.id = "race-reroll-note";
-  rerollNote.className = "muted";
-  rerollNote.textContent = "Cada intento tiene 94% de probabilidad humana y 6% de una raza exótica.";
-  rerollPanel.append(rerollButton, rerollNote);
-  raceContent.append(...raceFields, ...(raceDescription ? [raceDescription] : []), originSelect, rerollPanel);
-  const rarePermission = document.createElement("input");
-  rarePermission.type = "hidden";
-  rarePermission.name = "allowRareRace";
-  rarePermission.value = "false";
-  raceContent.append(rarePermission);
-  race.replaceChildren(stepHeader(2, "Raza y origen"), raceContent);
+  if (raceDescription) raceDescription.textContent = "La raza y el mar se asignan al azar al pulsar ¡Zarpar!.";
+  raceContent.append(...raceFields, ...(raceDescription ? [raceDescription] : []));
+  race.replaceChildren(stepHeader(2, "Raza y origen al azar"), raceContent);
 
   const storyContent = document.createElement("div");
   storyContent.className = "story-phase";
@@ -772,9 +762,9 @@ function updateWizardSummary() {
     "summary-name": form.elements.namedItem("name")?.value.trim() || "Aventurero",
     "summary-handle": form.elements.namedItem("handle")?.value.trim() || "@usuario",
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
-    "summary-race": form.querySelector('[name="race"] option:checked')?.textContent || "Humano",
+    "summary-race": "Azar al zarpar",
     "summary-profession": form.querySelector('[name="profession"] option:checked')?.textContent || "Navegante",
-    "summary-sea": form.elements.namedItem("originSea")?.value || "East Blue",
+    "summary-sea": "Azar al zarpar",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
@@ -844,29 +834,6 @@ export function initWizard() {
   if (!form) return;
   configureWizardLayout(form);
   selectedTraits = [];
-  const raceSelect = form.elements.namedItem("race");
-  const racePermission = form.elements.namedItem("allowRareRace");
-  const rerollButton = byId("race-reroll");
-  if (rerollButton && raceSelect) rerollButton.addEventListener("click", () => {
-    if (raceRollsRemaining <= 0) return;
-    const race = rollCreationRace();
-    if (!raceSelect.querySelector(`option[value="${race}"]`)) {
-      const option = document.createElement("option");
-      option.value = race;
-      option.textContent = RACES[race]?.name || race;
-      raceSelect.append(option);
-    }
-    raceSelect.value = race;
-    raceRollCandidate = race;
-    if (racePermission) racePermission.value = String(Boolean(RACES[race]?.rare));
-    raceRollsRemaining -= 1;
-    rerollButton.textContent = raceRollsRemaining
-      ? `Tirar raza · ${raceRollsRemaining} intento${raceRollsRemaining === 1 ? "" : "s"} restante${raceRollsRemaining === 1 ? "" : "s"}`
-      : "Intentos de raza agotados";
-    rerollButton.disabled = raceRollsRemaining === 0;
-    if (byId("race-description")) byId("race-description").textContent = RACES[race]?.tagline || "";
-    updateWizardSummary();
-  });
   document.querySelectorAll(".trait-card").forEach((button) => {
     if (!button) return;
     button.addEventListener("click", () => {
@@ -913,13 +880,6 @@ export function initWizard() {
     updateWizardSummary();
   });
   form.addEventListener("change", (event) => {
-    if (event.target.name === "race") {
-      if (RACES[event.target.value]?.rare && event.target.value !== raceRollCandidate) {
-        event.target.value = "human";
-      }
-      if (racePermission) racePermission.value = String(Boolean(RACES[event.target.value]?.rare && event.target.value === raceRollCandidate));
-      if (byId("race-description")) byId("race-description").textContent = RACES[event.target.value]?.tagline || "";
-    }
     if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
       const list = `${event.target.name}-list`;
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
@@ -931,13 +891,9 @@ export function initWizard() {
 }
 export function resetWizard() {
   selectedTraits = [];
-  raceRollsRemaining = 3;
-  raceRollCandidate = "";
   const form = byId("character-form");
   form?.reset();
   form?.elements.namedItem("story")?.setCustomValidity("");
-  if (form?.elements.namedItem("allowRareRace")) form.elements.namedItem("allowRareRace").value = "false";
-  if (byId("race-reroll")) { byId("race-reroll").disabled = false; byId("race-reroll").textContent = "Tirar raza · 3 intentos"; }
   document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
   document.querySelectorAll("#faction-list .option-card, #dream-list .option-card, #alignment-list .option-card").forEach((card) => {
     card.classList.toggle("selected", Boolean(card.querySelector('input[type="radio"]')?.checked));

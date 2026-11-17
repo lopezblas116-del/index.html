@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { aggregateSmartFeed, maritimeHeadline } from "../src/event_dispatcher.js";
+import { aggregateSmartFeed, formatMaritimeTimestamp, maritimeHeadline } from "../src/event_dispatcher.js";
 
 test("smart feed condenses battles by location and sums Berry rewards", () => {
   const entries = [
@@ -68,4 +68,15 @@ test("maritime headlines use themed rotating templates", () => {
   assert.equal(first.category, "bounty");
   assert.notEqual(first.headline, second.headline);
   assert.equal(maritimeHeadline({ type: "poneglyph_translated" }).icon, "🪨");
+});
+
+test("maritime feed timestamps use the simulation day, location, and zero-padded time", () => {
+  assert.equal(
+    formatMaritimeTimestamp({ location: "Mar del Norte", day: 162, minuteOfDay: 1237 }),
+    "• MAR DEL NORTE · D163 20:37"
+  );
+  assert.equal(
+    formatMaritimeTimestamp({}, { day: 3, minuteOfDay: 5, location: "Loguetown" }),
+    "• LOGUETOWN · D4 00:05"
+  );
 });
