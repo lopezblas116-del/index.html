@@ -72,14 +72,29 @@ test("fortified Shells Town and Loguetown have distinct city landmarks", () => {
   assert.notDeepEqual(shells, loguetown);
 });
 
-test("full-body sprite adds legs without changing the portrait sprite", () => {
+test("32-pixel full-body sprite adds legs without drawing outside the portrait canvas", () => {
   const calls = [];
   const ctx = { fillRect: (...args) => calls.push(args) };
   drawPixelAvatar(ctx, {}, { fullBody: true });
-  assert.ok(calls.some(([x, y, w, h]) => x === 11 && y === 38 && w === 4 && h === 5));
+  assert.ok(calls.some(([x, y, w, h]) => x === 11 && y === 28 && w === 4 && h === 3));
+  assert.ok(calls.every(([, y, , h]) => y >= 0 && y + h <= 32));
   calls.length = 0;
   drawPixelAvatar(ctx, {});
   assert.ok(!calls.some(([, y]) => y >= 32));
+});
+
+test("idle sprites animate and equipped armor and weapons add visible pixels", () => {
+  const render = (options = {}) => {
+    const calls = [];
+    const ctx = { fillStyle: "", fillRect(...rect) { calls.push([this.fillStyle, ...rect]); } };
+    drawPixelAvatar(ctx, {}, { fullBody: true, ...options });
+    return calls;
+  };
+  assert.notDeepEqual(render({ time: 0 }), render({ time: 600 }));
+  const plain = render();
+  const equipped = render({ equipment: { armor: "Armadura de placas", weapon: "Sable" } });
+  assert.ok(equipped.length > plain.length);
+  assert.ok(equipped.every(([, , y, , h]) => y >= 0 && y + h <= 32));
 });
 
 test("known NPC portraits are distinct and island names do not impersonate Arlong", () => {

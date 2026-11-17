@@ -24,6 +24,17 @@ let lastIslandFrame = 0;
 let modalOpen = false;
 const mapCovered = () => modalOpen || Boolean(document.querySelector?.("dialog[open]"));
 export function getCameraState() { return cameraState; }
+export function showDockedIsland(c = character) {
+  if (!c || c.location?.atSea || transition) return false;
+  const island = islands.find((entry) => entry.name === c.location?.island);
+  if (!island) return false;
+  if (cameraState === ISLAND_VIEW) {
+    if (localIsland?.id === island.id) return true;
+    returnToGlobalMap(true);
+  }
+  enterIslandView(island);
+  return true;
+}
 
 function project(lon, lat) {
   const delta = lon - longitude;
@@ -274,7 +285,8 @@ function drawBoat(point, destination) {
   pixel(1, -9, 4, 2, "#f4b41a");
   if (character?.location?.atSea && character.status !== "dead") {
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
-      x: -4, y: -13, scale: .28, action: avatarAction(character), time: performance.now()
+      x: -4, y: -13, scale: .28, action: avatarAction(character), time: performance.now(),
+      equipment: character.equipped
     });
   }
   ctx.restore();

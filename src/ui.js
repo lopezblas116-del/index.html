@@ -4,6 +4,7 @@ import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
 import { drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 import { canReadAncient } from "./archaeology_system.js";
+import { aggregateSmartFeed, maritimeHeadline } from "./event_dispatcher.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -157,9 +158,9 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   const shared = world.shared?.world;
   const globalEvents = shared?.global_events ?? [];
   const sections = [
-    { key: "news", label: "Titulares", items: [...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], empty: "No hay titulares todavía." },
-    { key: "bounty", label: "Se Busca / Bounties", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." },
-    { key: "gazette", label: "Gaceta & Fugas", items: [
+    { key: "news", label: "Titulares", items: aggregateSmartFeed([...globalEvents.filter((entry) => !["global_chat", "death", "escape", "bounty"].includes(entry.type)), ...(world.news ?? [])], { location: character.location?.island || "", name: character.name }), empty: "No hay titulares todavía." },
+    { key: "bounty", label: "Se Busca / Bounties", items: aggregateSmartFeed([...(shared?.bounties_leaderboard ?? []).map((entry) => ({ type: "bounty", text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ type: "bounty", text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], { name: character.name }), empty: "No hay carteles activos para este avatar." },
+    { key: "gazette", label: "Gaceta & Fugas", items: aggregateSmartFeed([
       ...globalEvents.filter((entry) => ["death", "escape"].includes(entry.type)),
       ...(shared?.bosses ?? []).filter((boss) => boss.status === "fugitive" && boss.secret_location).map((boss) => ({
         type: "fugitive-contract",
@@ -171,7 +172,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       })),
       ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
       ...(world.pantheon ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
-    ], empty: "La gaceta no registra caídos ni fugas." }
+    ], { location: character.location?.island || "", name: character.name }), empty: "La gaceta no registra caídos ni fugas." }
   ];
   const tabs = document.createElement("div");
   tabs.className = "one-hud-tabs";
@@ -210,14 +211,19 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       empty.textContent = section.empty;
       panel.append(empty);
     }
-    for (const entry of section.items) {
+    for (const [entryIndex, entry] of section.items.entries()) {
       const location = newsLocation(entry, character);
       const details = document.createElement("details");
       details.className = "news-card";
       const summary = document.createElement("summary");
-      const headline = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
+      const press = maritimeHeadline(entry, entryIndex);
+      const headline = typeof entry === "string" ? entry : entry.text || entry.message || entry.title || press.headline;
       const isPlayer = character.name && headline.includes(character.name);
       const npcAppearance = isPlayer ? null : npcAppearanceFor(headline);
+      const icon = document.createElement("span");
+      icon.className = `news-card-icon news-card-icon-${press.category}`;
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = press.icon;
       if (npcAppearance || /se busca|bounty/i.test(headline)) {
         const portrait = document.createElement("canvas");
         portrait.width = 32;
@@ -226,10 +232,16 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         portrait.setAttribute("aria-hidden", "true");
         const portraitContext = portrait.getContext("2d");
         if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}));
-        summary.append(portrait, document.createTextNode(headline));
-      } else summary.textContent = headline;
+        summary.append(icon, portrait, document.createTextNode(press.headline));
+      } else summary.append(icon, document.createTextNode(press.headline));
       const detail = document.createElement("div");
       detail.className = "news-card-detail";
+      const story = entry?.text || entry?.message;
+      if (story && story !== press.headline) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = story;
+        detail.append(paragraph);
+      }
       if (entry?.type === "fugitive-contract") {
         const reward = document.createElement("p");
         reward.textContent = `Contrato de recaptura · Recompensa: ฿${number(entry.reward)} Berries`;
@@ -343,16 +355,17 @@ function appendHighlightedText(container, message, characterName) {
   }
   if (cursor < message.length) container.append(document.createTextNode(message.slice(cursor)));
 }
-function renderTerminalLog(list, entries, characterName) {
+function renderTerminalLog(list, entries, characterName, location = "") {
   if (!list) return;
   list.replaceChildren();
-  if (!entries.length) {
+  const feed = aggregateSmartFeed(entries, { name: characterName, location });
+  if (!feed.length) {
     const empty = document.createElement("li");
     empty.textContent = "La bitácora aún está en blanco.";
     list.append(empty);
     return;
   }
-  entries.forEach((entry) => {
+  feed.forEach((entry) => {
     const item = document.createElement("li");
     const timestamp = document.createElement("time");
     timestamp.className = "log-time";
@@ -425,7 +438,7 @@ export function renderGame(character) {
   const whisperSubmit = byId("whisper-form")?.querySelector("button[type=submit]");
   if (whisperSubmit) whisperSubmit.disabled = dead;
 
-  renderTerminalLog(byId("event-log"), character.log ?? [], character.name);
+  renderTerminalLog(byId("event-log"), character.log ?? [], character.name, character.location?.island || "");
   if (byId("world-era")) byId("world-era").textContent = world.era ?? "Era de los Grandes Descubrimientos";
   if (byId("world-clock")) byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
   const pantheon = world.pantheon ?? [];

@@ -11,7 +11,7 @@ test("avatar config is persisted and legacy appearance remains compatible", () =
   assert.deepEqual(character.avatarConfig, character.appearance);
   const pixels = [];
   drawPixelAvatar({ fillRect: (...args) => pixels.push(args) }, character.avatarConfig, { fullBody: true });
-  assert.ok(pixels.length >= 19);
+  assert.ok(pixels.length >= 16);
   delete character.avatarConfig;
   character.appearance = { skin: "Oscura" };
   ensureAdvancedSystems(character);

@@ -384,6 +384,7 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .one-hud-notice{display:flex;align-items:center;gap:10px;padding:8px 0}
 .one-hud-notice p{margin:0;overflow-wrap:anywhere}
 .news-card-portrait{width:34px;height:34px;image-rendering:pixelated}
+.news-card-icon{display:inline-grid;place-items:center;min-width:28px;height:28px;margin-right:6px;border:1px solid rgba(244,180,26,.42);border-radius:6px;background:#0b1329;vertical-align:middle}
 .news-card summary{display:flex;align-items:center;gap:9px;min-height:38px}
 .one-hud-contract,.one-hud-slot,.one-hud-stats div{border-color:rgba(244,180,26,.25);box-shadow:none}
 .island-hotspot{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(244,180,26,.55);background:#0f1c36;text-shadow:none}

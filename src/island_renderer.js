@@ -1,4 +1,4 @@
-import { avatarScenePosition } from "./map.js";
+import { avatarScenePosition, localWaypointPosition } from "./map.js";
 
 const PALETTES = {
   green: { sky: ["#8cc7d1", "#659fae"], mountain: "#577e74", land: "#6d9d5a", light: "#add17c", earth: "#77523d" },
@@ -35,64 +35,82 @@ export function npcAppearanceFor(text) {
 }
 
 function avatarLayers(appearance, options) {
-  const { x, y, scale, fullBody, action, frame } = options;
+  const { x, y, scale, fullBody, action, frame, blink, equipment } = options;
   const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Azul: "#639fa8" })[appearance.skin] || "#e4b991";
   const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8" })[appearance.hair] || "#1c1b22";
   const coats = { makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" };
-  const coat = coats[appearance.portrait] || ({ Azul: "#355f82", Rojo: "#9b443a", Verde: "#46735a", Negro: "#343a48", Marrón: "#79513b" })[appearance.outfit] || "#c65f4c";
+  const armor = String(equipment?.armor || "");
+  const weapon = String(equipment?.weapon || "");
+  const coat = /armadura|placa|metal/i.test(armor) ? "#768494"
+    : /capa|manto|abrigo/i.test(armor) ? "#36445c"
+      : coats[appearance.portrait] || ({ Azul: "#355f82", Rojo: "#9b443a", Verde: "#46735a", Negro: "#343a48", Marrón: "#79513b" })[appearance.outfit] || "#c65f4c";
   const eyes = ({ Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf" })[appearance.eyes] || "#0b1329";
   const pixel = (px, py, w, h, color) => box(options.ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
 
   const body = () => {
-    pixel(11, 22, 10, 9, coat);
-    pixel(12, 30, 8, 2, "#f4b41a");
-    pixel(10, 31, 12, 1, "#49382d");
+    const breath = action === "idle" && frame % 4 === 1 ? -1 : 0;
+    pixel(11, 16 + breath, 10, 7, coat);
+    pixel(12, 22 + breath, 8, 2, "#f4b41a");
+    pixel(10, 23 + breath, 12, 1, "#49382d");
+    if (/armadura|placa|metal/i.test(armor)) {
+      pixel(12, 17 + breath, 3, 5, "#a9b5bd");
+      pixel(17, 17 + breath, 3, 5, "#a9b5bd");
+    }
     if (fullBody) {
       const step = ["navigating", "walking"].includes(action) && frame % 2 ? 2 : 0;
-      pixel(9, 23, 3, 10, skin);
-      pixel(21, 23, 3, 10, skin);
-      pixel(11 + step, 32, 4, 6, "#35455c");
-      pixel(18 - step, 32, 4, 6, "#35455c");
-      pixel(11 + step, 38, 4, 5, "#3b2822");
-      pixel(18 - step, 38, 4, 5, "#3b2822");
+      pixel(8, 17 + breath, 3, 6, skin);
+      pixel(21, 17 + breath, 3, 6, skin);
+      pixel(11 + step, 24, 4, 4, "#35455c");
+      pixel(18 - step, 24, 4, 4, "#35455c");
+      pixel(11 + step, 28, 4, 3, "#3b2822");
+      pixel(18 - step, 28, 4, 3, "#3b2822");
     }
   };
   const face = () => {
-    pixel(12, 10, 9, 12, skin);
-    pixel(13, 14, 2, 2, eyes);
-    pixel(18, 14, 2, 2, eyes);
-    pixel(15, 19, 3, 1, "#a14a36");
+    pixel(11, 7, 10, 10, skin);
+    if (blink) pixel(12, 12, 8, 1, "#30251f");
+    else {
+      pixel(12, 11, 2, 2, eyes);
+      pixel(18, 11, 2, 2, eyes);
+    }
+    pixel(15, 15, 3, 1, "#a14a36");
   };
   const hairLayer = () => {
-    pixel(11, 8, 11, 4, hair);
-    pixel(9, 11, 4, 7, hair);
-    pixel(20, 10, 4, 5, hair);
+    const wind = action === "idle" && frame % 4 === 2 ? 1 : 0;
+    pixel(10 + wind, 4, 12, 4, hair);
+    pixel(8 + wind, 7, 4, 7, hair);
+    pixel(20 + wind, 7, 4, 5, hair);
     if (appearance.portrait === "makino") {
-      pixel(9, 15, 3, 8, hair); pixel(20, 15, 3, 8, hair); pixel(11, 20, 2, 2, "#f4b41a");
+      pixel(8, 11, 3, 7, hair); pixel(21, 11, 3, 7, hair); pixel(10, 15, 2, 2, "#f4b41a");
     } else if (appearance.portrait === "zeff") {
-      pixel(10, 3, 13, 6, "#f4efdf"); pixel(9, 8, 15, 2, "#d4ccb9"); pixel(13, 19, 7, 3, hair);
+      pixel(9, 1, 14, 4, "#f4efdf"); pixel(8, 5, 16, 2, "#d4ccb9"); pixel(13, 16, 7, 2, hair);
     } else if (appearance.portrait === "morgan") {
-      pixel(8, 21, 5, 4, "#c9ad67"); pixel(20, 21, 5, 4, "#c9ad67"); pixel(16, 20, 5, 2, "#8b9695");
+      pixel(8, 16, 5, 3, "#c9ad67"); pixel(20, 16, 5, 3, "#c9ad67"); pixel(16, 16, 5, 2, "#8b9695");
     }
   };
   const outfit = () => {
-    pixel(12, 23, 8, 7, coat);
+    pixel(12, 17, 8, 5, coat);
     if (appearance.portrait === "arlong") {
-      pixel(14, 17, 7, 2, "#93c3c4"); pixel(20, 17, 4, 2, skin); pixel(14, 20, 6, 2, "#e6ded1");
+      pixel(14, 12, 7, 2, "#93c3c4"); pixel(20, 12, 4, 2, skin); pixel(14, 15, 6, 2, "#e6ded1");
     } else if (appearance.portrait === "smoker") {
-      pixel(10, 21, 4, 5, "#e7e6d8"); pixel(20, 21, 4, 5, "#e7e6d8"); pixel(18, 19, 6, 1, "#7b5142");
+      pixel(9, 15, 4, 4, "#e7e6d8"); pixel(20, 15, 4, 4, "#e7e6d8"); pixel(18, 13, 6, 1, "#7b5142");
     }
   };
   const accessories = () => {
-    if (appearance.accessory === "Bandana") { pixel(10, 9, 13, 3, "#c84237"); pixel(21, 10, 5, 2, "#c84237"); }
-    else if (appearance.accessory === "Sombrero") { pixel(8, 9, 18, 2, "#8b6038"); pixel(12, 5, 10, 4, "#c79a54"); }
-    else if (appearance.accessory === "Aro de metal") pixel(21, 17, 2, 3, "#e1c46d");
-    else if (appearance.accessory === "Collar") { pixel(14, 22, 6, 2, "#e1c46d"); pixel(16, 24, 2, 3, "#f4b41a"); }
-    if (appearance.glasses) { pixel(11, 14, 5, 2, "#26394b"); pixel(18, 14, 5, 2, "#26394b"); pixel(16, 14, 2, 1, "#d5b66e"); }
-    if (appearance.eyepatch) { pixel(17, 13, 4, 4, "#211c1a"); pixel(17, 12, 5, 1, "#3b3028"); }
-    if (action === "combat") { pixel(25, 12, 2, 19, "#d7dce0"); pixel(23, 13, 6, 2, "#b58b3a"); pixel(25, 30, 2, 6, "#694732"); }
-    if (action === "tavern") { pixel(24, 23, 5, 6, "#bd8641"); pixel(25, 21, 3, 2, "#f3d37a"); }
-    if (action === "resting" && frame % 4 === 0) { pixel(23, 7, 3, 2, "#e8d9ad"); pixel(27, 3, 3, 2, "#e8d9ad"); }
+    const hat = String(equipment?.accessory || appearance.accessory || "").toLocaleLowerCase("es");
+    if (hat.includes("sombrero") || hat.includes("hat")) { pixel(6, 5, 20, 2, "#8b6038"); pixel(10, 1, 12, 4, "#c79a54"); }
+    else if (appearance.accessory === "Bandana") { pixel(9, 5, 14, 3, "#c84237"); pixel(22, 6, 4, 2, "#c84237"); }
+    else if (appearance.accessory === "Aro de metal") pixel(22, 13, 2, 3, "#e1c46d");
+    else if (appearance.accessory === "Collar") { pixel(14, 16, 6, 2, "#e1c46d"); pixel(16, 18, 2, 3, "#f4b41a"); }
+    if (appearance.glasses) { pixel(10, 11, 5, 2, "#26394b"); pixel(18, 11, 5, 2, "#26394b"); pixel(15, 11, 3, 1, "#d5b66e"); }
+    if (appearance.eyepatch) { pixel(17, 10, 4, 4, "#211c1a"); pixel(17, 9, 5, 1, "#3b3028"); }
+    if (weapon || action === "combat") {
+      pixel(26, 13, 2, 13, "#d7dce0");
+      pixel(24, 14, 6, 2, "#b58b3a");
+      pixel(26, 25, 2, 5, "#694732");
+    }
+    if (action === "tavern") { pixel(24, 19, 5, 6, "#bd8641"); pixel(25, 17, 3, 2, "#f3d37a"); }
+    if (action === "resting" && frame % 4 === 0) { pixel(23, 3, 3, 2, "#e8d9ad"); pixel(27, 1, 3, 2, "#e8d9ad"); }
   };
   return [body, face, hairLayer, outfit, accessories];
 }
@@ -105,12 +123,16 @@ export function avatarAction(character) {
 }
 
 export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
+  const equipment = options.equipment || appearance.equipped || {};
+  const time = options.time ?? 0;
   const state = {
     ctx, x: options.x ?? 0, y: options.y ?? 0, scale: options.scale ?? 1,
     fullBody: Boolean(options.fullBody), action: options.action || "idle",
-    frame: Math.floor((options.time ?? 0) / 350) % 4
+    frame: Math.floor(time / 300) % 8,
+    blink: time > 0 && time % 4200 < 150,
+    equipment
   };
-  const bob = state.action === "resting" ? 0 : state.frame % 2;
+  const bob = state.action === "resting" ? 0 : state.action === "idle" ? (state.frame % 4 === 1 ? -1 : 0) : state.frame % 2;
   state.y += bob * state.scale;
   for (const layer of avatarLayers(appearance, state)) layer();
 }
@@ -176,6 +198,13 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   }
   ship(ctx, 92, 317, "#f4b41a");
   ship(ctx, 495, 322, "#e6ded2");
+  for (const [from, to] of [[{ x: 150, y: 145 }, { x: 320, y: 272 }], [{ x: 320, y: 272 }, { x: 490, y: 145 }], [{ x: 320, y: 272 }, { x: 320, y: 215 }]]) {
+    const steps = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 8);
+    for (let step = 0; step <= steps; step++) {
+      const progress = step / Math.max(1, steps);
+      box(ctx, from.x + (to.x - from.x) * progress - 3, from.y + (to.y - from.y) * progress - 2, 6, 5, "#a98b63");
+    }
+  }
 
   const arch = scene.architecture;
   building(ctx, 65, 65, 96, 68, "#a9503b", "#e7d19f");
@@ -225,10 +254,11 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   box(ctx, 390, 226, 22, 8, "#bc8641");
   box(ctx, 399, 235, 5, 6, "#f4b41a");
   (island.npcs || []).forEach((npc, index) => {
-    const x = 170 + index * 190 + Math.sin(now / 1700 + index * 2) * 34;
-    const y = 172 + index * 20;
-    box(ctx, x + 7, y + 34, 20, 4, "rgba(0,0,0,.25)");
-    drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .8, fullBody: true });
+    const position = localWaypointPosition(island, index, now);
+    const x = position.x - 12;
+    const y = position.y - 16;
+    box(ctx, x + 7, y + 27, 16, 3, "rgba(0,0,0,.25)");
+    drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .8, fullBody: true, time: now });
   });
   (island.pois || []).forEach((poi) => {
     const canRead = character?.race === "threeeye" ||
@@ -286,7 +316,8 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     const position = avatarScenePosition(island.id, character.id, action, character.location?.scenePosition);
     box(ctx, position.x - 7, position.y + 35, 31, 6, "rgba(0,0,0,.25)");
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
-      x: position.x - 15, y: position.y - 38, scale: 1.15, fullBody: true, action, time: now
+      x: position.x - 16, y: position.y - 32, scale: 1, fullBody: true, action, time: now,
+      equipment: character.equipped
     });
   }
 }

@@ -32,6 +32,21 @@ export function avatarScenePosition(islandId, avatarId, activity = "idle", saved
   if (activity === "combat") return { x: 320, y: 228 };
   return createScenePosition(islandId, avatarId);
 }
+export function localWaypointPosition(island, npcIndex, time) {
+  const places = (island?.pois || []).filter((poi) => Number.isFinite(poi.x) && Number.isFinite(poi.y));
+  const route = places.length > 1
+    ? places.map(({ x, y }) => ({ x: Number(x), y: Number(y) }))
+    : [{ x: 112, y: 129 }, { x: 320, y: 285 }, { x: 515, y: 129 }, { x: 320, y: 205 }];
+  const phase = ((Number(time) || 0) / 2600 + Math.max(0, Number(npcIndex) || 0)) % route.length;
+  const index = Math.floor(phase);
+  const progress = phase - index;
+  const from = route[index];
+  const to = route[(index + 1) % route.length];
+  return {
+    x: from.x + (to.x - from.x) * progress,
+    y: from.y + (to.y - from.y) * progress
+  };
+}
 export function newsLocation(entry, character) {
   if (!entry || typeof entry !== "object") entry = { text: String(entry ?? "") };
   const point = entry.coordinates;
