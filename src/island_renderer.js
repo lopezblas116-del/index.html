@@ -13,6 +13,7 @@ function box(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, w, h);
 }
+const normalizeText = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 function tree(ctx, x, y, color, fruit = false) {
   box(ctx, x + 10, y + 25, 8, 24, "#6a4934");
   box(ctx, x + 3, y + 9, 22, 23, color);
@@ -223,10 +224,6 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   box(ctx, 388, 232, 26, 17, "#6c3e2d");
   box(ctx, 390, 226, 22, 8, "#bc8641");
   box(ctx, 399, 235, 5, 6, "#f4b41a");
-  if (scene.options.includes("poneglyph")) {
-    box(ctx, 535, 205, 27, 30, "#385b72");
-    for (let i = 0; i < 4; i++) box(ctx, 540, 209 + i * 5, 15, 2, "#b4d7d2");
-  }
   (island.npcs || []).forEach((npc, index) => {
     const x = 170 + index * 190 + Math.sin(now / 1700 + index * 2) * 34;
     const y = 172 + index * 20;
@@ -250,6 +247,10 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     }
   });
   (island.pois || []).forEach((poi) => {
+    if (poi.type === "poneglyph" && character?.race !== "threeeye" &&
+        !/(archaeolog|arqueolog)/i.test(normalizeText(character?.profession)) &&
+        !(character?.inventory?.items || []).some((item) => /ancient (?:cipher )?(?:tome|primer)|tomo antiguo|manual de glifos/i.test(String(item))) &&
+        !character?.archaeology?.rubbings?.some((rubbing) => rubbing.siteId === poi.id)) return;
     const colors = {
       tavern: "#d27d47", restaurant: "#da9c48", market: "#e5bd63",
       weapon_shop: "#c7a2c2", base: "#849aa3", plaza: "#d2c49d",

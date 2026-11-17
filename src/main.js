@@ -23,6 +23,7 @@ import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
+import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 
 let character = loadGame();
 const network = createNetwork();
@@ -224,7 +225,7 @@ listen(byId("character-form"), "submit", (event) => {
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;
@@ -316,6 +317,32 @@ listen(document, "onepiece:hud-territory-blockade", (event) => {
   if (result?.ok) persistRender(true);
   else if (character.berries !== berries) character.berries = berries;
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
+});
+listen(document, "onepiece:hud-translate-rubbing", (event) => {
+  if (!character) return;
+  const result = translateRubbing(character, event.detail?.rubbingId);
+  if (result.ok) persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-sell-rubbing", (event) => {
+  if (!character) return;
+  const localWorld = sharedState.status === "local" ? sharedState.world : null;
+  const berries = character.berries;
+  const log = [...(character.log || [])];
+  const inventoryItems = [...(character.inventory?.items || [])];
+  const rubbing = character.archaeology?.rubbings?.find((entry) => entry.id === event.detail?.rubbingId);
+  const wasSold = rubbing?.sold;
+  const result = localWorld
+    ? network.mutateLocalWorld((world) => sellPoneglyphRubbing(character, event.detail?.rubbingId, world))
+    : sellPoneglyphRubbing(character, event.detail?.rubbingId, null);
+  if (result?.ok) persistRender();
+  else {
+    character.berries = berries;
+    character.log = log;
+    if (character.inventory) character.inventory.items = inventoryItems;
+    if (rubbing) rubbing.sold = wasSold;
+  }
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo vender el calco." } }));
 });
 listen(document, "onepiece:hud-open-pantheon", openPantheon);
 listen(document, "onepiece:hud-network-refresh", () => { network.sync(); });

@@ -1,0 +1,29 @@
+{
+  "seaFragments": [
+    { "id": "east", "point": { "x": 70, "y": 210 }, "clue": "El alba guarda una voz bajo la espuma." },
+    { "id": "west", "point": { "x": 440, "y": 90 }, "clue": "La memoria duerme donde los árboles miran al oeste." },
+    { "id": "north", "point": { "x": 1060, "y": 190 }, "clue": "El hielo recuerda el nombre de una corriente." },
+    { "id": "south", "point": { "x": 840, "y": 650 }, "clue": "El sur conserva el eco de una estrella caída." }
+  ],
+  "poneglyphTopics": [
+    { "id": "void-century", "title": "Siglo Vacío", "summary": "Un registro fragmentario de fechas borradas y memoria prohibida." },
+    { "id": "pluton", "title": "Plutón", "summary": "Una referencia cifrada a un arma ancestral y a su legado." },
+    { "id": "poseidon", "title": "Poseidón", "summary": "Una referencia cifrada a un poder ancestral ligado al mar." },
+    { "id": "uranus", "title": "Urano", "summary": "Una referencia cifrada a un arma ancestral cuyo paradero se oculta." },
+    { "id": "chronos", "title": "Chronos", "summary": "Una mención enigmática a una teoría sobre ciclos históricos." },
+    { "id": "aethelgard", "title": "Aethelgard", "summary": "El nombre de una leyenda sin origen confirmado." },
+    { "id": "will-of-d", "title": "Voluntad de la D.", "summary": "Una nota sobre una inicial transmitida entre generaciones." },
+    { "id": "abyss-manuscripts", "title": "Manuscritos del Abismo", "summary": "Cinco referencias a textos que no aparecen en los archivos públicos." }
+  ],
+  "sites": {
+    "ohara": { "poi": { "id": "ohara-stone", "name": "Archivo de Piedra de Ohara", "type": "poneglyph", "x": 515, "y": 220, "lore": "void-century" } },
+    "reverse": { "poi": { "id": "reverse-stone", "name": "Ruinas de la Corriente Invertida", "type": "poneglyph", "x": 115, "y": 220, "lore": "pluton" } },
+    "sabaody": { "poi": { "id": "sabaody-stone", "name": "Monolito de la Arboleda", "type": "poneglyph", "x": 525, "y": 235, "lore": "poseidon" } },
+    "wano": { "poi": { "id": "wano-stone", "name": "Ruinas del País Cerrado", "type": "poneglyph", "x": 530, "y": 225, "lore": "uranus" } },
+    "paradise": { "poi": { "id": "paradise-stone", "name": "Monolito del Paraíso", "type": "poneglyph", "x": 530, "y": 225, "lore": "chronos" } },
+    "namakura": { "poi": { "id": "namakura-stone", "name": "Piedra de las Ruinas", "type": "poneglyph", "x": 515, "y": 225, "lore": "will-of-d" } },
+    "onyigashima": { "poi": { "id": "onyigashima-stone", "name": "Santuario de Piedra", "type": "poneglyph", "x": 120, "y": 220, "lore": "aethelgard" } },
+    "rusty": { "poi": { "id": "rusty-stone", "name": "Cámara del Naufragio", "type": "poneglyph", "x": 530, "y": 225, "lore": "abyss-manuscripts" } }
+  },
+  "finalCoordinates": { "x": 1130, "y": 375, "name": "Horizonte velado" }
+}

@@ -3,6 +3,7 @@ import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
 import { createScenePosition, getMapIslands } from "./map.js";
 import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
+import { ensureArchaeologyData, exploreLocalArchaeology } from "./archaeology_system.js";
 import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./race_system.js";
 import { createHakiProfile, ensureHakiProfile, fruitNear } from "./power_systems.js";
 import { maybeCaptureAtAuction } from "./politics.js";
@@ -38,7 +39,7 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", allowRareRace = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Navegante", allowRareRace = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
   const randomTraits = TRAITS.filter((entry) => !chosenTraits.includes(entry));
@@ -81,6 +82,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     experience: 0,
     stats: { health: 100 + racial.health, maxHealth: 100 + racial.health, strength: 5 + racial.strength, agility: Math.max(1, 5 + racial.agility), ingenuity: 5 },
     race: species,
+    profession: ["Navegante", "Arqueóloga", "Médico", "Cocinero", "Artillero"].includes(profession) ? profession : "Navegante",
     soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [] }, latentTrait: pick(randomTraits), latentHaki: conquerorPotential, hiddenTalent: pick(["Cartografía", "Instinto de Tormenta", "Oído Antiguo"]) },
     lineage: { family, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 },
     autonomy: { mode: "active", paused: false, tickCount: 0 },
@@ -93,6 +95,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     log: [{ time: new Date().toISOString(), message: `¡${displayName} (${username}) inicia su aventura en ${route[0]}, ${originSea}! Sueño: ${dream}.` }]
   };
   ensurePsyche(character);
+  ensureArchaeologyData(character);
   return character;
 }
 
@@ -122,6 +125,7 @@ function normalize(character) {
   character.soulCard.latentHaki ??= Boolean(character.haki?.conquerorPotential);
   character.haki = ensureHakiProfile(character.haki);
   character.race = normalizeRace(character.race, { allowRare: true });
+  if (!["Navegante", "Arqueóloga", "Médico", "Cocinero", "Artillero"].includes(character.profession)) character.profession = "Navegante";
   character.raceHunt ??= { exposed: isRacePursued(character.race), alertLevel: character.race === "lunarian" ? "active" : "latent" };
   character.racialLearning ??= { talentBonus: character.race === "human" ? 0.1 : 0 };
   character.ship ??= { health: 100, maxHealth: 100, reinforced: character.race !== "giant" };
@@ -142,6 +146,7 @@ function normalize(character) {
   character.logPose.alignment = clamp(Number(character.logPose.alignment) || 0, 0, character.logPose.required - 1);
   character.mission ??= { ...missionFor(character), completed: 0 };
   character.mission.completed = Number(character.mission.completed) || 0;
+  ensureArchaeologyData(character);
   character.mission.island = character.location.island;
   character.mission.status ??= "active";
   character.lineage ??= { family: character.name, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 };
@@ -507,6 +512,13 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   if (localActivity) addLog(character, `Decisión autónoma local: ${localActivity.message}`);
   else addLog(character, `Decisión autónoma: ${({ navigate: "navegar y cumplir misión", train: "entrenar", searchFruit: "buscar fruta/tesoro", rest: "descansar" })[action]}.`);
   const message = localActivity?.message ?? performAction(character, action, { availableFruitIds });
+  if (localActivity?.action === "poneglyph") {
+    const island = getMapIslands(character).find((entry) => entry.name === character.location?.island);
+    const rubbing = exploreLocalArchaeology(character, island);
+    if (rubbing) addLog(character, rubbing.translated
+      ? `Descifra el monolito: ${rubbing.title}.`
+      : `Obtiene un calco del monolito ${rubbing.title}.`);
+  }
   if (character.status !== "dead" && character.crew?.length && Math.random() < 0.12) {
     const member = pick(character.crew);
     const change = character.nauticalStress?.value > 70 ? -2 : 1;
@@ -597,7 +609,7 @@ export function createHeir(predecessor, { name, username } = {}) {
   const first = pick(TRAITS);
   const second = pick(TRAITS.filter((trait) => trait !== first));
   const heirRace = rollLineageRace(predecessor.race);
-  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, race: heirRace, allowRareRace: true, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: [first, second], appearance: predecessor.appearance });
+  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, race: heirRace, profession: predecessor.profession, allowRareRace: true, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: [first, second], appearance: predecessor.appearance });
   heir.lineage = { family, generation: predecessor.lineage.generation + 1, inheritedFrom: predecessor.id, legacyChest: [...predecessor.lineage.legacyChest], inheritedReputation: Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3) };
   const ancestralTraits = [...predecessor.soulCard.traits.pros, ...predecessor.soulCard.traits.cons, predecessor.soulCard.latentTrait].filter((trait) => trait && !heir.soulCard.traits.pros.includes(trait));
   if (ancestralTraits.length && Math.random() < 0.15) heir.soulCard.latentTrait = pick(ancestralTraits);

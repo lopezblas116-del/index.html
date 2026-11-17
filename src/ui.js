@@ -3,6 +3,7 @@ import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
 import { drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { canReadAncient } from "./archaeology_system.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -87,6 +88,8 @@ export function renderIslandView(character) {
   const hotspots = byId("island-hotspots");
   hotspots.replaceChildren();
   for (const poi of islandView.pois || []) {
+    if (poi.type === "poneglyph" && !canReadAncient(character) &&
+        !character.archaeology?.rubbings?.some((rubbing) => rubbing.siteId === poi.id)) continue;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "island-hotspot";
@@ -454,6 +457,7 @@ function updateWizardSummary() {
     "summary-handle": form.elements.namedItem("handle")?.value.trim() || "@usuario",
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
     "summary-race": form.querySelector('[name="race"] option:checked')?.textContent || "Humano",
+    "summary-profession": form.querySelector('[name="profession"] option:checked')?.textContent || "Navegante",
     "summary-sea": "Aleatorio",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",

@@ -7,7 +7,8 @@ export const EVENT_TYPES = Object.freeze({
   gmEvent: "gm-event",
   yonkouDeclared: "YONKOU_DECLARED",
   busterCallStarted: "BUSTER_CALL_STARTED",
-  islandConquered: "ISLAND_CONQUERED"
+  islandConquered: "ISLAND_CONQUERED",
+  poneglyphTranslated: "PONEGLYPH_TRANSLATED"
 });
 
 const TYPES = new Set(Object.values(EVENT_TYPES));
@@ -34,6 +35,8 @@ function validDetail(type, detail) {
   if (type === "ISLAND_CONQUERED") return typeof detail.islandId === "string" && typeof detail.ownerId === "string";
   if (type === "YONKOU_DECLARED") return typeof detail.captainId === "string" && typeof detail.captainName === "string";
   if (type === "BUSTER_CALL_STARTED") return typeof detail.islandId === "string" && typeof detail.islandName === "string";
+  if (type === "PONEGLYPH_TRANSLATED") return typeof detail.siteId === "string" &&
+    typeof detail.title === "string" && typeof detail.captainId === "string";
   return typeof detail.type === "string" && typeof detail.text === "string";
 }
 

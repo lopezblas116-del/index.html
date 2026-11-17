@@ -517,7 +517,8 @@ function animate(now) {
     return;
   }
   if (cameraState === ISLAND_VIEW) {
-    if (now - lastIslandFrame >= 80) { renderLocalIsland(now); lastIslandFrame = now; }
+    renderLocalIsland(now);
+    lastIslandFrame = now;
     if (animateIsland()) scheduleFrame();
     return;
   }

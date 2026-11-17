@@ -1,6 +1,7 @@
 import { AI_CONFIG } from "./config.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { getMapIslands } from "./map.js";
+import { canReadAncient } from "./archaeology_system.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 
 export const MOODS = Object.freeze(["Eufórico", "Cauteloso", "Ambicioso", "Melancólico", "Vengativo"]);
@@ -208,6 +209,11 @@ export function resolveLocalActivity(character, random = Math.random, { advanceN
     if (requiredType === "food") return ["market", "restaurant", "kitchen"].includes(poi.type);
     if (character.localSuggestion && poi.id === character.localSuggestion) return !((poi.guarded || poi.type === "base") && cautious && bounty > 0);
     if ((poi.guarded || poi.type === "base") && cautious && bounty > 0) return false;
+    if (poi.type === "poneglyph") {
+      return canReadAncient(character) &&
+        (character.race === "threeeye" || psyche.mood === "Ambicioso" ||
+          character.soulCard?.dream === "Conocimiento");
+    }
     if (poi.type === "base" || poi.type === "weapon_shop") return psyche.mood === "Ambicioso" || character.soulCard?.dream === "Poder";
     return false;
   });

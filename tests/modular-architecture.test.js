@@ -9,6 +9,8 @@ import { readJSON, removeStorage, writeJSON } from "../src/storage_adapter.js";
 import { ensureBlockOneData } from "../src/block1.js";
 import { createCharacter } from "../src/game.js";
 import { applyLocalAction, createLocalWorld } from "../src/geopolitics.js";
+import { DataLoader, getExtension, listExtensions, registerExtension } from "../src/data_loader.js";
+import loreData from "../src/data/lore_data.json" with { type: "json" };
 
 function memoryStorage() {
   const values = new Map();
@@ -27,6 +29,19 @@ test("configuration and descriptive JSON keep world and mission data separate", 
   assert.deepEqual(missionData.routes["East Blue"].slice(0, 3), ["Isla Dawn", "Orange Town", "Villa Syrup"]);
   assert.ok(CONTRACTS.some((contract) => contract.category === "archaeology" && contract.reward > 0));
   assert.equal(STORAGE_KEYS.save, "one-latam-rpg-beta-1");
+  assert.equal(loreData.poneglyphTopics.length, 8);
+  assert.ok(listExtensions().includes("lore"));
+  assert.equal(DataLoader.getExtension, getExtension);
+});
+
+test("data extensions are cloned, enumerable, and protected against duplicate keys", () => {
+  const original = { entries: [{ name: "test" }] };
+  registerExtension("test-extension", original);
+  const registered = getExtension("test-extension");
+  registered.entries[0].name = "changed";
+  assert.equal(getExtension("test-extension").entries[0].name, "test");
+  assert.throws(() => registerExtension("test-extension", original), /ya está registrada/);
+  assert.throws(() => registerExtension("../unsafe", original), TypeError);
 });
 
 test("storage adapter handles JSON values and unavailable or malformed storage", () => {

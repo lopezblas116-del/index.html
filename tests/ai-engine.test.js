@@ -48,7 +48,7 @@ test("combat outcomes update mood and honor in the persistent psyche", () => {
 });
 
 test("urgent fatigue defers whispers and the avatar walks to its data-driven local venue", () => {
-  const captain = createCharacter({ name: "Navegante" });
+  const captain = createCharacter({ name: "Navegante", originSea: "East Blue" });
   captain.psyche.needs.fatigue = 70;
   const whisper = sendWhisper(captain, "entrena", () => 0);
   assert.equal(whisper.deferred, true);

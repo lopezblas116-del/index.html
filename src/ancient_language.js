@@ -1,10 +1,7 @@
-const FRAGMENTS = [
-  { id: "east", point: { x: 70, y: 210 }, clue: "El alba guarda una voz bajo la espuma." },
-  { id: "west", point: { x: 440, y: 90 }, clue: "La memoria duerme donde los árboles miran al oeste." },
-  { id: "north", point: { x: 1060, y: 190 }, clue: "El hielo recuerda el nombre de una corriente." },
-  { id: "south", point: { x: 840, y: 650 }, clue: "El sur conserva el eco de una estrella caída." }
-];
-const FINAL = { x: 1130, y: 375, name: "Horizonte velado" };
+import loreData from "./data/lore_data.json" with { type: "json" };
+
+const FRAGMENTS = loreData.seaFragments;
+const FINAL = loreData.finalCoordinates;
 
 export function ensureAncientLanguage(character) {
   character.ancientLanguage ??= { fragments: [], knowledge: 0 };
