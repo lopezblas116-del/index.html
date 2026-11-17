@@ -305,8 +305,16 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
   return { wins, damage, rivalLevel, dead: character.status === "dead", technique: style };
 }
 export function confrontFugitive(character, name) {
-  if (character.status === "dead" || !character.location?.atSea || name !== "Arlong") return null;
-  return resolveCombat(character, name, true, false);
+  const boss = character.world?.shared?.world?.bosses?.find((entry) => entry.name === name && entry.status === "fugitive");
+  if (character.status === "dead" || !character.location?.atSea || !boss) return null;
+  const result = resolveCombat(character, name, true, false);
+  if (result.wins) {
+    const reward = Math.max(0, Number(boss.reward) || 0);
+    const earned = awardBerries(character, reward);
+    character.captures = (Number(character.captures) || 0) + 1;
+    addLog(character, `⚓ ${name} vuelve a presidio. Recompensa de recaptura: ฿${formatNum(earned)}.`);
+  }
+  return result;
 }
 function completeMission(character) {
   const mission = character.mission;
@@ -377,6 +385,12 @@ function navigate(character) {
   const reverseMountain = route.indexOf("Reverse Mountain");
   if (character.race === "giant" && !character.ship.reinforced && reverseMountain >= 0 && next >= reverseMountain) {
     return "La carabela no puede cruzar la Reverse Mountain sin un casco reforzado. Consíguelo en un astillero.";
+  }
+  if (reverseMountain >= 0 && next > reverseMountain) {
+    const hasHaki = Object.values(character.haki || {}).some(Boolean);
+    if ((Number(character.level) || 1) < 3 && !hasHaki && !(character.crew || []).length) {
+      return "La travesía de la Red Line exige preparación: alcanza el nivel 3, despierta Haki o recluta al menos un tripulante antes de cruzar.";
+    }
   }
   character.location.routeIndex = next;
   character.location.island = route[next];
@@ -515,7 +529,8 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   if (localActivity?.action === "poneglyph") {
     const island = getMapIslands(character).find((entry) => entry.name === character.location?.island);
     const rubbing = exploreLocalArchaeology(character, island);
-    if (rubbing) addLog(character, rubbing.translated
+    if (rubbing?.inaccessible) addLog(character, "Encuentra un monolito cubierto de glifos antiguos e indescifrables.");
+    else if (rubbing) addLog(character, rubbing.translated
       ? `Descifra el monolito: ${rubbing.title}.`
       : `Obtiene un calco del monolito ${rubbing.title}.`);
   }

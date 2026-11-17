@@ -3,14 +3,23 @@ import { createLocalFruitLedger } from "./devil_fruits.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 
 export function createLocalWorld() {
+  const islands = getMapIslands();
+  const arlong = islands.find((island) => island.id === "arlong");
   return {
-    islands_control: getMapIslands().map((island) => ({
+    islands_control: islands.map((island) => ({
       island_id: island.id, name: island.name, faction: island.control,
       owner_id: null, owner_name: null, tax_rate: 0, taxes: 0, treasury: 0,
-      chaos: 0, blockade_until_day: 0, besieged_by: null
+      chaos: 0, blockade_until_day: 0, besieged_by: null, defense_level: 0
     })),
     global_events: [], bounties_leaderboard: [], fallen_captains: [],
-    bosses: [{ name: "Arlong", status: "active", island_id: "arlong" }],
+    bosses: [arlong, ...islands.filter((island) => island.id !== "arlong")].map((island) => ({
+      name: island.boss,
+      status: "active",
+      island_id: island.id,
+      hideout: island.name,
+      reward: Math.max(100000, (island.coordinates?.x > 700 ? 750000 : 100000) + (island.coordinates?.x || 0) * 100),
+      troops: 0
+    })),
     devil_fruits: createLocalFruitLedger()
   };
 }
@@ -22,6 +31,14 @@ function controlledIsland(world, islandId) {
 function recordWorldEvent(world, event) {
   world.global_events.unshift(event);
   world.global_events = world.global_events.slice(0, 100);
+  if (event.type === "invasion" || event.type === "boss_reconquest") {
+    dispatchTypedEvent(EVENT_TYPES.worldEvent, {
+      id: event.event_id,
+      title: event.type === "invasion" ? "Invasión naval" : "Reconquista de guarida",
+      text: event.text,
+      location: event.location || "Mar abierto"
+    });
+  }
 }
 
 export function assessPortTax(world, islandId, amount, payerId = null) {
@@ -56,6 +73,7 @@ export function claimLocalSovereignty(world, captain, islandId, taxRate = 5) {
   island.faction = "Tripulación";
   island.tax_rate = rate;
   island.chaos = 0;
+  island.defense_level = Math.min(90, 20 + (Number(captain.level) || 1) * 4 + (captain.crew?.length || 0) * 8);
   island.blockade_until_day = 0;
   island.besieged_by = null;
   const text = `${captain.name} establece soberanía sobre ${island.name} y fija un impuesto portuario del ${rate}%.`;
@@ -105,9 +123,42 @@ export function advanceLocalWorld(world, day, random = Math.random) {
     for (const boss of world.bosses) {
       if (boss.status !== "imprisoned" || random() >= 0.05) continue;
       boss.status = "fugitive";
-      boss.island_id = null;
+      boss.troops = Math.max(2, (Number(boss.troops) || 0) + 2);
       boss.secret_location = { x: Math.floor(random() * 1200), y: Math.floor(random() * 760) };
-      world.global_events.unshift({ event_id: `escape-${boss.name}-${cycle}`, type: "escape", text: `🚨 Edición especial: ${boss.name} escapó de prisión y opera en paradero desconocido.`, created_at: new Date().toISOString() });
+      recordWorldEvent(world, { event_id: `escape-${boss.name}-${cycle}`, type: "escape", text: `Edición especial: ${boss.name} escapó de prisión, reunió ${boss.troops} combatientes y busca recuperar ${boss.hideout || "su guarida"}.`, location: boss.hideout, reward: boss.reward, created_at: new Date().toISOString() });
+      dispatchTypedEvent(EVENT_TYPES.worldEvent, { id: `escape-${boss.name}-${cycle}`, title: `Fuga de ${boss.name}`, text: `${boss.name} reúne tropas para recuperar su guarida.`, location: boss.hideout || "Mar abierto" });
+    }
+    for (const island of world.islands_control || []) {
+      if (!island.owner_id || random() >= 0.06) continue;
+      const invader = random() < 0.5 ? "Gobierno Mundial" : "Flota de un Yonko rival";
+      const resisted = random() * 100 < Math.max(10, Math.min(90, Number(island.defense_level) || 20));
+      const eventId = `invasion-${island.island_id}-${cycle}`;
+      if (resisted) {
+        recordWorldEvent(world, { event_id: eventId, type: "invasion", text: `${invader} intentó tomar ${island.name}; la guarnición de ${island.owner_name || "la flota"} defendió el puerto.`, location: island.name, created_at: new Date().toISOString() });
+      } else {
+        const formerOwner = island.owner_name || "la flota";
+        island.owner_id = null;
+        island.owner_name = null;
+        island.faction = "Marina";
+        island.tax_rate = 0;
+        island.defense_level = 0;
+        island.treasury = Math.floor((Number(island.treasury) || 0) * 0.8);
+        recordWorldEvent(world, { event_id: eventId, type: "invasion", text: `${invader} arrebató ${island.name} a ${formerOwner} y confiscó parte de su tesorería.`, location: island.name, created_at: new Date().toISOString() });
+      }
+    }
+    for (const boss of world.bosses) {
+      if (boss.status !== "fugitive" || random() >= 0.025) continue;
+      const island = controlledIsland(world, boss.island_id);
+      if (!island?.owner_id) continue;
+      const formerOwner = island.owner_name || "la flota";
+      island.owner_id = null;
+      island.owner_name = null;
+      island.faction = "Tirano";
+      island.tax_rate = 0;
+      island.defense_level = 0;
+      boss.status = "active";
+      delete boss.secret_location;
+      recordWorldEvent(world, { event_id: `boss-reconquest-${boss.island_id}-${cycle}`, type: "boss_reconquest", text: `${boss.name} volvió a reclutar tropas y recuperó ${island.name} de ${formerOwner}.`, location: island.name, created_at: new Date().toISOString() });
     }
   }
   world.last_cycle_day = day;
@@ -124,16 +175,20 @@ export function applyLocalAction(world, action, actor) {
       island.faction = data.faction === "Marine" ? "Marina" : "Tripulación";
       island.owner_id = data.faction === "Marine" ? null : actor.id;
       island.owner_name = data.faction === "Marine" ? null : actor.name;
+      island.tax_rate = data.faction === "Marine" ? 0 : 5;
+      island.defense_level = data.faction === "Marine" ? 0 :
+        Math.min(90, 20 + (Number(data.level) || 1) * 4 + (Number(data.crewSize) || 0) * 8);
       island.chaos = data.faction === "Marine" ? 0 : Math.min(100, island.chaos + 35);
       if (island.chaos >= 70) {
-        island.faction = "Marina"; island.owner_id = null; island.owner_name = null; island.chaos = 0;
+        island.faction = "Marina"; island.owner_id = null; island.owner_name = null; island.tax_rate = 0; island.defense_level = 0; island.chaos = 0;
         text = `⚓ Buster Call: la Marina recupera ${island.name}.`;
         dispatchTypedEvent(EVENT_TYPES.busterCallStarted, { islandId: island.island_id, islandName: island.name });
       }
     }
-    if (island?.island_id === "arlong") {
-      const boss = world.bosses.find((entry) => entry.name === "Arlong");
-      if (boss?.status === "active") { boss.status = "imprisoned"; text = "⚓ Arlong ha sido encarcelado."; }
+    if (island) {
+      const boss = world.bosses.find((entry) => entry.island_id === island.island_id && entry.status === "active");
+      if (boss) { boss.status = "imprisoned"; boss.troops = 0; delete boss.secret_location; text = `⚓ ${boss.name} fue capturado y ${island.name} quedó bajo control de ${actor.name}.`; }
+      if (island.owner_id === actor.id) dispatchTypedEvent(EVENT_TYPES.islandConquered, { islandId: island.island_id, ownerId: actor.id });
     }
     text ||= `⚓ ${actor.name} completa una misión en ${data.island}.`;
   } else if (action.type === "bounty") {
@@ -150,6 +205,7 @@ export function applyLocalAction(world, action, actor) {
     const boss = world.bosses.find((entry) => entry.name === data.boss && entry.status === "fugitive");
     if (boss?.secret_location && Math.hypot(data.x - boss.secret_location.x, data.y - boss.secret_location.y) <= 80) {
       boss.status = "imprisoned";
+      boss.troops = 0;
       delete boss.secret_location;
       text = `⚓ ${boss.name} vuelve a presidio tras enfrentarse a ${actor.name}.`;
     }

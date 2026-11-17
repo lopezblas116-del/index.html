@@ -4,6 +4,7 @@ import { createCharacter, createHeir, PULSE_MS, resolveAutonomousBranch, resolve
 import { ensureBlockOneData } from "../src/block1.js";
 import { advanceAdvancedSystems, ensureAdvancedSystems } from "../src/systems.js";
 import { advanceLocalWorld, applyLocalAction, createLocalWorld } from "../src/geopolitics.js";
+import { confrontFugitive } from "../src/game.js";
 import { createNetwork } from "../src/network.js";
 import { getMapIslands } from "../src/map.js";
 
@@ -102,4 +103,23 @@ test("local boss escapes persist and can be found and recaptured", async () => {
   const resumed = createNetwork({ config: {}, storage });
   assert.equal(resumed.snapshot().world.bosses[0].status, "imprisoned");
   assert.equal(await resumed.scout(0, 0), null);
+});
+
+test("recapturing a fugitive boss pays the posted reward", () => {
+  const captain = createCharacter({ name: "Capitana", originSea: "East Blue" });
+  captain.level = 25;
+  captain.stats.strength = 200;
+  captain.stats.agility = 100;
+  captain.location.atSea = true;
+  captain.world.shared = { world: { bosses: [{ name: "Arlong", status: "fugitive", reward: 500000 }] } };
+  const initialBerries = captain.berries;
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => 0.1;
+    const result = confrontFugitive(captain, "Arlong");
+    assert.equal(result.wins, true);
+    assert.ok(captain.berries >= initialBerries + 500000);
+    assert.equal(captain.captures, 1);
+    assert.match(captain.log[0].message, /recompensa de recaptura/i);
+  } finally { Math.random = originalRandom; }
 });

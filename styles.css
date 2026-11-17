@@ -410,3 +410,22 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 #modal-admin-gm .one-hud-contracts h3{flex-basis:100%}
 #modal-admin-gm .one-hud-contracts button{flex:1 1 190px}
 #modal-admin-gm .one-hud-form input{min-height:48px;color:#fff;border:1px solid rgba(244,180,26,.45);border-radius:8px;background:#0b1329}
+
+body.game-active .masthead,body.game-active .footer{display:none!important}
+body.game-active .app-shell{width:100%;height:100%;margin:0;padding:0}
+body.game-active #game-container:not([hidden]){z-index:1}
+.one-hud-item-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,.55fr);gap:8px;margin:10px 0}
+.one-hud-item-filters input,.one-hud-item-filters select{min-width:0;min-height:48px;border-color:rgba(244,180,26,.45);background:#0b1329;color:#fff}
+.one-hud-wanted-poster{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:12px;margin:10px 0;padding:12px;border:4px double #c2a16a;background:linear-gradient(145deg,#e7dcc1,#c8b58c);color:#261f16;box-shadow:0 6px 16px #0007}
+.one-hud-wanted-poster strong{font:800 1.15rem/1.2 Georgia,serif;letter-spacing:.08em}
+.one-hud-wanted-poster h3{margin:4px 0;color:#261f16;font:700 1rem Georgia,serif;overflow-wrap:anywhere}
+.one-hud-wanted-poster p{margin:3px 0;font:700 .8rem Georgia,serif}
+.one-hud-wanted-portrait{width:80px;height:80px;border:2px solid #6f5c3c;image-rendering:pixelated;background:#8b826f}
+.one-hud-fugitive-contract{border-left:3px solid #e25252}
+.one-hud-fugitive-contract h3{color:#ef7777}
+.one-hud-glyphs[data-type="blue"]{color:#75aaff}
+.one-hud-glyphs[data-type="red"]{color:#ef7777}
+.one-hud-glyphs[data-type="gold"]{color:#f4c85d}
+.one-hud-soul{padding:10px;border:1px solid rgba(244,180,26,.35);border-radius:10px;background:#0b1329}
+.island-hotspot[aria-label*="Poneglyph"]{border-color:rgba(244,180,26,.75)}
+@media(max-width:520px){.one-hud-item-filters{grid-template-columns:1fr}.one-hud-wanted-poster{grid-template-columns:72px minmax(0,1fr);padding:8px}.one-hud-wanted-portrait{width:66px;height:66px}}

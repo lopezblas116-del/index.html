@@ -88,14 +88,14 @@ export function renderIslandView(character) {
   const hotspots = byId("island-hotspots");
   hotspots.replaceChildren();
   for (const poi of islandView.pois || []) {
-    if (poi.type === "poneglyph" && !canReadAncient(character) &&
-        !character.archaeology?.rubbings?.some((rubbing) => rubbing.siteId === poi.id)) continue;
+    if (poi.type === "poneglyph" && !canReadAncient(character)) continue;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "island-hotspot";
     button.style.left = `${poi.x / ISLAND_SCENE_WIDTH * 100}%`;
     button.style.top = `${poi.y / ISLAND_SCENE_HEIGHT * 100}%`;
     button.setAttribute("aria-label", `${poi.name}; sugerencia opcional, el avatar decide si la sigue`);
+    button.title = poi.name;
     const icon = poi.type === "tavern" || poi.type === "inn" ? "tavern"
       : poi.type === "market" || poi.type === "restaurant" || poi.type === "kitchen" ? "market"
         : poi.type === "dock" || poi.type === "shipyard" ? "ship"
@@ -161,6 +161,14 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
     { key: "bounty", label: "Se Busca / Bounties", items: [...(shared?.bounties_leaderboard ?? []).map((entry) => ({ text: `${entry.yonkou ? "YONKOU · " : ""}SE BUSCA · ${entry.name} · ฿${number(entry.bounty)} Berries` })), ...(character.bounty > 0 ? [{ text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : [])], empty: "No hay carteles activos para este avatar." },
     { key: "gazette", label: "Gaceta & Fugas", items: [
       ...globalEvents.filter((entry) => ["death", "escape"].includes(entry.type)),
+      ...(shared?.bosses ?? []).filter((boss) => boss.status === "fugitive" && boss.secret_location).map((boss) => ({
+        type: "fugitive-contract",
+        title: `Orden de recaptura: ${boss.name}`,
+        text: `${boss.name} escapó de prisión y está reuniendo fuerzas cerca de una guarida desconocida.`,
+        reward: boss.reward || 500000,
+        coordinates: boss.secret_location,
+        location: boss.hideout || boss.name
+      })),
       ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
       ...(world.pantheon ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
     ], empty: "La gaceta no registra caídos ni fugas." }
@@ -176,6 +184,27 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
     const panel = document.createElement("section");
     panel.className = "one-hud-tab-panel";
     panel.hidden = index !== 0;
+    if (section.key === "bounty" && Number(character.bounty) > 0) {
+      const poster = document.createElement("article");
+      poster.className = "one-hud-wanted-poster";
+      const portrait = document.createElement("canvas");
+      portrait.width = 64;
+      portrait.height = 64;
+      portrait.className = "one-hud-wanted-portrait";
+      portrait.setAttribute("aria-label", `Retrato pixelado de ${character.name}`);
+      const portraitContext = portrait.getContext("2d");
+      if (portraitContext) drawPixelAvatar(portraitContext, character.appearance);
+      const details = document.createElement("div");
+      const stamp = document.createElement("strong");
+      stamp.textContent = "SE BUSCA";
+      const wantedName = document.createElement("h3");
+      wantedName.textContent = character.name || "Aventurero";
+      const reward = document.createElement("p");
+      reward.textContent = `฿ ${number(character.bounty)} BERRIES`;
+      details.append(stamp, wantedName, reward);
+      poster.append(portrait, details);
+      panel.append(poster);
+    }
     if (!section.items.length) {
       const empty = document.createElement("p");
       empty.textContent = section.empty;
@@ -188,7 +217,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       const summary = document.createElement("summary");
       const headline = typeof entry === "string" ? entry : entry.text || entry.title || "Noticia del mar";
       const isPlayer = character.name && headline.includes(character.name);
-      const npcAppearance = section.key === "bounty" || isPlayer ? null : npcAppearanceFor(headline);
+      const npcAppearance = isPlayer ? null : npcAppearanceFor(headline);
       if (npcAppearance || /se busca|bounty/i.test(headline)) {
         const portrait = document.createElement("canvas");
         portrait.width = 32;
@@ -201,6 +230,18 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       } else summary.textContent = headline;
       const detail = document.createElement("div");
       detail.className = "news-card-detail";
+      if (entry?.type === "fugitive-contract") {
+        const reward = document.createElement("p");
+        reward.textContent = `Contrato de recaptura · Recompensa: ฿${number(entry.reward)} Berries`;
+        detail.append(reward);
+        const pursue = document.createElement("button");
+        pursue.type = "button";
+        pursue.className = "one-hud-action";
+        pursue.textContent = "Buscar la guarida";
+        pursue.disabled = character.status === "dead";
+        pursue.addEventListener("click", () => onSuggest(location));
+        detail.append(pursue);
+      }
       const coordinates = document.createElement("p");
       coordinates.textContent = location
         ? `${location.name} · Coordenadas del mapa: X ${location.x}, Y ${location.y}`
@@ -242,6 +283,7 @@ export function showSetup() {
   const game = byId("game-container");
   const reset = byId("reset-button");
   document.body.classList.add("wizard-active");
+  document.body.classList.remove("game-active");
   if (wizard) { wizard.hidden = false; wizard.style.display = "grid"; }
   if (game) { game.hidden = true; game.style.display = "none"; }
   if (reset) reset.hidden = true;
@@ -253,6 +295,7 @@ export function showGame() {
   const game = byId("game-container");
   const reset = byId("reset-button");
   document.body.classList.remove("wizard-active");
+  document.body.classList.add("game-active");
   if (wizard) { wizard.hidden = true; wizard.style.display = "none"; }
   if (game) { game.hidden = false; game.style.display = "block"; }
   if (reset) reset.hidden = false;

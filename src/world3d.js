@@ -6,6 +6,7 @@ import { avatarAction, drawIslandSceneContext, drawPixelAvatar, ISLAND_SCENE_WID
 const WIDTH = 1200;
 const HEIGHT = 760;
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const smootherstep = (value) => value * value * value * (value * (value * 6 - 15) + 10);
 const radians = (point) => ({
   lon: (point.x / WIDTH - 0.5) * Math.PI * 2,
   lat: (0.5 - point.y / HEIGHT) * Math.PI
@@ -432,7 +433,7 @@ function islandFrame(island, progress = 1, now = 0, sceneRect = null) {
   if (!rect || !rect.width || !rect.height) return;
   const blend = clamp((progress - .44) / .56, 0, 1);
   if (!blend) return;
-  const eased = blend * blend * (3 - 2 * blend);
+  const eased = smootherstep(blend);
   const center = projectPoint(island);
   const x = center.x + (rect.left + rect.width / 2 - center.x) * eased;
   const y = center.y + (rect.top + rect.height / 2 - center.y) * eased;
@@ -491,7 +492,7 @@ function animate(now) {
   if (mapCovered() || document.hidden) { suspendTransition(); return; }
   if (transition) {
     const t = clamp((now - transition.started) / 1400, 0, 1);
-    const eased = t * t * (3 - 2 * t);
+    const eased = smootherstep(t);
     longitude = transition.fromLon + transition.deltaLon * eased;
     latitude = transition.fromLat + (transition.toLat - transition.fromLat) * eased;
     zoom = transition.fromZoom + (transition.toZoom - transition.fromZoom) * eased;

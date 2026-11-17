@@ -7,6 +7,11 @@ import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 
 export const RUBBING_PRICE = 300;
 const normalizeText = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+export const PONEGLYPH_TYPES = Object.freeze({
+  blue: { label: "Historia", color: "#3d8cff" },
+  red: { label: "Ruta", color: "#e25252" },
+  gold: { label: "Tesoro de 800 años", color: "#f4b41a" }
+});
 
 function archaeologyState(character) {
   character.archaeology ??= {};
@@ -49,12 +54,18 @@ export function examinePoneglyph(character, island, poi) {
   const lore = getExtension("lore");
   const topic = lore?.poneglyphTopics?.find((entry) => entry.id === poi.lore);
   if (!topic) return null;
+  if (!canReadAncient(character)) {
+    return { inaccessible: true, siteId: poi.id, type: topic.type, glyphs: encodeGlyphs(topic.title, poi.id) };
+  }
   const rubbing = {
     id: `rubbing-${poi.id}`,
     siteId: poi.id,
     islandId: island.id,
     islandName: island.name,
     title: topic.title,
+    type: topic.type || "blue",
+    category: PONEGLYPH_TYPES[topic.type]?.label || PONEGLYPH_TYPES.blue.label,
+    color: PONEGLYPH_TYPES[topic.type]?.color || PONEGLYPH_TYPES.blue.color,
     glyphs: encodeGlyphs(`${topic.title}: ${topic.summary}`, poi.id),
     createdDay: Number(character.world?.day) || 0,
     sold: false
@@ -85,6 +96,7 @@ export function translateRubbing(character, rubbingId) {
   const translation = {
     siteId: rubbing.siteId,
     title: rubbing.title,
+    type: rubbing.type || "blue",
     islandId: rubbing.islandId,
     islandName: rubbing.islandName,
     text: summary,
@@ -97,8 +109,19 @@ export function translateRubbing(character, rubbingId) {
     ancient.fragments.push({ id: `rubbing:${rubbing.siteId}`, clue: rubbing.title, translatedAt: translation.translatedAt });
     ancient.knowledge = Math.min(100, ancient.fragments.length * 25);
   }
-  if (state.translations.length >= 4 && !ancient.finalCoordinates) {
-    ancient.finalCoordinates = getExtension("lore")?.finalCoordinates || null;
+  const lore = getExtension("lore");
+  if (translation.type === "red") {
+    const routeFragments = state.translations.filter((entry) => entry.type === "red").length;
+    translation.coordinates = lore?.routeCoordinates?.[rubbing.siteId] || null;
+    ancient.routeFragments = routeFragments;
+    if (routeFragments >= 4 && !ancient.finalCoordinates) ancient.finalCoordinates = lore?.finalCoordinates || null;
+  } else if (translation.type === "gold") {
+    translation.relic = lore?.relicLocations?.[rubbing.siteId] || null;
+    if (translation.relic) {
+      character.systems ??= {};
+      character.systems.treasureMaps ??= [];
+      if (!character.systems.treasureMaps.some((map) => map.id === translation.relic.id)) character.systems.treasureMaps.push({ ...translation.relic });
+    }
   }
   if (character.systems?.testament) character.systems.testament.ancientLanguage = structuredClone(ancient);
   const message = `[PONEGLYPH / DESCIFRADO] ${rubbing.title}: ${summary}`;

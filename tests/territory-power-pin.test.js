@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCharacter } from "../src/game.js";
+import { createCharacter, performAction } from "../src/game.js";
 import { marketPrices, trade } from "../src/combat_economy.js";
 import { ensureBlockOneData, evaluateContract, resolvePortContracts } from "../src/block1.js";
-import { claimLocalSovereignty, createLocalWorld, isPortBlockaded, startNavalBlockade } from "../src/geopolitics.js";
+import { advanceLocalWorld, applyLocalAction, claimLocalSovereignty, createLocalWorld, isPortBlockaded, startNavalBlockade } from "../src/geopolitics.js";
 import { hasLocalGMPin, setLocalGMPin, verifyLocalGMPin } from "../src/gm_engine.js";
 import { createNetwork } from "../src/network.js";
 import { avatarScenePosition } from "../src/map.js";
@@ -28,6 +28,49 @@ test("local sovereignty sets a bounded port tax and rejects a different owner", 
   assert.equal(claim.island.tax_rate, 15);
   assert.equal(claimLocalSovereignty(world, { ...captain, id: "another" }, "dawn", 5).ok, false);
   assert.equal(claimLocalSovereignty(world, captain, "dawn", 21).ok, false);
+});
+
+test("mission victories claim sovereignty, set port tax, and imprison that island's boss", () => {
+  const world = createLocalWorld();
+  const actor = { id: "captain", name: "Capitana" };
+  applyLocalAction(world, { event_id: "shells-victory", type: "mission", data: { island: "Shells Town", faction: "Pirata", level: 4, crewSize: 1 } }, actor);
+  const island = world.islands_control.find((entry) => entry.island_id === "shells");
+  assert.equal(island.owner_id, actor.id);
+  assert.equal(island.tax_rate, 5);
+  assert.equal(island.defense_level, 44);
+  assert.equal(world.bosses.find((boss) => boss.island_id === "shells").status, "imprisoned");
+});
+
+test("periodic naval invasions can be resisted or capture a weakly defended island", () => {
+  const resistedWorld = createLocalWorld();
+  const resistedIsland = resistedWorld.islands_control.find((entry) => entry.island_id === "dawn");
+  Object.assign(resistedIsland, { owner_id: "captain", owner_name: "Capitana", defense_level: 70 });
+  let rolls = [0, 0, 0];
+  advanceLocalWorld(resistedWorld, 1, () => rolls.shift() ?? 1);
+  assert.equal(resistedIsland.owner_id, "captain");
+  assert.match(resistedWorld.global_events[0].text, /defendió el puerto/);
+
+  const lostWorld = createLocalWorld();
+  const lostIsland = lostWorld.islands_control.find((entry) => entry.island_id === "dawn");
+  Object.assign(lostIsland, { owner_id: "captain", owner_name: "Capitana", defense_level: 0 });
+  rolls = [0, 0, 0.99];
+  advanceLocalWorld(lostWorld, 1, () => rolls.shift() ?? 1);
+  assert.equal(lostIsland.owner_id, null);
+  assert.equal(lostIsland.faction, "Marina");
+  assert.match(lostWorld.global_events[0].text, /arrebató Isla Dawn/);
+});
+
+test("crossing the Red Line requires level, Haki, or crew preparation", () => {
+  const captain = createCharacter({ name: "Navegante", originSea: "East Blue" });
+  captain.location.routeIndex = 6;
+  captain.location.island = "Reverse Mountain";
+  captain.mission.status = "complete";
+  const blocked = performAction(captain, "navigate");
+  assert.match(blocked, /preparación/);
+  assert.equal(captain.location.routeIndex, 6);
+  captain.level = 3;
+  performAction(captain, "navigate");
+  assert.equal(captain.location.routeIndex, 7);
 });
 
 test("local market taxes are assessed only after a purchase can be paid", () => {
@@ -108,6 +151,23 @@ test("legacy local-world saves gain territorial defaults without losing ownershi
   assert.equal(migrated.tax_rate, 0);
   assert.equal(migrated.treasury, 0);
   assert.equal(migrated.blockade_until_day, 0);
+});
+
+test("legacy local-world saves gain new bosses and defense values non-destructively", () => {
+  const storage = memoryStorage();
+  const legacy = createLocalWorld();
+  const dawn = legacy.islands_control.find((entry) => entry.island_id === "dawn");
+  dawn.owner_id = "captain";
+  dawn.defense_level = 48;
+  delete dawn.defense_level;
+  legacy.bosses = [legacy.bosses[0]];
+  legacy.bosses[0].status = "imprisoned";
+  storage.setItem("one-latam-local-world", JSON.stringify(legacy));
+  const migrated = createNetwork({ config: {}, storage }).snapshot().world;
+  assert.equal(migrated.islands_control.find((entry) => entry.island_id === "dawn").owner_id, "captain");
+  assert.equal(migrated.islands_control.find((entry) => entry.island_id === "dawn").defense_level, 0);
+  assert.equal(migrated.bosses.find((boss) => boss.name === "Arlong").status, "imprisoned");
+  assert.ok(migrated.bosses.some((boss) => boss.name === "Capitán Morgan"));
 });
 
 test("local activity keeps the avatar at its saved venue and power facades preserve Haki state", () => {

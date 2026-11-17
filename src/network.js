@@ -38,8 +38,22 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
           island.treasury = Math.max(0, Number(island.treasury) || 0);
           island.blockade_until_day = Math.max(0, Number(island.blockade_until_day) || 0);
           island.besieged_by ??= null;
+          island.defense_level = Math.max(0, Math.min(90, Number(island.defense_level) || 0));
+        }
+        const defaults = createLocalWorld();
+        for (const island of defaults.islands_control) {
+          if (!parsed.islands_control.some((saved) => saved.island_id === island.island_id)) parsed.islands_control.push(island);
+        }
+        const savedBosses = parsed.bosses;
+        parsed.bosses = defaults.bosses.map((boss) => ({
+          ...boss,
+          ...(savedBosses.find((saved) => saved.island_id === boss.island_id || saved.name === boss.name) || {})
+        }));
+        for (const boss of savedBosses) {
+          if (!parsed.bosses.some((entry) => entry.island_id === boss.island_id || entry.name === boss.name)) parsed.bosses.push(boss);
         }
         parsed.devil_fruits ??= createLocalFruitLedger();
+        parsed.last_cycle_day = Math.max(0, Number(parsed.last_cycle_day) || 0);
         world = parsed;
       }
     } catch { status = "offline"; error = "No se pudo leer el mundo local guardado."; }

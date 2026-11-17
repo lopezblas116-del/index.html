@@ -22,11 +22,11 @@ test("each mapped island has its own stable scene and island-specific options", 
 test("requested island venues are loaded from island data with medium-map coordinates", () => {
   const islands = getMapIslands();
   const expected = {
-    dawn: ["Taberna de Makino", "Muelle de Partida", "Molino de Viento", "Cabaña de Dadan"],
+    dawn: ["Taberna de Makino", "Muelle de Partida", "Molino de Viento", "Cabaña de Dadan", "Guarida de Higuma"],
     shells: ["Base Militar del Capitán Morgan", "Patio de Ejecuciones", "Mercado Urbano"],
-    baratie: ["Cubierta Principal", "Cocina de Zeff", "Comedor Flotante"],
+    baratie: ["Cubierta Principal", "Cocina de Zeff", "Comedor Flotante", "Guarida de Don Krieg"],
     arlong: ["Torre de Arlong", "Plaza Conomi", "Astillero de Gyojins"],
-    loguetown: ["Plaza de la Plataforma de Ejecución", "Tienda de Katanas de Ipponmatsu", "Bar Gold Roger"]
+    loguetown: ["Plaza de la Plataforma de Ejecución", "Tienda de Katanas de Ipponmatsu", "Bar Gold Roger", "Guarida de Capitán Smoker"]
   };
   for (const [id, names] of Object.entries(expected)) {
     const points = islands.find((island) => island.id === id).pois;
@@ -102,10 +102,10 @@ test("themed NPCs come from island data and walk between frames", () => {
   }
   const island = islands.find((item) => item.id === "dawn");
   const render = (time) => {
-    const labels = [];
-    const ctx = { fillRect() {}, fillText: (...args) => labels.push(args) };
+    const pixels = [];
+    const ctx = { fillStyle: "", fillRect: (...args) => pixels.push([ctx.fillStyle, ...args]) };
     drawIslandSceneContext(ctx, island, null, time);
-    return labels;
+    return pixels;
   };
-  assert.notEqual(render(0)[0][1], render(1000)[0][1]);
+  assert.notDeepEqual(render(0), render(1000));
 });

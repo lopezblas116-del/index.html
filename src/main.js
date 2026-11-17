@@ -111,7 +111,7 @@ function publishChanges(before, c, whispered = false) {
   if ((c.world?.day || 0) > before.day) network.advanceCycle(c.world.day);
   const island = c.location?.atSea ? "alta mar" : c.location?.island;
   if ((c.mission?.completed || 0) > before.completed) {
-    network.publish("mission", { island, faction: c.faction }, c);
+    network.publish("mission", { island, faction: c.faction, level: c.level, crewSize: c.crew?.length || 0 }, c);
   }
   if ((c.activeContracts || []).filter((item) => item.status === "completed").length > before.contracts) {
     network.publish("contract", { island, completed: true }, c);

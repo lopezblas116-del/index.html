@@ -229,28 +229,23 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     const y = 172 + index * 20;
     box(ctx, x + 7, y + 34, 20, 4, "rgba(0,0,0,.25)");
     drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .8, fullBody: true });
-    if (ctx.fillText) {
-      ctx.fillStyle = "#18263a";
-      ctx.font = "bold 10px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(npc.name, x + 13, y - 2);
-    }
-  });
-  (island.districts || []).slice(0, 3).forEach((district, index) => {
-    const x = 70 + index * 190;
-    box(ctx, x, 34, 174, 18, "rgba(11,19,41,.78)");
-    if (ctx.fillText) {
-      ctx.fillStyle = "#f4d58c";
-      ctx.font = "bold 9px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(district, x + 87, 47, 166);
-    }
   });
   (island.pois || []).forEach((poi) => {
-    if (poi.type === "poneglyph" && character?.race !== "threeeye" &&
-        !/(archaeolog|arqueolog)/i.test(normalizeText(character?.profession)) &&
-        !(character?.inventory?.items || []).some((item) => /ancient (?:cipher )?(?:tome|primer)|tomo antiguo|manual de glifos/i.test(String(item))) &&
-        !character?.archaeology?.rubbings?.some((rubbing) => rubbing.siteId === poi.id)) return;
+    const canRead = character?.race === "threeeye" ||
+        /(archaeolog|arqueolog)/i.test(normalizeText(character?.profession)) ||
+        (character?.inventory?.items || []).some((item) => /ancient (?:cipher )?(?:tome|primer)|tomo antiguo|manual de glifos/i.test(String(item)));
+    if (poi.type === "poneglyph" && !canRead) {
+      const x = Number(poi.x);
+      const y = Number(poi.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      box(ctx, x - 8, y - 12, 16, 24, "#625f58");
+      box(ctx, x - 6, y - 15, 12, 4, "#817d72");
+      box(ctx, x - 5, y - 7, 2, 2, "#c4b8a0");
+      box(ctx, x + 1, y - 2, 3, 2, "#b9ad96");
+      box(ctx, x - 3, y + 4, 2, 2, "#d0c3a9");
+      box(ctx, x - 10, y + 12, 20, 3, "#454b4a");
+      return;
+    }
     const colors = {
       tavern: "#d27d47", restaurant: "#da9c48", market: "#e5bd63",
       weapon_shop: "#c7a2c2", base: "#849aa3", plaza: "#d2c49d",
@@ -259,14 +254,31 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     const x = Number(poi.x);
     const y = Number(poi.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (poi.type === "poneglyph") {
+      const glyphColor = ({ blue: "#3d8cff", red: "#e25252", gold: "#f4b41a" })[poi.glyphType] || "#3d8cff";
+      box(ctx, x - 8, y - 12, 16, 24, "#625f58");
+      box(ctx, x - 6, y - 15, 12, 4, "#817d72");
+      box(ctx, x - 5, y - 7, 2, 2, glyphColor);
+      box(ctx, x + 1, y - 2, 3, 2, glyphColor);
+      box(ctx, x - 3, y + 4, 2, 2, glyphColor);
+      box(ctx, x - 10, y + 12, 20, 3, "#454b4a");
+      return;
+    }
     const color = colors[poi.type] || "#f4b41a";
     box(ctx, x - 5, y - 5, 12, 12, "#18263a");
     box(ctx, x - 3, y - 3, 8, 8, color);
     if (ctx.fillText) {
-      ctx.fillStyle = "#f7f1df";
-      ctx.font = "bold 8px system-ui, sans-serif";
-      ctx.textAlign = x > 470 ? "right" : "left";
-      ctx.fillText(poi.name, x + (x > 470 ? -7 : 9), y + 3, 150);
+      const labels = { tavern: "TABERNA", inn: "POSADA", market: "MERCADO", restaurant: "COMEDOR", base: "BASE", boss_lair: "GUARIDA", dock: "MUELLE", weapon_shop: "ARMAS", kitchen: "COCINA", shipyard: "ASTILLERO", plaza: "PLAZA" };
+      const label = labels[poi.type];
+      if (label) {
+        const signX = x - 18, signY = y - 17;
+        box(ctx, signX, signY, 38, 9, "#493727");
+        box(ctx, signX + 1, signY + 1, 36, 7, "#b68c50");
+        ctx.fillStyle = "#211b16";
+        ctx.font = "bold 5px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(label, x + 1, signY + 6, 34);
+      }
     }
   });
   if (character) {

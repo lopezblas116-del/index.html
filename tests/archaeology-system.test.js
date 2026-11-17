@@ -17,7 +17,7 @@ test("keyed glyph substitution round-trips text and rejects a different key", ()
   assert.notEqual(decodeGlyphs(encoded, "other-key"), phrase.toLocaleUpperCase("es"));
 });
 
-test("Poneglyph visit grants one rubbing, while readers can translate it", () => {
+test("ineligible visitors only see indecipherable glyphs and can read after gaining access", () => {
   const island = getMapIslands().find((entry) => entry.id === "ohara");
   const poi = island.pois.find((entry) => entry.type === "poneglyph");
   const captain = createCharacter({ name: "Cartógrafa", originSea: "West Blue" });
@@ -26,14 +26,40 @@ test("Poneglyph visit grants one rubbing, while readers can translate it", () =>
   captain.location.localVenue = { id: poi.id, name: poi.name, type: poi.type };
   assert.equal(canReadAncient(captain), false);
   const rubbing = examinePoneglyph(captain, island, poi);
-  assert.equal(rubbing.title, "Siglo Vacío");
-  assert.equal(examinePoneglyph(captain, island, poi), null);
-  assert.equal(translateRubbing(captain, rubbing.id).ok, false);
+  assert.equal(rubbing.inaccessible, true);
+  assert.deepEqual(captain.archaeology.rubbings, []);
+  assert.equal(translateRubbing(captain, poi.id).ok, false);
   captain.profession = "Arqueóloga";
-  const result = translateRubbing(captain, rubbing.id);
-  assert.equal(result.ok, true);
-  assert.match(result.translation.text, /registro fragmentario/i);
+  const readableRubbing = examinePoneglyph(captain, island, poi);
+  assert.equal(readableRubbing.title, "Siglo Vacío");
+  assert.equal(readableRubbing.translated, true);
+  assert.match(captain.archaeology.translations[0].text, /registro fragmentario/i);
   assert.equal(captain.ancientLanguage.knowledge, 25);
+});
+
+test("red and gold Poneglyphs award route fragments and relic maps", () => {
+  const islands = getMapIslands();
+  const captain = createCharacter({ name: "Arqueóloga", race: "threeeye" });
+  ensureBlockOneData(captain);
+  for (const island of islands.filter((entry) => ["reverse", "wano"].includes(entry.id))) {
+    const poi = island.pois.find((entry) => entry.type === "poneglyph");
+    captain.location.island = island.name;
+    captain.location.localVenue = { id: poi.id, name: poi.name, type: poi.type };
+    const rubbing = examinePoneglyph(captain, island, poi);
+    assert.equal(rubbing.type, "gold");
+  }
+  assert.equal(captain.systems.treasureMaps.length, 2);
+
+  for (const island of islands.filter((entry) => ["sabaody", "paradise", "onyigashima", "rusty"].includes(entry.id))) {
+    const poi = island.pois.find((entry) => entry.type === "poneglyph");
+    captain.location.island = island.name;
+    captain.location.localVenue = { id: poi.id, name: poi.name, type: poi.type };
+    const rubbing = examinePoneglyph(captain, island, poi);
+    assert.equal(rubbing.type, "red");
+    assert.ok(captain.archaeology.translations.at(-1).coordinates);
+  }
+  assert.equal(captain.ancientLanguage.routeFragments, 4);
+  assert.equal(captain.ancientLanguage.finalCoordinates.name, "Horizonte velado");
 });
 
 test("Three Eyes read automatically and local rubbing sales collect port tax", () => {
@@ -112,4 +138,15 @@ test("eligible characters autonomously walk to a data-defined Poneglyph", () => 
   resolveLocalActivity(captain, () => 0);
   const visit = resolveLocalActivity(captain, () => 0);
   assert.equal(visit.action, "poneglyph");
+});
+
+test("each island resolves one marked boss lair without duplicating an existing base", () => {
+  for (const island of getMapIslands()) {
+    const lairs = island.pois.filter((poi) => poi.boss);
+    assert.equal(lairs.length, 1, island.name);
+    assert.equal(lairs[0].boss, island.boss);
+  }
+  const shells = getMapIslands().find((island) => island.id === "shells");
+  assert.equal(shells.pois.filter((poi) => poi.type === "base").length, 1);
+  assert.equal(shells.pois.find((poi) => poi.type === "base").boss, "Capitán Morgan");
 });
