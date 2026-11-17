@@ -110,11 +110,24 @@ function renderIslandEncounters(island, character, present) {
       warning.textContent = encounter.warning;
       card.append(warning);
     }
-    const decide = document.createElement("button");
-    decide.type = "button";
-    decide.textContent = encounter.buttonLabel;
-    decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:hud-politics", { detail: { action: encounter.action } })));
-    card.append(decide);
+    if (encounter.actions) {
+      const actions = document.createElement("div");
+      actions.className = "island-encounter-actions";
+      for (const option of encounter.actions) {
+        const decide = document.createElement("button");
+        decide.type = "button";
+        decide.textContent = option.label;
+        decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:story-crisis-choice", { detail: { choice: option.choice } })));
+        actions.append(decide);
+      }
+      card.append(actions);
+    } else {
+      const decide = document.createElement("button");
+      decide.type = "button";
+      decide.textContent = encounter.buttonLabel;
+      decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:hud-politics", { detail: { action: encounter.action } })));
+      card.append(decide);
+    }
     section.append(card);
   }
   section.hidden = false;
@@ -126,7 +139,7 @@ export function renderIslandView(character) {
   const present = isAtIsland(character, islandView);
   const localWorld = character.world?.shared?.world;
   const islandControl = localWorld?.islands_control?.find((entry) => entry.island_id === islandView.id);
-  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
+  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.world?.story?.activeCrisis?.id || ""}:${character.world?.story?.activeCrisis?.status || ""}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
   if (key === islandRenderKey) return;
   islandRenderKey = key;
   byId("island-title").textContent = islandView.landmark || islandView.name;

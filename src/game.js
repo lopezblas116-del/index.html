@@ -12,6 +12,7 @@ import missionData from "./data/missions_data.json" with { type: "json" };
 import { PULSE_MS, STORAGE_KEYS } from "./config.js";
 import { readStorage, writeJSON } from "./storage_adapter.js";
 import { advanceClock, MINUTES_PER_PULSE } from "./time_engine.js";
+import { advanceIslandStory, beginIslandCrisis } from "./narrative_engine.js";
 import { advanceGM, awardBerries } from "./gm_engine.js";
 import {
   chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome,
@@ -517,7 +518,10 @@ export function performAction(character, action, { availableFruitIds } = {}) {
     resolvePortSuggestions(character, previousIsland);
     if (arrived) resolvePortContracts(character, previousIsland);
     if (arrived) updateCrewLoyalty(character, true);
-    if (arrived) resolvePortDilemma(character);
+    if (arrived) {
+      resolvePortDilemma(character);
+      beginIslandCrisis(character, getMapIslands(character).find((island) => island.name === character.location.island));
+    }
   }
   advanceAdvancedSystems(character, { action, previousIsland });
   if (character.stats.health <= 0) checkDeath(character, "ahogamiento por Akuma no Mi");
@@ -557,6 +561,7 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
   character.autonomy.tickCount += 1;
   const newDay = advanceClock(character.world, ERAS);
+  advanceIslandStory(character);
   if (newDay) writeDailyReflection(character);
   advanceGM(character);
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;

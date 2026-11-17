@@ -24,6 +24,7 @@ import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
+import { resolveIslandCrisis } from "./narrative_engine.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
@@ -339,6 +340,16 @@ listen(document, "onepiece:hud-territory-blockade", (event) => {
   if (result?.ok) persistRender(true);
   else if (character.berries !== berries) character.berries = berries;
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
+});
+listen(document, "onepiece:story-crisis-choice", (event) => {
+  if (!character || character.status === "dead" || character.location?.atSea) return;
+  const result = resolveIslandCrisis(character, event.detail?.choice);
+  if (!result.ok) {
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+    return;
+  }
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
 listen(document, "onepiece:hud-translate-rubbing", (event) => {
   if (!character) return;

@@ -1,3 +1,5 @@
+import { activeIslandCrisis } from "./narrative_engine.js";
+
 export function islandEncountersFor(island, character) {
   const present = island && character?.status !== "dead" && !character?.captured &&
     !character?.location?.atSea && character?.location?.island === island.name;
@@ -8,6 +10,20 @@ export function islandEncountersFor(island, character) {
   const faction = control?.faction || island.control;
   const day = Number(character.world?.day) || 0;
   const encounters = [];
+  const crisis = activeIslandCrisis(character, island.id);
+  if (crisis) {
+    encounters.push({
+      action: "story-crisis",
+      title: crisis.title,
+      description: crisis.opening,
+      warning: "La decisión quedará en la bitácora y cambiará los vínculos de esta isla.",
+      actions: [
+        { choice: "help", label: "Ayudar a la comunidad" },
+        { choice: "mediate", label: "Negociar una tregua" },
+        { choice: "ignore", label: "Seguir de largo" }
+      ]
+    });
+  }
   const lastTributeDay = Number(character.world?.lastTributeDay);
   const tributeAvailable = !Number.isFinite(lastTributeDay) || day - lastTributeDay >= 7;
   if (island.affiliated && tributeAvailable) {
