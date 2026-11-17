@@ -56,15 +56,14 @@ p { line-height: 1.35; }
 .header-status.paused { color: var(--gold); border-color: var(--gold-soft); }
 .header-status.dead { color: var(--crimson); border-color: rgba(239, 68, 68, .4); }
 .panel { min-width: 0; padding: clamp(15px, 2.4vw, 23px); color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
-.setup-panel { max-width: 900px; margin: 0 auto 24px; }
-.wizard-intro { margin-bottom: 18px; }
-.wizard-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 18px 0 24px; }
+.wizard-intro { margin-bottom: 14px; }
+.wizard-progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 14px 0 18px; }
 .progress-step { display: grid; justify-items: center; gap: 6px; padding: 7px 3px; border: 0; color: var(--muted); background: transparent; }
 .step-number { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #53627a; border-radius: 50%; color: var(--muted); background: #101b31; font-size: .65rem; }
 .progress-step.active .step-number { color: var(--navy); border-color: var(--gold); background: var(--gold); }
 .progress-step.active .step-label { color: var(--text); }
 .step-label { font-size: .85rem; text-align: center; }
-.wizard-step { display: none; min-height: 230px; margin-top: 10px; }
+.wizard-step { display: none; min-height: 0; margin-top: 8px; }
 .wizard-step.active { display: block; animation: appear .16s ease-out; }
 @keyframes appear { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .step-header { margin-bottom: 16px; }
@@ -243,16 +242,13 @@ body.wizard-active .masthead{display:none}
 #wizard-container{position:fixed;inset:0;z-index:80;display:grid;place-items:center;width:100vw;height:100vh;height:100dvh;margin:0;padding:16px;overflow-y:auto;background-color:rgba(11,19,41,.94);background-image:linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px),radial-gradient(ellipse at 50% 0,rgba(35,86,145,.24),transparent 58%);background-size:24px 24px,24px 24px,auto;overscroll-behavior:contain}
 #wizard-container[hidden]{display:none!important}
 #wizard-container>.wizard-card{width:min(480px,100%);max-width:480px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);margin:0;padding:clamp(16px,4vw,25px);overflow-y:auto;border:2px solid #f4b41a;border-radius:16px;background:#162238;box-shadow:0 10px 30px rgba(0,0,0,.8)}
-.wizard-intro{margin-bottom:14px}
 #wizard-title{color:#f4b41a;font-size:clamp(.65rem,2.4vw,.9rem);line-height:1.75}
-.wizard-progress{gap:5px;margin:14px 0 18px}
 .progress-step{min-width:0;padding:6px 3px;border:1px solid rgba(244,180,26,.38);border-radius:8px;background:#0b1329;transition:background .16s,border-color .16s,box-shadow .16s}
 .progress-step:hover,.progress-step.active{border-color:#f4b41a;background:#22334e;box-shadow:0 0 10px rgba(244,180,26,.2)}
 .progress-step.active .step-number{color:#0b1329;border-color:#f4b41a;background:#f4b41a}
 .progress-step.active .step-label{color:#fff}
 .step-number{width:30px;height:30px;border-color:#f4b41a66;color:#f4b41a}
 .step-label{font-size:.76rem}
-.wizard-step{min-height:0;margin-top:8px}
 .wizard-step[hidden]{display:none!important}
 .step-header{margin-bottom:12px}
 .step-header h3{color:#fff}
@@ -394,7 +390,7 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .one-hud-branch p{margin:0 0 8px}.one-hud-branch button{margin:4px}
 
 #game-container .main-column > #island-view:not([hidden]){display:grid!important}
-#island-view{position:absolute;inset:0;z-index:5;place-items:center;overflow:hidden;padding:100px 16px 76px;background:transparent;pointer-events:none}
+#island-view{position:absolute;inset:0;z-index:5;display:block;overflow-x:hidden;overflow-y:auto;padding:88px 16px calc(88px + env(safe-area-inset-bottom));background:transparent;pointer-events:auto}
 .island-view-content{position:relative;width:min(850px,100%,calc((100dvh - 270px) * 1.6));margin:auto;min-width:0}
 #island-view.approaching .island-view-content{visibility:hidden}
 .island-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px;color:#fff}
@@ -402,11 +398,7 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .island-heading h2{margin:3px 0;color:#f4b41a;font:700 clamp(12px,2vw,18px) 'Press Start 2P',monospace;line-height:1.4}
 .island-heading button,.island-hotspot{min-width:48px;min-height:48px;padding:7px 10px;border:2px solid #f4b41a;border-radius:8px;background:#162238;color:#fff;font:700 18px VT323,monospace;cursor:pointer;box-shadow:0 4px 12px #0008;pointer-events:auto}
 .island-heading button:hover,.island-hotspot:hover,.island-hotspot:focus-visible{background:#f4b41a;color:#0b1329}
-.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:visible;background:transparent}
-#island-hotspots{position:absolute;inset:0;z-index:1}
-.island-hotspot{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1}
-.island-message{position:absolute;top:100%;left:0;right:0;min-height:1.3em;margin:8px 0 0;padding:4px 8px;color:#fff;background:#162238;border-radius:6px;line-height:1.2}
-@media(max-width:600px){#island-view{padding:112px 10px 76px}.island-heading{align-items:start}.island-heading button{font-size:15px;max-width:145px}.island-heading p{font-size:15px}.island-hotspot{padding:4px 6px;font-size:15px}}
+.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:hidden;background:transparent}
 
 .one-hud-chat-message{display:grid;grid-template-columns:32px minmax(0,1fr);align-items:start;gap:8px;min-height:48px;padding:8px 70px 8px 9px;border-left:0;border-radius:12px;background:rgba(22,34,56,.9)}
 .one-hud-chat-avatar{width:32px;height:32px;border:1px dotted #f4b41a;border-radius:50%;image-rendering:pixelated}
@@ -449,8 +441,6 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .island-heading .nautical-icon{width:20px;height:20px;flex:0 0 20px}
 
 /* Illustrated sprites remain pixelated; the surrounding controls stay modern. */
-#wizard-container>.wizard-card{border:1px solid rgba(244,180,26,.5);background:#0f1c36;box-shadow:0 18px 50px #0007}
-#wizard-title{font-size:1.05rem;line-height:1.4}
 .wizard-actions{background:linear-gradient(180deg,transparent,#0f1c36 20%)}
 .wizard-portrait,.soul-portrait{display:grid;place-items:center;width:96px;height:96px;margin:12px auto;border:1px solid rgba(244,180,26,.6);border-radius:50%;background:#0b1329}
 .wizard-portrait canvas,.soul-portrait canvas{width:80px;height:80px;image-rendering:pixelated}
@@ -512,10 +502,6 @@ body.game-active #game-container:not([hidden]){z-index:1}
 .one-hud-reset-link:hover{border-color:#ef6258;background:#351d26}
 .one-hud-rescue-card{border-left:3px solid #ef6258}
 
-#game-container .main-column>#island-view:not([hidden]){display:grid!important}
-#island-view{display:block;overflow-x:hidden;overflow-y:auto;padding:88px 16px calc(88px + env(safe-area-inset-bottom));pointer-events:auto}
-.island-view-content{width:min(850px,100%);margin:0 auto}
-.island-scene{overflow:hidden}
 #island-hotspots{position:relative;inset:auto;z-index:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:8px;margin-top:8px}
 .island-hotspot{position:relative;inset:auto;display:flex;justify-content:flex-start;min-width:0;min-height:48px;padding:8px 10px;transform:none;white-space:normal;text-align:left;overflow-wrap:anywhere}
 .island-encounters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:9px;margin:10px 0;padding:12px;border:1px solid rgba(244,180,26,.3);border-radius:10px;background:rgba(11,19,41,.93)}

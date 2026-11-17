@@ -1,14 +1,14 @@
-import { newsLocation } from "./map.js";
-import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
-import { ensureAdvancedSystems } from "./systems.js";
-import { RACES } from "./races.js";
-import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "./island_renderer.js";
-import { canReadAncient } from "./archaeology_system.js";
-import { aggregateSmartFeed, maritimeHeadline } from "./event_dispatcher.js";
-import { animateCount } from "./vfx_engine.js";
-import { rollCreationRace } from "./character_creation.js";
-import { getLoreByKey } from "./world_lore.js";
-import { islandEncountersFor } from "./island_encounters.js";
+import { newsLocation } from "../map.js";
+import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "../world3d.js";
+import { ensureAdvancedSystems } from "../systems.js";
+import { RACES } from "../races.js";
+import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_renderer.js";
+import { canReadAncient } from "../archaeology_system.js";
+import { aggregateSmartFeed, maritimeHeadline } from "../event_dispatcher.js";
+import { animateCount } from "../vfx_engine.js";
+import { rollCreationRace } from "../character_creation.js";
+import { getLoreByKey } from "../world_lore.js";
+import { islandEncountersFor } from "../island_encounters.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -633,7 +633,6 @@ function configureWizardLayout(form) {
   const raceFields = ["race", "profession"].map(getField).filter(Boolean);
   const storyField = getField("story");
   const raceDescription = appearanceGrid?.querySelector("#race-description");
-  const originNote = [...(appearanceGrid?.querySelectorAll("p") || [])].find((item) => item !== raceDescription);
   const preview = appearanceGrid?.querySelector(".avatar-editor-preview");
 
   const visualGrid = document.createElement("div");

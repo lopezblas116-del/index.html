@@ -5,9 +5,9 @@ import {
 import {
   closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
   renderGame, renderIslandView, resetWizard, showSetup
-} from "./ui.js";
+} from "./ui/ui.js";
 import { focusMap, returnToGlobalMap } from "./world3d.js";
-import { initHud, openIslandPanel, renderHud, setHudVisible } from "./hud.js";
+import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
   draftTestament, ensureAdvancedSystems, performDockyardAction,

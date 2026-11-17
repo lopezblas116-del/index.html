@@ -25,7 +25,6 @@ jobs:
           node --check src/character_creation.js
           node --check src/game.js
           node --check src/ai_engine.js
-          node --check src/avatar.js
           node --check src/systems.js
           node --check src/geopolitics.js
           node --check src/network.js
@@ -33,8 +32,8 @@ jobs:
           node --check src/world_lore.js
           node --check src/island_encounters.js
           node --check src/politics.js
-          node --check src/hud.js
-          node --check src/ui.js
+          node --check src/ui/hud.js
+          node --check src/ui/ui.js
           node --check src/map.js
           node --check src/world3d.js
           node --check src/island_renderer.js
