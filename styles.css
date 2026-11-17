@@ -298,6 +298,62 @@ body.wizard-active .masthead{display:none}
 .psychology-choice:hover,.psychology-choice[aria-pressed="true"]{border-color:#f4b41a;box-shadow:0 0 10px rgba(244,180,26,.3)}
 .psychology-card,.news-card-detail{margin:10px 0;padding:12px;border:1px solid #f4b41a;border-radius:8px;background:#0b1329}
 .psychology-card h3{color:#f4b41a;font-size:.8rem}
+
+.map-lod-readout{margin:4px 0;color:#f4b41a;font:700 10px/1.5 monospace;letter-spacing:.08em}
+.one-hud-vitals{position:absolute;top:56px;left:50%;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(180px,42vw);transform:translateX(-50%);pointer-events:none}
+.one-hud-vitals progress{height:5px;border:1px solid rgba(244,180,26,.48);background:#07101f}
+.one-hud-vitals [data-vital="health"]::-webkit-progress-value{background:linear-gradient(90deg,#c74442,#ff7771)}
+.one-hud-vitals [data-vital="experience"]::-webkit-progress-value{background:linear-gradient(90deg,#2679b8,#58c7ff)}
+.one-hud-vitals [data-vital="health"]::-moz-progress-bar{background:linear-gradient(90deg,#c74442,#ff7771)}
+.one-hud-vitals [data-vital="experience"]::-moz-progress-bar{background:linear-gradient(90deg,#2679b8,#58c7ff)}
+#health-bar::-webkit-progress-value,#xp-bar::-webkit-progress-value{background-size:100% 100%,220% 100%;animation:bar-shimmer 3.2s linear infinite}
+#health-bar::-webkit-progress-value{background-image:linear-gradient(90deg,#c74442,#f4b41a),linear-gradient(110deg,transparent 30%,rgba(255,255,255,.7) 49%,transparent 68%)}
+#xp-bar::-webkit-progress-value{background-image:linear-gradient(90deg,#2679b8,#58c7ff),linear-gradient(110deg,transparent 30%,rgba(255,255,255,.7) 49%,transparent 68%)}
+#health-bar::-moz-progress-bar{background:linear-gradient(90deg,#c74442,#f4b41a);animation:bar-shimmer 3.2s linear infinite}
+#xp-bar::-moz-progress-bar{background:linear-gradient(90deg,#2679b8,#58c7ff);animation:bar-shimmer 3.2s linear infinite}
+@keyframes bar-shimmer{to{background-position:-220% 0}}
+.wanted-number-roll{animation:wanted-roll .45s ease-out}
+@keyframes wanted-roll{0%{filter:brightness(1);transform:translateY(0)}40%{filter:brightness(1.8);transform:translateY(-3px)}100%{filter:brightness(1);transform:translateY(0)}}
+.one-hud-codex-progress{margin:8px 0 16px;padding:12px;border:1px solid #f4b41a88;border-radius:9px;background:#0b1329}
+.one-hud-codex-progress h3,.one-hud-codex-category h3{color:#f4b41a}
+.one-hud-codex-progress p{margin:6px 0;color:#b8c5d6}
+.one-hud-codex-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.one-hud-codex-category{min-width:0;padding:11px;border:1px solid #f4b41a55;border-radius:8px;background:#0b1329}
+.one-hud-codex-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:9px}
+.one-hud-codex-item{display:grid;grid-template-columns:20px minmax(0,1fr) 16px;align-items:center;gap:4px;min-height:42px;padding:5px;border:1px solid #ffffff12;border-radius:5px;background:#ffffff09;overflow-wrap:anywhere}
+.one-hud-codex-item.discovered{color:#f4d58c}
+.one-hud-codex-item.locked{color:#778499}
+.one-hud-codex-item.locked .one-hud-codex-silhouette{color:#252e3d;text-shadow:0 0 3px #778499;filter:brightness(.5)}
+.one-hud-codex-silhouette{font-size:17px;text-align:center}
+.one-hud-codex-lock{font-size:13px;text-align:center}
+#vfx-layer{position:fixed;inset:0;z-index:3000;pointer-events:none}
+.vfx-popup{position:absolute;top:40%;left:50%;padding:8px 14px;color:#fff;font:800 clamp(18px,4vw,27px)/1 monospace;text-shadow:0 2px 6px #000;white-space:nowrap;animation:vfx-rise 1.8s ease-out both}
+.vfx-popup-berries{color:#ffd447;text-shadow:0 0 12px #f4b41a,0 2px 5px #000}
+.vfx-popup-experience{top:46%;color:#70d6ff;text-shadow:0 0 12px #38bdf8,0 2px 5px #000}
+.vfx-popup-critical,.vfx-popup-damage{color:#ff534b;text-shadow:0 0 13px #f00,0 2px 5px #000}
+.vfx-popup-victory{color:#fff09d;text-shadow:0 0 14px #f4b41a,0 2px 5px #000}
+@keyframes vfx-rise{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-48px) scale(1.08)}}
+.vfx-loot-backdrop{position:fixed;inset:0;display:grid;place-items:center;padding:18px;background:rgba(3,8,20,.82);pointer-events:auto;animation:loot-fade .2s ease-out}
+.vfx-loot-dialog{position:relative;display:grid;justify-items:center;gap:10px;width:min(380px,100%);padding:30px 22px 22px;overflow:hidden;text-align:center;border:2px solid var(--loot-color,#9ba5b4);border-radius:16px;background:linear-gradient(160deg,#1d2c44,#091426);box-shadow:0 0 34px color-mix(in srgb,var(--loot-color,#9ba5b4) 45%,transparent),0 20px 50px #000b}
+.vfx-loot-dialog h2{color:#fff;font-size:1.2rem}
+.vfx-loot-dialog p{margin:0;color:#c5cfdd}
+.vfx-loot-rarity{color:var(--loot-color,#9ba5b4)!important;font:700 12px monospace;letter-spacing:.18em;text-transform:uppercase}
+.vfx-chest-light{position:absolute;top:-75px;width:230px;height:180px;border-radius:50%;background:var(--loot-color,#9ba5b4);filter:blur(70px);opacity:.28;animation:loot-glow 1.5s ease-in-out infinite alternate}
+.vfx-chest{position:relative;display:grid;place-items:center;width:104px;height:80px;margin:25px 0 5px;color:#f5ce70;font:52px/1 monospace;text-shadow:0 3px #643c1b,0 0 20px var(--loot-color,#9ba5b4);animation:chest-reveal .75s cubic-bezier(.2,.8,.2,1) both}
+.vfx-chest::before{position:absolute;top:13px;width:82px;height:18px;border:4px solid #54361f;border-radius:25px 25px 3px 3px;background:#b6792c;content:""}
+.vfx-chest::after{position:absolute;top:29px;width:86px;height:37px;border:4px solid #54361f;border-radius:5px;background:linear-gradient(90deg,#8c5424,#d89a38 45%,#9a5c24);content:""}
+.vfx-chest{z-index:1}
+.vfx-loot-close{position:relative;z-index:1;min-height:44px;padding:9px 22px;border:1px solid var(--loot-color,#9ba5b4);border-radius:8px;color:#101827;background:var(--loot-color,#c7ced7);font-weight:800;cursor:pointer}
+.rarity-common{--loot-color:#b5beca}.rarity-rare{--loot-color:#42a8ff}.rarity-epic{--loot-color:#c277ff}.rarity-legendary{--loot-color:#ffd34e}
+.rarity-legendary .vfx-loot-dialog{box-shadow:0 0 45px #f4b41a99,0 20px 50px #000b}
+@keyframes chest-reveal{0%{opacity:0;transform:translateY(16px) scale(.55) rotate(-8deg)}70%{transform:translateY(-5px) scale(1.08) rotate(3deg)}100%{opacity:1;transform:none}}
+@keyframes loot-glow{to{opacity:.52;transform:scale(1.25)}}
+@keyframes loot-fade{from{opacity:0}to{opacity:1}}
+body.reduced-motion #health-bar,body.reduced-motion #xp-bar{animation:none}
+body.reduced-motion #one-hud .one-hud-vitals progress{animation:none}
+body.reduced-motion .vfx-popup,body.reduced-motion .vfx-loot-backdrop,body.reduced-motion .vfx-chest-light,body.reduced-motion .vfx-chest{animation:none}
+@media(max-width:520px){.one-hud-vitals{top:50px;width:min(150px,40vw)}.one-hud-codex-grid{grid-template-columns:1fr}.vfx-loot-dialog{padding:22px 16px}}
+@media(prefers-reduced-motion:reduce){#health-bar,#xp-bar,.wanted-number-roll,.vfx-popup,.vfx-loot-backdrop,.vfx-chest-light,.vfx-chest{animation:none!important;scroll-behavior:auto!important}}
 .psychology-card label{display:grid;gap:6px;color:#fff}
 .psychology-card select{background:#162238;border-color:#f4b41a;color:#fff}
 .news-card{margin:8px 0;padding:10px;border-left:3px solid #38bdf8;background:#0b1329}

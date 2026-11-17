@@ -2,9 +2,10 @@ import { newsLocation } from "./map.js";
 import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "./world3d.js";
 import { ensureAdvancedSystems } from "./systems.js";
 import { RACES } from "./races.js";
-import { drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { avatarEmotion, drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 import { canReadAncient } from "./archaeology_system.js";
 import { aggregateSmartFeed, maritimeHeadline } from "./event_dispatcher.js";
+import { animateCount } from "./vfx_engine.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -185,7 +186,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
     const panel = document.createElement("section");
     panel.className = "one-hud-tab-panel";
     panel.hidden = index !== 0;
-    if (section.key === "bounty" && Number(character.bounty) > 0) {
+    if (section.key === "bounty") {
       const poster = document.createElement("article");
       poster.className = "one-hud-wanted-poster";
       const portrait = document.createElement("canvas");
@@ -194,14 +195,16 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       portrait.className = "one-hud-wanted-portrait";
       portrait.setAttribute("aria-label", `Retrato pixelado de ${character.name}`);
       const portraitContext = portrait.getContext("2d");
-      if (portraitContext) drawPixelAvatar(portraitContext, character.appearance);
+      if (portraitContext) drawPixelAvatar(portraitContext, character.appearance, { size: 64, equipment: character.equipped, emotion: avatarEmotion(character) });
       const details = document.createElement("div");
       const stamp = document.createElement("strong");
       stamp.textContent = "SE BUSCA";
       const wantedName = document.createElement("h3");
       wantedName.textContent = character.name || "Aventurero";
       const reward = document.createElement("p");
-      reward.textContent = `฿ ${number(character.bounty)} BERRIES`;
+      reward.className = "one-hud-wanted-reward";
+      reward.dataset.countTarget = String(Number(character.bounty) || 0);
+      reward.textContent = Number(character.bounty) > 0 ? `฿ ${number(character.bounty)} BERRIES` : "SIN RECOMPENSA";
       details.append(stamp, wantedName, reward);
       poster.append(portrait, details);
       panel.append(poster);
@@ -226,12 +229,12 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       icon.textContent = press.icon;
       if (npcAppearance || /se busca|bounty/i.test(headline)) {
         const portrait = document.createElement("canvas");
-        portrait.width = 32;
-        portrait.height = 32;
+        portrait.width = 64;
+        portrait.height = 64;
         portrait.className = "news-card-portrait";
         portrait.setAttribute("aria-hidden", "true");
         const portraitContext = portrait.getContext("2d");
-        if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}));
+        if (portraitContext) drawPixelAvatar(portraitContext, npcAppearance || (isPlayer ? character.appearance : {}), { size: 64, equipment: isPlayer ? character.equipped : {}, emotion: isPlayer ? avatarEmotion(character) : "neutral" });
         summary.append(icon, portrait, document.createTextNode(press.headline));
       } else summary.append(icon, document.createTextNode(press.headline));
       const detail = document.createElement("div");
@@ -421,6 +424,8 @@ export function renderGame(character) {
   if (byId("haki-display")) byId("haki-display").textContent = haki.length ? haki.join(", ") : "Sin despertar";
   const healthBar = byId("health-bar");
   if (healthBar) { healthBar.max = character.stats?.maxHealth ?? 100; healthBar.value = character.stats?.health ?? 0; }
+  const experienceBar = byId("xp-bar");
+  if (experienceBar) { experienceBar.max = Math.max(100, (character.level ?? 1) * 100); experienceBar.value = character.experience ?? 0; }
 
   const minute = Number(world.minuteOfDay) || 0;
   const clock = byId("game-clock");
@@ -479,7 +484,11 @@ export function renderGame(character) {
   if (byId("wanted-poster")) byId("wanted-poster").classList.toggle("not-wanted", !wanted);
   if (byId("wanted-name")) byId("wanted-name").textContent = character.name ?? "Aventurero";
   if (byId("wanted-handle")) byId("wanted-handle").textContent = character.username ?? "Pirata desconocido";
-  if (byId("wanted-bounty")) byId("wanted-bounty").textContent = wanted ? `฿ ${number(character.bounty)} BERRIES` : "SIN RECOMPENSA";
+  if (byId("wanted-bounty")) {
+    const bounty = byId("wanted-bounty");
+    if (wanted) animateCount(bounty, character.bounty, (value) => `฿ ${number(value)} BERRIES`);
+    else { bounty.dataset.countTarget = "0"; bounty.textContent = "SIN RECOMPENSA"; }
+  }
   if (byId("wanted-note")) byId("wanted-note").textContent = wanted ? `Vivo o muerto · ${character.location?.island ?? "Mar abierto"}` : character.faction === "Marine" ? "Marine en servicio · recompensa de captura" : "Las hazañas notorias generan un cartel de búsqueda.";
 
   const legacyPanel = byId("legacy-panel");
@@ -527,8 +536,8 @@ function updateWizardSummary() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#0b1329";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const scale = canvas.width / 128 * 2.3;
-    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 16 * scale, y: canvas.height * .06, scale, fullBody: true });
+    const scale = canvas.width / 128 * 1.15;
+    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 32 * scale, y: canvas.height * .06, scale, fullBody: true, size: 64 });
   }
 }
 function showWizardStep(index) {

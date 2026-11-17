@@ -4,7 +4,7 @@ import { createCharacter } from "../src/game.js";
 import { renderMap, focusMap, getCameraState, zoomMap, GLOBAL_MAP, ISLAND_VIEW } from "../src/world3d.js";
 import { getMapIslands } from "../src/map.js";
 
-test("the globe stops drawing at port and while a modal is open", () => {
+test("the globe runs ambient effects at port and pauses behind a modal", () => {
   const previous = {
     document: globalThis.document,
     window: globalThis.window,
@@ -46,7 +46,7 @@ test("the globe stops drawing at port and while a modal is open", () => {
     character.travel = { climate: "normal" };
     character.location.atSea = false;
     renderMap(character);
-    assert.equal(frames.size, 0, "a docked avatar should not drive an animation loop");
+    assert.equal(frames.size, 1, "ambient planetary effects keep the globe alive while docked");
 
     character.location.atSea = true;
     renderMap(character);
@@ -104,7 +104,7 @@ test("the globe stops drawing at port and while a modal is open", () => {
     runFrame(reverse + 400);
     assert.ok(sceneScales > beforeReverse, "zooming out blends the city back onto the globe");
     runFrame(reverse + 1600);
-    assert.equal(frames.size, 0, "the docked globe becomes idle after zooming out");
+    assert.equal(frames.size, 1, "the docked globe keeps its low-cost ambient animation after zooming out");
   } finally {
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete globalThis[key];

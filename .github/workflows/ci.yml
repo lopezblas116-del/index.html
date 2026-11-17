@@ -19,5 +19,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Validate JavaScript module syntax
+        run: |
+          node --check src/main.js
+          node --check src/hud.js
+          node --check src/ui.js
+          node --check src/map.js
+          node --check src/world3d.js
+          node --check src/island_renderer.js
+          node --check src/codex_engine.js
+          node --check src/vfx_engine.js
       - name: Run test suite
         run: node --test tests/*.test.js

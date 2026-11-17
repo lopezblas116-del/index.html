@@ -29,13 +29,14 @@ const NPC_PORTRAITS = [
   { pattern: /\barlong\b(?!\s+park\b)/i, appearance: { portrait: "arlong", hair: "Negro", skin: "Azul" } },
   { pattern: /\bsmoker\b/i, appearance: { portrait: "smoker", hair: "Gris" } }
 ];
+const victoryMoments = new WeakMap();
 
 export function npcAppearanceFor(text) {
   return NPC_PORTRAITS.find((entry) => entry.pattern.test(String(text ?? "")))?.appearance ?? null;
 }
 
 function avatarLayers(appearance, options) {
-  const { x, y, scale, fullBody, action, frame, blink, equipment } = options;
+  const { x, y, scale, fullBody, action, frame, blink, equipment, emotion } = options;
   const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Azul: "#639fa8" })[appearance.skin] || "#e4b991";
   const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8" })[appearance.hair] || "#1c1b22";
   const coats = { makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" };
@@ -47,6 +48,12 @@ function avatarLayers(appearance, options) {
   const eyes = ({ Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf" })[appearance.eyes] || "#0b1329";
   const pixel = (px, py, w, h, color) => box(options.ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
 
+  const victoryAura = () => {
+    if (emotion !== "victory") return;
+    for (const [px, py] of [[6, 9], [7, 6], [25, 8], [26, 13], [7, 19], [25, 22]]) {
+      pixel(px, py, 2, 2, "#f4b41a");
+    }
+  };
   const body = () => {
     const breath = action === "idle" && frame % 4 === 1 ? -1 : 0;
     pixel(11, 16 + breath, 10, 7, coat);
@@ -68,12 +75,17 @@ function avatarLayers(appearance, options) {
   };
   const face = () => {
     pixel(11, 7, 10, 10, skin);
-    if (blink) pixel(12, 12, 8, 1, "#30251f");
+    if (emotion === "exhausted") {
+      pixel(12, 12, 3, 1, "#30251f");
+      pixel(18, 12, 3, 1, "#30251f");
+      pixel(15, 15, 3, 2, "#66392f");
+    } else if (blink) pixel(12, 12, 8, 1, "#30251f");
     else {
       pixel(12, 11, 2, 2, eyes);
       pixel(18, 11, 2, 2, eyes);
     }
-    pixel(15, 15, 3, 1, "#a14a36");
+    if (emotion !== "exhausted") pixel(15, 15, 3, emotion === "victory" ? 2 : 1, emotion === "victory" ? "#8c3328" : "#a14a36");
+    if (emotion === "exhausted") pixel(22, 8, 2, 3, "#64c9e8");
   };
   const hairLayer = () => {
     const wind = action === "idle" && frame % 4 === 2 ? 1 : 0;
@@ -109,27 +121,52 @@ function avatarLayers(appearance, options) {
       pixel(24, 14, 6, 2, "#b58b3a");
       pixel(26, 25, 2, 5, "#694732");
     }
+    if (emotion === "weather") {
+      pixel(7, 2, 5, 1, "#b8e3f0");
+      pixel(4, 6, 4, 1, "#b8e3f0");
+      pixel(21, 4, 5, 1, "#b8e3f0");
+      pixel(9, 15, 3, 4, skin);
+      pixel(8, 13, 4, 2, coat);
+    }
     if (action === "tavern") { pixel(24, 19, 5, 6, "#bd8641"); pixel(25, 17, 3, 2, "#f3d37a"); }
     if (action === "resting" && frame % 4 === 0) { pixel(23, 3, 3, 2, "#e8d9ad"); pixel(27, 1, 3, 2, "#e8d9ad"); }
   };
-  return [body, face, hairLayer, outfit, accessories];
+  return [victoryAura, body, face, hairLayer, outfit, accessories];
+}
+
+export function avatarEmotion(character) {
+  if (!character) return "neutral";
+  if (character.avatarActivity === "victory" || (victoryMoments.get(character) || 0) > Date.now()) return "victory";
+  const health = Number(character.stats?.health);
+  const maxHealth = Math.max(1, Number(character.stats?.maxHealth) || 100);
+  if (Number.isFinite(health) && health / maxHealth <= 0.2) return "exhausted";
+  if (character.travel?.weather === "storm" || character.travel?.climate === "rogue-wave") return "weather";
+  return "neutral";
+}
+
+export function celebrateAvatar(character, duration = 1800) {
+  if (character && typeof character === "object") victoryMoments.set(character, Date.now() + duration);
 }
 
 export function avatarAction(character) {
   if (!character || character.status === "dead") return "resting";
+  if (avatarEmotion(character) === "victory") return "victory";
   if (character.location?.atSea) return "navigating";
+  if (character.avatarActivity === "victory") return "victory";
   const action = character.avatarActivity;
-  return ["tavern", "combat", "resting", "walking", "inspecting"].includes(action) ? action : "idle";
+  return ["tavern", "combat", "resting", "walking", "inspecting", "victory"].includes(action) ? action : "idle";
 }
 
 export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
   const equipment = options.equipment || appearance.equipped || {};
   const time = options.time ?? 0;
+  const pixelScale = options.size === 64 ? 2 : 1;
   const state = {
-    ctx, x: options.x ?? 0, y: options.y ?? 0, scale: options.scale ?? 1,
+    ctx, x: options.x ?? 0, y: options.y ?? 0, scale: (options.scale ?? 1) * pixelScale,
     fullBody: Boolean(options.fullBody), action: options.action || "idle",
     frame: Math.floor(time / 300) % 8,
     blink: time > 0 && time % 4200 < 150,
+    emotion: options.emotion || "neutral",
     equipment
   };
   const bob = state.action === "resting" ? 0 : state.action === "idle" ? (state.frame % 4 === 1 ? -1 : 0) : state.frame % 2;
@@ -258,7 +295,7 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
     const x = position.x - 12;
     const y = position.y - 16;
     box(ctx, x + 7, y + 27, 16, 3, "rgba(0,0,0,.25)");
-    drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .8, fullBody: true, time: now });
+    drawPixelAvatar(ctx, npcAppearanceFor(npc.name) || npc, { x, y, scale: .4, size: 64, fullBody: true, time: now });
   });
   (island.pois || []).forEach((poi) => {
     const canRead = character?.race === "threeeye" ||
@@ -314,10 +351,10 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   if (character) {
     const action = avatarAction(character);
     const position = avatarScenePosition(island.id, character.id, action, character.location?.scenePosition);
-    box(ctx, position.x - 7, position.y + 35, 31, 6, "rgba(0,0,0,.25)");
+    box(ctx, position.x - 21, position.y + 4, 42, 7, "rgba(0,0,0,.25)");
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
-      x: position.x - 16, y: position.y - 32, scale: 1, fullBody: true, action, time: now,
-      equipment: character.equipped
+      x: position.x - 32, y: position.y - 62, scale: 1, size: 64, fullBody: true, action, time: now,
+      equipment: character.equipped, emotion: avatarEmotion(character)
     });
   }
 }

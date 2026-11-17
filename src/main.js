@@ -24,8 +24,12 @@ import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, t
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
+import { syncCodex } from "./codex_engine.js";
+import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
+import { celebrateAvatar } from "./island_renderer.js";
 
 let character = loadGame();
+initVfx();
 const network = createNetwork();
 let sharedState = network.snapshot();
 if (character?.world) Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
@@ -38,10 +42,12 @@ function paint() {
   if (!character) return;
   ensureBlockOneData(character);
   ensureAdvancedSystems(character);
+  if (syncCodex(character)) saveGame(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
   renderIslandView(character);
   renderHud(character);
+  trackVisualChanges(character);
   clearTimeout(branchTimer);
   const pending = character.autonomy?.pendingBranch;
   if (pending && !character.autonomy.paused) {
@@ -118,6 +124,10 @@ function publishChanges(before, c, whispered = false) {
   }
   const newLogs = [];
   for (const entry of c.log || []) { if (entry === before.firstLog) break; newLogs.push(entry); }
+  if (newLogs.some((entry) => /^⚔ Victoria/.test(entry.message))) {
+    celebrateAvatar(c);
+    emitVfx("victory");
+  }
   if (newLogs.some((entry) => /^\[COMBATE\] Encuentro|^⚔ Victoria|^Derrota contra/.test(entry.message))) {
     network.publish("battle", { island }, c);
   }

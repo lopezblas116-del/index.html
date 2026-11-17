@@ -1,7 +1,7 @@
-import { getMapIslands } from "./map.js";
+import { getMapIslands, PLANETARY_GEOGRAPHY } from "./map.js";
 import { routeFor } from "./game.js";
 import { islandDetails } from "./islands_data.js";
-import { avatarAction, drawIslandSceneContext, drawPixelAvatar, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
+import { avatarAction, avatarEmotion, drawIslandSceneContext, drawPixelAvatar, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "./island_renderer.js";
 
 const WIDTH = 1200;
 const HEIGHT = 760;
@@ -11,7 +11,7 @@ const radians = (point) => ({
   lon: (point.x / WIDTH - 0.5) * Math.PI * 2,
   lat: (0.5 - point.y / HEIGHT) * Math.PI
 });
-let canvas, ctx, character, width = 0, height = 0, radius = 0;
+let canvas, ctx, character, lodLabel, width = 0, height = 0, radius = 0;
 let longitude = -2.05, latitude = 0.25, islands = [], animation;
 let boatPosition, zoom = 1, targetZoom = 1, dashOffset = 0, pointers = new Map(), pinchStart, frame = null;
 let zoomFocus = null, zoomAnchor = null;
@@ -21,8 +21,13 @@ export const GLOBAL_MAP = "GLOBAL_MAP";
 export const ISLAND_VIEW = "ISLAND_VIEW";
 let cameraState = GLOBAL_MAP, transition = null, savedCamera = null, localIsland = null, localRenderKey = "";
 let lastIslandFrame = 0;
+let lastAmbientFrame = 0;
+let regionalChartView = null;
 let modalOpen = false;
-const mapCovered = () => modalOpen || Boolean(document.querySelector?.("dialog[open]"));
+const mapCovered = () => modalOpen
+  || Boolean(document.querySelector?.("dialog[open]"))
+  || Boolean(document.querySelector?.(".one-hud-backdrop.open"))
+  || Boolean(document.querySelector?.(".vfx-loot-backdrop"));
 export function getCameraState() { return cameraState; }
 export function showDockedIsland(c = character) {
   if (!c || c.location?.atSea || transition) return false;
@@ -228,6 +233,158 @@ function drawNightSky(now) {
   }
   ctx.restore();
 }
+function ambientMotionEnabled() {
+  return !document.body?.classList?.contains("reduced-motion")
+    && !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
+function drawAmbientEffects(now) {
+  const drift = now / 90000;
+  for (let i = 0; i < 30; i++) {
+    const lon = ((i * 2.399 + drift) % (Math.PI * 2)) - Math.PI;
+    const lat = Math.sin(i * 1.71) * 0.72;
+    const p = project(lon, lat);
+    if (!p.visible) continue;
+    const scale = clamp(radius * zoom / 180, 0.55, 1.3);
+    ctx.save();
+    ctx.globalAlpha = 0.09 + (i % 3) * 0.025;
+    ctx.fillStyle = "#e4f0e2";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 13 * scale, 4 * scale, Math.sin(lat), 0, Math.PI * 2);
+    ctx.ellipse(p.x + 8 * scale, p.y - 2 * scale, 9 * scale, 3 * scale, Math.sin(lat), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  for (let i = 0; i < 3; i++) {
+    const lon = ((now / 105000 + i * 2.1) % (Math.PI * 2)) - Math.PI;
+    const lat = PLANETARY_GEOGRAPHY.calmBelts[i % 2];
+    const p = project(lon, lat);
+    if (!p.visible) continue;
+    const direction = i % 2 ? -1 : 1;
+    const scale = clamp(radius * zoom / 180, 0.65, 1.4);
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = "#071b25";
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 17 * scale, 5 * scale, 0.18 * direction, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#071b25";
+    ctx.lineWidth = 3 * scale;
+    ctx.beginPath();
+    ctx.moveTo(p.x - 19 * scale, p.y);
+    ctx.quadraticCurveTo(p.x - 9 * scale, p.y - 7 * scale * direction, p.x + 4 * scale, p.y);
+    ctx.quadraticCurveTo(p.x + 15 * scale, p.y + 7 * scale * direction, p.x + 22 * scale, p.y - 1 * scale);
+    ctx.stroke();
+    ctx.restore();
+  }
+  const newWorld = islands.find((island) => island.id === "new-world") || { x: 1020, y: 370 };
+  const storm = projectPoint(newWorld);
+  const flash = Math.sin(now / 1700 + 1.2) ** 8;
+  if (storm.visible && flash > 0.12) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.9, flash);
+    ctx.strokeStyle = "#d8f6ff";
+    ctx.lineWidth = Math.max(1.2, radius * zoom * 0.006);
+    ctx.shadowColor = "#81ddff";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(storm.x, storm.y - 30);
+    ctx.lineTo(storm.x - 8, storm.y - 14);
+    ctx.lineTo(storm.x + 1, storm.y - 8);
+    ctx.lineTo(storm.x - 7, storm.y + 5);
+    ctx.lineTo(storm.x + 12, storm.y + 12);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+function drawRegionalChart(now) {
+  regionalChartView = null;
+  if (zoom < 1.28 || zoom >= 2.8 || cameraState !== GLOBAL_MAP) return;
+  const region = islands.find((island) => island.name === character?.location?.island)?.sea
+    || character?.originSea || "Mar abierto";
+  const visibleIslands = islands.filter((island) => island.sea === region);
+  const minX = Math.min(...visibleIslands.map((island) => island.x), boatPosition?.x ?? WIDTH / 2);
+  const maxX = Math.max(...visibleIslands.map((island) => island.x), boatPosition?.x ?? WIDTH / 2);
+  const minY = Math.min(...visibleIslands.map((island) => island.y), boatPosition?.y ?? HEIGHT / 2);
+  const maxY = Math.max(...visibleIslands.map((island) => island.y), boatPosition?.y ?? HEIGHT / 2);
+  const paddingX = Math.max(70, (maxX - minX) * 0.14);
+  const paddingY = Math.max(70, (maxY - minY) * 0.14);
+  const bounds = {
+    minX: clamp(minX - paddingX, 0, WIDTH),
+    maxX: clamp(maxX + paddingX, 0, WIDTH),
+    minY: clamp(minY - paddingY, 0, HEIGHT),
+    maxY: clamp(maxY + paddingY, 0, HEIGHT)
+  };
+  const left = 16, top = 38, chartWidth = Math.max(1, width - 32), chartHeight = Math.max(1, height - 122);
+  const mapLeft = left + 20, mapTop = top + 44, mapWidth = chartWidth - 40, mapHeight = chartHeight - 64;
+  const alpha = clamp((zoom - 1.24) / (ISLAND_ZOOM - 1.24), 0.12, 0.88);
+  const pointFor = (point) => ({
+    x: mapLeft + (point.x - bounds.minX) / Math.max(1, bounds.maxX - bounds.minX) * mapWidth,
+    y: mapTop + (point.y - bounds.minY) / Math.max(1, bounds.maxY - bounds.minY) * mapHeight
+  });
+  regionalChartView = { left, top, width: chartWidth, height: chartHeight, mapLeft, mapTop, mapWidth, mapHeight, bounds, region };
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(5,14,29,.9)";
+  ctx.fillRect(left, top, chartWidth, chartHeight);
+  ctx.strokeStyle = "rgba(244,180,26,.76)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(left, top, chartWidth, chartHeight);
+  ctx.font = "bold 11px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#f4b41a";
+  ctx.fillText(`CARTA NÁUTICA REGIONAL · ${region.toLocaleUpperCase("es")} · LOG POSE`, width / 2, top + 8, chartWidth - 24);
+  ctx.strokeStyle = "rgba(122,169,174,.22)";
+  for (let i = 1; i < 10; i++) {
+    const gx = mapLeft + mapWidth * i / 10, gy = mapTop + mapHeight * i / 8;
+    ctx.beginPath(); ctx.moveTo(gx, mapTop); ctx.lineTo(gx, mapTop + mapHeight); ctx.stroke();
+    if (i < 8) { ctx.beginPath(); ctx.moveTo(mapLeft, gy); ctx.lineTo(mapLeft + mapWidth, gy); ctx.stroke(); }
+  }
+  const points = visibleIslands.map((island) => ({ island, ...pointFor(island) }));
+  const from = boatPosition && pointFor(boatPosition);
+  const destination = routeDestination();
+  const to = destination && pointFor(destination);
+  if (from && to) {
+    ctx.setLineDash([5, 6]);
+    ctx.strokeStyle = "rgba(244,180,26,.85)";
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  for (const point of points) {
+    ctx.fillStyle = point.island.name === character?.location?.island ? "#f4b41a" : "#a9cb78";
+    ctx.fillRect(point.x - 4, point.y - 4, 8, 8);
+    ctx.fillStyle = "#edf2e8";
+    ctx.font = "9px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(point.island.name, point.x + 7, point.y - 5, Math.min(120, chartWidth * 0.33));
+  }
+  if (from) {
+    ctx.fillStyle = "#f4b41a";
+    ctx.beginPath(); ctx.arc(from.x, from.y, 5, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let i = 0; i < 3; i++) {
+    if (points.length < 2) break;
+    const first = points[(i * 2) % points.length];
+    const second = points[(i * 2 + 1) % points.length];
+    const phase = (now / 18000 + i * 0.31) % 1;
+    ctx.fillStyle = i % 2 ? "#b8d7e3" : "#c58355";
+    ctx.fillRect(first.x + (second.x - first.x) * phase - 2, first.y + (second.y - first.y) * phase - 2, 5, 4);
+  }
+  const compassX = left + chartWidth - 28, compassY = top + 31;
+  ctx.strokeStyle = "#f4b41a";
+  ctx.beginPath(); ctx.arc(compassX, compassY, 12, 0, Math.PI * 2); ctx.stroke();
+  ctx.save();
+  ctx.translate(compassX, compassY);
+  ctx.rotate(now / 1300);
+  ctx.fillStyle = "#f4b41a";
+  ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(3, 1); ctx.lineTo(0, 0); ctx.lineTo(-3, 1); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "rgba(233,239,222,.78)";
+  ctx.font = "9px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("RUTA DEL AVATAR · FLOTAS EN TRÁNSITO", mapLeft, top + chartHeight - 14);
+  ctx.restore();
+}
 function scheduleFrame() {
   if (!mapCovered() && !document.hidden && frame === null) frame = requestAnimationFrame(animate);
 }
@@ -285,8 +442,8 @@ function drawBoat(point, destination) {
   pixel(1, -9, 4, 2, "#f4b41a");
   if (character?.location?.atSea && character.status !== "dead") {
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
-      x: -4, y: -13, scale: .28, action: avatarAction(character), time: performance.now(),
-      equipment: character.equipped
+      x: -5, y: -16, scale: .14, size: 64, action: avatarAction(character), time: performance.now(),
+      equipment: character.equipped, emotion: avatarEmotion(character)
     });
   }
   ctx.restore();
@@ -380,18 +537,15 @@ function render(now = performance.now()) {
     ctx.fillStyle = i % 5 === 0 ? "rgba(239,223,181,.28)" : "rgba(223,208,166,.14)";
     ctx.fillRect(point.x, point.y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
   }
-  parallel(0.24, "rgba(209,193,151,.22)", radius * 0.13);
-  parallel(-0.24, "rgba(209,193,151,.22)", radius * 0.13);
-  parallel(0, "rgba(115,191,172,.55)", radius * 0.16);
-  drawRedLineMeridian(0);
-  drawRedLineMeridian(Math.PI);
+  for (const latitude of PLANETARY_GEOGRAPHY.calmBelts) parallel(latitude, "rgba(209,193,151,.22)", radius * 0.13);
+  parallel(PLANETARY_GEOGRAPHY.grandLineLatitude, "rgba(115,191,172,.55)", radius * 0.16);
+  drawRedLineMeridian(PLANETARY_GEOGRAPHY.redLineMeridians[0]);
+  drawRedLineMeridian(PLANETARY_GEOGRAPHY.redLineMeridians[1]);
   for (let lat = -Math.PI / 3; lat <= Math.PI / 3; lat += Math.PI / 6) parallel(lat, "rgba(231,216,178,.2)", 1);
   for (let lon = -Math.PI; lon < Math.PI; lon += Math.PI / 6) meridian(lon, "rgba(231,216,178,.2)", 1);
-  drawSeaLabel({ x: 120, y: 190 }, "MAR DEL ESTE");
-  drawSeaLabel({ x: 120, y: 610 }, "MAR DEL OESTE");
-  drawSeaLabel({ x: 950, y: 100 }, "MAR DEL NORTE");
-  drawSeaLabel({ x: 950, y: 650 }, "MAR DEL SUR");
-  drawSeaLabel({ x: 600, y: 380 }, "PARAÍSO");
+  drawAmbientEffects(now);
+  for (const sea of PLANETARY_GEOGRAPHY.blues) drawSeaLabel(sea, sea.name);
+  drawSeaLabel(PLANETARY_GEOGRAPHY.reverseMountain, "REVERSE MOUNTAIN");
   for (const island of islands) {
     const point = projectPoint(island);
     drawPoint(island, island.name, "■", "#a9cb78");
@@ -429,11 +583,18 @@ function render(now = performance.now()) {
   ctx.fillStyle = "#f4b41a";
   ctx.font = "bold 12px monospace";
   ctx.textAlign = "center";
-  if (zoom < 1.38) {
-    ctx.fillText("GRAND LINE · RED LINE · FRANJA DE CALMA", width / 2, Math.max(20, height / 2 - size - 12));
+  if (zoom < 1.28) {
+    ctx.fillText("GLOBO PLANETARIO · RED LINE · GRAND LINE · 4 BLUES", width / 2, Math.max(20, height / 2 - size - 12));
   } else {
     ctx.font = "bold 11px monospace";
-    ctx.fillText(`ZOOM ${zoom.toFixed(1)}× · ${character?.location?.island || "MAR ABIERTO"}`, width / 2, 22);
+    ctx.fillText(`CÁMARA MESO · LOG POSE · ${character?.location?.island || "MAR ABIERTO"}`, width / 2, 22);
+  }
+  drawRegionalChart(now);
+  if (lodLabel) {
+    const text = zoom < 1.28
+      ? "NIVEL MACRO · GLOBO PLANETARIO"
+      : `NIVEL MESO · CARTA REGIONAL · ${character?.location?.island || "MAR ABIERTO"}`;
+    if (lodLabel.textContent !== text) lodLabel.textContent = text;
   }
 }
 function atIsland(island) {
@@ -462,6 +623,7 @@ function islandFrame(island, progress = 1, now = 0, sceneRect = null) {
 function sceneKey(island) {
   return JSON.stringify([
     island.id, atIsland(island), character?.avatarConfig || character?.appearance,
+    character?.equipped, character?.stats?.health, character?.travel?.weather, character?.travel?.climate,
     character?.avatarActivity, character?.location?.scenePosition, character?.location?.localVenue
   ]);
 }
@@ -492,7 +654,7 @@ function resumeRendering() {
     if (animateIsland()) scheduleFrame();
   } else {
     render();
-    if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
+    if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute() || ambientMotionEnabled()) scheduleFrame();
   }
 }
 function positionFor(c) {
@@ -516,7 +678,7 @@ function animate(now) {
     transition = null;
     if (returning) {
       targetZoom = zoom;
-      if (animation || shouldAnimateRoute()) scheduleFrame();
+      if (animation || shouldAnimateRoute() || ambientMotionEnabled()) scheduleFrame();
       return;
     }
     cameraState = ISLAND_VIEW;
@@ -526,6 +688,7 @@ function animate(now) {
     localRenderKey = sceneKey(island);
     canvas.setAttribute("aria-label", `Ciudad y puerto de ${island.landmark || island.name}, vista pixel art`);
     document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState, island } }));
+    if (lodLabel) lodLabel.textContent = `NIVEL MICRO · ISLA · ${island.name.toLocaleUpperCase("es")}`;
     if (animateIsland()) scheduleFrame();
     return;
   }
@@ -535,6 +698,12 @@ function animate(now) {
     if (animateIsland()) scheduleFrame();
     return;
   }
+  const movingWorld = Boolean(animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute());
+  if (!movingWorld && ambientMotionEnabled() && now - lastAmbientFrame < 33) {
+    scheduleFrame();
+    return;
+  }
+  lastAmbientFrame = now;
   if (Math.abs(targetZoom - zoom) > .003) zoom += (targetZoom - zoom) * .22;
   else zoom = targetZoom;
   if (animation && character && !character.autonomy?.paused && character.status !== "dead") {
@@ -555,7 +724,7 @@ function animate(now) {
   lastFollowFrame = now;
   dashOffset = (dashOffset + .45) % 24;
   render(now);
-  if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute()) scheduleFrame();
+  if (animation || Math.abs(targetZoom - zoom) > .003 || shouldAnimateRoute() || ambientMotionEnabled()) scheduleFrame();
 }
 function screenPoint(event) {
   const rect = canvas.getBoundingClientRect();
@@ -617,6 +786,28 @@ function onUp(event) {
   if (wasPinching || pointer.moved) return;
   if (cameraState !== GLOBAL_MAP) return;
   const screen = screenPoint(event);
+  const chart = regionalChartView;
+  if (chart && screen.x >= chart.mapLeft && screen.x <= chart.mapLeft + chart.mapWidth
+      && screen.y >= chart.mapTop && screen.y <= chart.mapTop + chart.mapHeight) {
+    const worldPoint = {
+      x: clamp(chart.bounds.minX + (screen.x - chart.mapLeft) / chart.mapWidth * (chart.bounds.maxX - chart.bounds.minX), 0, WIDTH),
+      y: clamp(chart.bounds.minY + (screen.y - chart.mapTop) / chart.mapHeight * (chart.bounds.maxY - chart.bounds.minY), 0, HEIGHT)
+    };
+    let island = null;
+    let closest = 18;
+    for (const item of islands.filter((entry) => entry.sea === chart.region)) {
+      const x = chart.mapLeft + (item.x - chart.bounds.minX) / (chart.bounds.maxX - chart.bounds.minX) * chart.mapWidth;
+      const y = chart.mapTop + (item.y - chart.bounds.minY) / (chart.bounds.maxY - chart.bounds.minY) * chart.mapHeight;
+      const distance = Math.hypot(screen.x - x, screen.y - y);
+      if (distance < closest) { island = item; closest = distance; }
+    }
+    canvas.dispatchEvent(new CustomEvent("onepiece:map-destination", {
+      bubbles: true,
+      detail: island ?? { ...worldPoint, name: "Mar abierto", sea: chart.region }
+    }));
+    if (island) enterIslandView(island);
+    return;
+  }
   const point = unproject(screen);
   if (!point) return;
   let island = null;
@@ -666,8 +857,9 @@ export function returnToGlobalMap(immediate = false) {
     savedCamera = null;
   }
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
+  if (lodLabel) lodLabel.textContent = "NIVEL MACRO · GLOBO PLANETARIO";
   if (!mapCovered() && !document.hidden && !transition) render();
-  if (transition || (!immediate && character && (animation || shouldAnimateRoute()))) scheduleFrame();
+  if (transition || (!immediate && character && (animation || shouldAnimateRoute() || ambientMotionEnabled()))) scheduleFrame();
 }
 export function resizeMap() {
   if (!canvas || !ctx) return;
@@ -723,6 +915,7 @@ export function initMap() {
   if (canvas) return;
   canvas = document.getElementById("world-map");
   if (!canvas) return;
+  lodLabel = document.getElementById("map-lod-readout");
   ctx = canvas.getContext("2d");
   if (!ctx) { canvas = null; throw new Error("No se pudo inicializar el globo náutico."); }
   canvas.addEventListener("pointerdown", onDown);
@@ -779,5 +972,5 @@ export function renderMap(c) {
     if (cameraState === ISLAND_VIEW && localIsland && sceneKey(localIsland) !== localRenderKey) renderLocalIsland();
     else if (cameraState === GLOBAL_MAP && !transition) render();
   }
-  if ((cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute())) || (cameraState === ISLAND_VIEW && animateIsland())) scheduleFrame();
+  if ((cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute() || ambientMotionEnabled())) || (cameraState === ISLAND_VIEW && animateIsland())) scheduleFrame();
 }

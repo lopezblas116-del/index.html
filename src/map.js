@@ -1,5 +1,18 @@
 import { ISLAND_DATA, islandDetails } from "./islands_data.js";
 
+export const PLANETARY_GEOGRAPHY = Object.freeze({
+  redLineMeridians: Object.freeze([0, Math.PI]),
+  grandLineLatitude: 0,
+  calmBelts: Object.freeze([-0.24, 0.24]),
+  reverseMountain: Object.freeze({ x: 600, y: 380, name: "Reverse Mountain" }),
+  blues: Object.freeze([
+    Object.freeze({ name: "EAST BLUE", x: 120, y: 190 }),
+    Object.freeze({ name: "WEST BLUE", x: 120, y: 610 }),
+    Object.freeze({ name: "NORTH BLUE", x: 950, y: 100 }),
+    Object.freeze({ name: "SOUTH BLUE", x: 950, y: 650 })
+  ])
+});
+
 const ISLANDS = Object.entries(ISLAND_DATA).map(([id, data]) => ({
   id, name: data.name, x: data.coordinates.x, y: data.coordinates.y, sea: data.coordinates.sea
 }));
