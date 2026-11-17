@@ -6,7 +6,7 @@ import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_rend
 import { canReadAncient } from "../archaeology_system.js";
 import { aggregateSmartFeed, maritimeHeadline } from "../event_dispatcher.js";
 import { animateCount } from "../vfx_engine.js";
-import { rollCreationRace } from "../character_creation.js";
+import { isBiographyValid, rollCreationRace } from "../character_creation.js";
 import { getLoreByKey } from "../world_lore.js";
 import { islandEncountersFor } from "../island_encounters.js";
 
@@ -686,7 +686,10 @@ function configureWizardLayout(form) {
   storyCount.textContent = "0 / 280";
   if (storyField) {
     const textarea = storyField.querySelector("textarea");
-    if (textarea) textarea.maxLength = 280;
+    if (textarea) {
+      textarea.maxLength = 280;
+      textarea.required = true;
+    }
     storyContent.append(storyField, storyCount);
   }
   story.replaceChildren(stepHeader(3, "Trasfondo escrito"), storyHeading, storyContent);
@@ -889,6 +892,14 @@ export function initWizard() {
         return;
       }
     }
+    if (currentStep === 2) {
+      const story = form.elements.namedItem("story");
+      if (story && !isBiographyValid(story.value)) {
+        story.setCustomValidity("Escribe tu historia de origen en un máximo de 280 caracteres.");
+        story.reportValidity();
+        return;
+      }
+    }
     if (currentStep === 3 && selectedTraits.length !== 2) { window.alert("Selecciona exactamente dos rasgos."); return; }
     showWizardStep(currentStep + 1);
   });
@@ -897,7 +908,10 @@ export function initWizard() {
   document.querySelectorAll(".progress-step").forEach((button) => {
     if (button) button.addEventListener("click", () => { const target = Number(button.dataset.stepNav) - 1; if (target <= currentStep) showWizardStep(target); });
   });
-  form.addEventListener("input", updateWizardSummary);
+  form.addEventListener("input", (event) => {
+    if (event.target.name === "story") event.target.setCustomValidity("");
+    updateWizardSummary();
+  });
   form.addEventListener("change", (event) => {
     if (event.target.name === "race") {
       if (RACES[event.target.value]?.rare && event.target.value !== raceRollCandidate) {
@@ -921,6 +935,7 @@ export function resetWizard() {
   raceRollCandidate = "";
   const form = byId("character-form");
   form?.reset();
+  form?.elements.namedItem("story")?.setCustomValidity("");
   if (form?.elements.namedItem("allowRareRace")) form.elements.namedItem("allowRareRace").value = "false";
   if (byId("race-reroll")) { byId("race-reroll").disabled = false; byId("race-reroll").textContent = "Tirar raza · 3 intentos"; }
   document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });

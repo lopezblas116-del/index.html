@@ -8,6 +8,7 @@ import {
 } from "./ui/ui.js";
 import { focusMap, returnToGlobalMap } from "./world3d.js";
 import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
+import { isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
   draftTestament, ensureAdvancedSystems, performDockyardAction,
@@ -232,6 +233,10 @@ listen(document, "onepiece:hud-whisper", (event) => {
 listen(byId("character-form"), "submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
+  if (!isBiographyValid(data.get("story"))) {
+    window.alert("Escribe tu historia de origen en un máximo de 280 caracteres.");
+    return;
+  }
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };

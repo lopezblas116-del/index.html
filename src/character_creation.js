@@ -2,6 +2,10 @@ import { RACES } from "./races.js";
 
 const EXOTIC_RACES = Object.keys(RACES).filter((race) => race !== "human");
 
+export function isBiographyValid(story) {
+  return typeof story === "string" && story.trim().length > 0 && story.length <= 280;
+}
+
 export function rollCreationRace(random = Math.random) {
   if (random() < 0.94) return "human";
   return EXOTIC_RACES[Math.floor(random() * EXOTIC_RACES.length)];

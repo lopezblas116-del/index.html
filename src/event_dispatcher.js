@@ -75,10 +75,10 @@ function berryReward(entry) {
 
 export function aggregateSmartFeed(entries, { location = "", name = "", limit = 80 } = {}) {
   const aggregated = [];
-  const groups = new Map();
+  let previousKey;
   for (const entry of entries || []) {
     const key = feedKey(entry, location);
-    const existing = groups.get(key);
+    const existing = key === previousKey ? aggregated.at(-1) : null;
     if (existing) {
       existing.count += 1;
       existing.totalBerries += berryReward(entry);
@@ -92,8 +92,8 @@ export function aggregateSmartFeed(entries, { location = "", name = "", limit = 
         ? `⚔️ ÚLTIMA HORA: ${captain} dominó el puerto de ${item.location || location || "mar abierto"} tras ${item.count} batallas consecutivas${item.totalBerries ? ` y acumuló ${item.totalBerries} Berries` : ""}.`
         : `⚔️ ÚLTIMA HORA: ${captain} libra un encarnizado combate en ${item.location || location || "mar abierto"}${item.totalBerries ? ` y consigue ฿${item.totalBerries}` : ""}.`;
     }
-    groups.set(key, item);
     aggregated.push(item);
+    previousKey = key;
   }
   for (const item of aggregated) {
     if (item.count > 1 && !String(item.message || "").startsWith("⚔️ ÚLTIMA HORA:")) {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCharacter, createHeir, performAction, routeFor } from "../src/game.js";
-import { inferLatentTrait, rollCreationRace } from "../src/character_creation.js";
+import { inferLatentTrait, isBiographyValid, rollCreationRace } from "../src/character_creation.js";
 import { ensureAdvancedSystems, getTavernCandidates, hasNauticalCrew, performDockyardAction, tavernAction } from "../src/systems.js";
 import { chooseAutonomousAction } from "../src/ai_engine.js";
 import { advanceLocalWorld, createLocalWorld } from "../src/geopolitics.js";
@@ -21,6 +21,14 @@ test("biography keywords assign private behavioral traits", () => {
   const captain = createCharacter({ name: "Náufraga", story: "La Marina ejecutó a mi hermano; buscaré venganza." });
   assert.equal(captain.soulCard.latentTrait, "Rencoroso_Marina");
   assert.equal(createCharacter({ name: "Cronista", story: "x".repeat(300) }).story.length, 280);
+});
+
+test("a new avatar biography must contain non-whitespace text of at most 280 characters", () => {
+  assert.equal(isBiographyValid(""), false);
+  assert.equal(isBiographyValid(" \n\t "), false);
+  assert.equal(isBiographyValid("a".repeat(280)), true);
+  assert.equal(isBiographyValid("a".repeat(281)), false);
+  assert.equal(isBiographyValid(null), false);
 });
 
 test("new-game starters must earn a ship and recruit a nautical crewmate before sailing", () => {

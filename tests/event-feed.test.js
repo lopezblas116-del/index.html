@@ -34,6 +34,20 @@ test("battle feed uses structured Berry rewards and keeps locations separate", (
   assert.equal(feed[1].totalBerries, 50);
 });
 
+test("separate combat streaks do not merge across intervening news", () => {
+  const feed = aggregateSmartFeed([
+    { type: "combat", location: "Loguetown", reward: 10 },
+    { type: "combat", location: "Loguetown", reward: 20 },
+    { type: "world-event", location: "Loguetown", text: "Llega una flota." },
+    { type: "combat", location: "Loguetown", reward: 40 }
+  ], { name: "Blas" });
+  assert.equal(feed.length, 3);
+  assert.equal(feed[0].count, 2);
+  assert.equal(feed[0].totalBerries, 30);
+  assert.equal(feed[2].count, 1);
+  assert.equal(feed[2].totalBerries, 40);
+});
+
 test("smart feed deduplicates identical notices and honors its result limit", () => {
   const notices = [
     { type: "world-event", location: "Shells Town", text: "La Marina refuerza el muelle." },
