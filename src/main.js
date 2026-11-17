@@ -10,7 +10,7 @@ import { focusMap, returnToGlobalMap } from "./world3d.js";
 import { initHud, openIslandPanel, renderHud, setHudVisible } from "./hud.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
-  draftTestament, ensureAdvancedSystems,
+  draftTestament, ensureAdvancedSystems, performDockyardAction,
   setClimateZone, suggestNavigation, tavernAction
 } from "./systems.js";
 import { trade } from "./combat_economy.js";
@@ -235,7 +235,7 @@ listen(byId("character-form"), "submit", (event) => {
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), race: String(data.get("race") || "human"), allowRareRace: data.get("allowRareRace") === "true", starterChallenge: true, originSea: String(data.get("originSea") || "East Blue"), profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;
@@ -274,6 +274,12 @@ listen(document, "onepiece:hud-branch-choice", (event) => {
 listen(document, "onepiece:hud-tavern-action", (event) => {
   if (!character || character.status === "dead" || character.location?.atSea) return;
   const result = tavernAction(character, event.detail?.visitorId, event.detail?.action);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-shipyard-action", (event) => {
+  if (!character) return;
+  const result = performDockyardAction(character, event.detail?.action);
   persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });

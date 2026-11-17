@@ -2,13 +2,15 @@ import { AI_CONFIG } from "./config.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { getMapIslands } from "./map.js";
 import { canReadAncient } from "./archaeology_system.js";
+import { hasNauticalCrew } from "./systems.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 
 export const MOODS = Object.freeze(["Eufórico", "Cauteloso", "Ambicioso", "Melancólico", "Vengativo"]);
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const traitsOf = (character) => [
   ...(character.soulCard?.traits?.pros ?? []),
-  ...(character.soulCard?.traits?.cons ?? [])
+  ...(character.soulCard?.traits?.cons ?? []),
+  ...(character.soulCard?.latentTrait ? [character.soulCard.latentTrait] : [])
 ].map((trait) => String(trait).toLocaleLowerCase("es"));
 
 export function ensurePsyche(character) {
@@ -92,8 +94,12 @@ export function chooseAutonomousAction(character, random = Math.random) {
   const weights = { navigate: 3, train: 1.4, searchFruit: 1.1, rest: hp < 0.5 ? 2 : 0.3 };
   if (dream.includes("poder")) weights.train += 2;
   if (dream.includes("riqueza")) weights.searchFruit += 2;
+  if (dream.includes("justicia")) weights.navigate += 0.8;
   if (["libertad", "fama", "lazos"].some((value) => dream.includes(value))) weights.navigate += 2;
   if (traits.includes("astuto")) weights.searchFruit += 1;
+  if (traits.includes("codicioso")) weights.searchFruit += 2;
+  if (traits.some((trait) => trait.includes("rencoroso"))) weights.train += 1.4;
+  if (traits.includes("desconfiado")) weights.searchFruit += 0.8;
   if (psyche.mood === "Cauteloso") weights.rest += 1.3;
   if (psyche.mood === "Ambicioso") { weights.train += 1; weights.searchFruit += 0.8; }
   if (psyche.mood === "Eufórico" || psyche.mood === "Vengativo") weights.navigate += 0.7;
@@ -101,6 +107,7 @@ export function chooseAutonomousAction(character, random = Math.random) {
   weights.navigate += liberty / 50;
   weights.train += Math.max(0, 50 - honor) / 80;
   weights.searchFruit += greed / 35;
+  if (character.starterChallenge && (!character.ship?.acquired || !hasNauticalCrew(character))) weights.navigate = 0;
   if (hp < 0.3) return "rest";
   const options = Object.entries(weights);
   const total = options.reduce((sum, [, weight]) => sum + weight, 0);

@@ -96,7 +96,7 @@ export function aggregateSmartFeed(entries, { location = "", name = "", limit = 
 export function maritimeHeadline(entry, index = 0) {
   const type = String(entry?.type || "").toLowerCase();
   const category = /bounty/.test(type) ? "bounty"
-    : /escape|fugitive/.test(type) ? "escape"
+    : /escape|fugitive|boss_arrival/.test(type) ? "escape"
       : /invasion|blockade|island_conquered/.test(type) ? "invasion"
         : /poneglyph|archaeolog/.test(type) ? "poneglyph"
           : /battle|combat|victory/.test(type) ? "battle"

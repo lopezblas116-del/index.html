@@ -22,6 +22,14 @@ jobs:
       - name: Validate JavaScript module syntax
         run: |
           node --check src/main.js
+          node --check src/character_creation.js
+          node --check src/game.js
+          node --check src/ai_engine.js
+          node --check src/avatar.js
+          node --check src/systems.js
+          node --check src/geopolitics.js
+          node --check src/network.js
+          node --check src/event_dispatcher.js
           node --check src/hud.js
           node --check src/ui.js
           node --check src/map.js

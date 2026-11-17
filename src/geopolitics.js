@@ -31,14 +31,24 @@ function controlledIsland(world, islandId) {
 function recordWorldEvent(world, event) {
   world.global_events.unshift(event);
   world.global_events = world.global_events.slice(0, 100);
-  if (event.type === "invasion" || event.type === "boss_reconquest") {
+  if (event.type === "invasion" || event.type === "boss_reconquest" || event.type === "boss_arrival") {
     dispatchTypedEvent(EVENT_TYPES.worldEvent, {
       id: event.event_id,
-      title: event.type === "invasion" ? "Invasión naval" : "Reconquista de guarida",
+      title: event.type === "invasion" ? "Invasión naval" : event.type === "boss_arrival" ? "Fugitivo a la vista" : "Reconquista de guarida",
       text: event.text,
       location: event.location || "Mar abierto"
     });
   }
+}
+
+function startBossVoyage(boss, day) {
+  const island = getMapIslands().find((entry) => entry.id === boss.island_id);
+  if (!island || !boss.secret_location) return null;
+  const from = { x: Number(boss.secret_location.x), y: Number(boss.secret_location.y) };
+  const target = { x: island.x, y: island.y };
+  const durationDays = Math.max(1, Math.ceil(Math.hypot(target.x - from.x, target.y - from.y) / 350));
+  boss.travel = { from, position: { ...from }, target, departedDay: day, durationDays, progress: 0, arrived: false };
+  return boss.travel;
 }
 
 export function assessPortTax(world, islandId, amount, payerId = null) {
@@ -125,8 +135,26 @@ export function advanceLocalWorld(world, day, random = Math.random) {
       boss.status = "fugitive";
       boss.troops = Math.max(2, (Number(boss.troops) || 0) + 2);
       boss.secret_location = { x: Math.floor(random() * 1200), y: Math.floor(random() * 760) };
+      startBossVoyage(boss, cycle);
       recordWorldEvent(world, { event_id: `escape-${boss.name}-${cycle}`, type: "escape", text: `Edición especial: ${boss.name} escapó de prisión, reunió ${boss.troops} combatientes y busca recuperar ${boss.hideout || "su guarida"}.`, location: boss.hideout, reward: boss.reward, created_at: new Date().toISOString() });
       dispatchTypedEvent(EVENT_TYPES.worldEvent, { id: `escape-${boss.name}-${cycle}`, title: `Fuga de ${boss.name}`, text: `${boss.name} reúne tropas para recuperar su guarida.`, location: boss.hideout || "Mar abierto" });
+    }
+    for (const boss of world.bosses) {
+      if (boss.status !== "fugitive") continue;
+      const voyage = boss.travel || startBossVoyage(boss, cycle);
+      if (!voyage || voyage.arrived) continue;
+      const progress = Math.max(0, Math.min(1, (cycle - voyage.departedDay) / voyage.durationDays));
+      voyage.progress = progress;
+      voyage.position = {
+        x: voyage.from.x + (voyage.target.x - voyage.from.x) * progress,
+        y: voyage.from.y + (voyage.target.y - voyage.from.y) * progress
+      };
+      boss.secret_location = { ...voyage.position };
+      if (progress === 1) {
+        voyage.arrived = true;
+        voyage.arrivedDay = cycle;
+        recordWorldEvent(world, { event_id: `boss-arrival-${boss.island_id}-${cycle}`, type: "boss_arrival", text: `🚨 ${boss.name} llegó a ${boss.hideout} con ${boss.troops} combatientes; el puerto está bajo amenaza de asedio.`, location: boss.hideout, created_at: new Date().toISOString() });
+      }
     }
     for (const island of world.islands_control || []) {
       if (!island.owner_id || random() >= 0.06) continue;
@@ -147,7 +175,7 @@ export function advanceLocalWorld(world, day, random = Math.random) {
       }
     }
     for (const boss of world.bosses) {
-      if (boss.status !== "fugitive" || random() >= 0.025) continue;
+      if (boss.status !== "fugitive" || !boss.travel?.arrived || cycle <= boss.travel.arrivedDay || random() >= 0.025) continue;
       const island = controlledIsland(world, boss.island_id);
       if (!island?.owner_id) continue;
       const formerOwner = island.owner_name || "la flota";
@@ -158,6 +186,7 @@ export function advanceLocalWorld(world, day, random = Math.random) {
       island.defense_level = 0;
       boss.status = "active";
       delete boss.secret_location;
+      delete boss.travel;
       recordWorldEvent(world, { event_id: `boss-reconquest-${boss.island_id}-${cycle}`, type: "boss_reconquest", text: `${boss.name} volvió a reclutar tropas y recuperó ${island.name} de ${formerOwner}.`, location: island.name, created_at: new Date().toISOString() });
     }
   }
@@ -203,10 +232,12 @@ export function applyLocalAction(world, action, actor) {
     }
   } else if (action.type === "boss_defeated") {
     const boss = world.bosses.find((entry) => entry.name === data.boss && entry.status === "fugitive");
-    if (boss?.secret_location && Math.hypot(data.x - boss.secret_location.x, data.y - boss.secret_location.y) <= 80) {
+    const position = boss?.travel?.position || boss?.secret_location;
+    if (position && Math.hypot(data.x - position.x, data.y - position.y) <= 80) {
       boss.status = "imprisoned";
       boss.troops = 0;
       delete boss.secret_location;
+      delete boss.travel;
       text = `⚓ ${boss.name} vuelve a presidio tras enfrentarse a ${actor.name}.`;
     }
   } else if (action.type === "death") {

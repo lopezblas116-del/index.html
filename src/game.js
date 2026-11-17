@@ -1,8 +1,9 @@
-import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, updateCrewLoyalty } from "./systems.js";
+import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, hasNauticalCrew, updateCrewLoyalty } from "./systems.js";
 import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
 import { createScenePosition, getMapIslands } from "./map.js";
 import { discoverAncient, ensureAncientLanguage } from "./ancient_language.js";
+import { inferLatentTrait } from "./character_creation.js";
 import { ensureArchaeologyData, exploreLocalArchaeology } from "./archaeology_system.js";
 import { cargoCapacity, isRacePursued, normalizeRace, raceStats, rollLineageRace } from "./race_system.js";
 import { createHakiProfile, ensureHakiProfile, fruitNear } from "./power_systems.js";
@@ -39,15 +40,15 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Navegante", allowRareRace = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Navegante", allowRareRace = false, starterChallenge = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
+  const backstory = String(story).trim().slice(0, 280);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
   const randomTraits = TRAITS.filter((entry) => !chosenTraits.includes(entry));
   originSea = ROUTES[originSea] ? originSea : pick(Object.keys(ROUTES));
   const normalizedFaction = faction === "Marina" ? "Marine" : faction;
   const species = normalizeRace(race, { allowRare: allowRareRace });
   const racial = raceStats(species);
-  const conquerorPotential = Math.random() < 0.003;
   const family = displayName.split(/\s+/).at(-1) || displayName;
   const route = routeFor(originSea);
   const spawn = getMapIslands({}).find((island) => island.name === route[0]);
@@ -61,8 +62,9 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     id: globalThis.crypto?.randomUUID?.() ?? `captain-${Date.now()}`,
     name: displayName,
     username: String(username).startsWith("@") ? String(username).slice(0, 17) : `@${String(username).slice(0, 16)}`,
-    story: String(story).trim().slice(0, 240),
+    story: backstory,
     faction: normalizedFaction,
+    starterChallenge: Boolean(starterChallenge),
     originSea,
     appearance: { ...avatarConfig },
     avatarConfig,
@@ -72,7 +74,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     logPose: { alignment: 0, required: 3 },
     mission: { ...missionFor({ originSea, location: { routeIndex: 0 } }), completed: 0 },
     fruit: null,
-    haki: createHakiProfile(conquerorPotential),
+    haki: createHakiProfile(false),
     bounty: species === "lunarian" ? 500_000 : 0,
     reputation: species === "lunarian" ? 500_000 : 0,
     berries: 100,
@@ -83,12 +85,12 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     stats: { health: 100 + racial.health, maxHealth: 100 + racial.health, strength: 5 + racial.strength, agility: Math.max(1, 5 + racial.agility), ingenuity: 5 },
     race: species,
     profession: ["Navegante", "Arqueóloga", "Médico", "Cocinero", "Artillero"].includes(profession) ? profession : "Navegante",
-    soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [] }, latentTrait: pick(randomTraits), latentHaki: conquerorPotential, hiddenTalent: pick(["Cartografía", "Instinto de Tormenta", "Oído Antiguo"]) },
+    soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [] }, latentTrait: inferLatentTrait(backstory) || pick(randomTraits), latentHaki: false, hiddenTalent: pick(["Cartografía", "Instinto de Tormenta", "Oído Antiguo"]) },
     lineage: { family, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 },
     autonomy: { mode: "active", paused: false, tickCount: 0 },
     whisper: { affinity: 55, rebellion: 45 },
     world: { day: 0, minuteOfDay: 0, year: 1, era: ERAS[0], news: [], pantheon: [] },
-    ship: { health: 100, maxHealth: 100, reinforced: species !== "giant" },
+    ship: { health: 100, maxHealth: 100, reinforced: species !== "giant", acquired: !starterChallenge },
     raceHunt: { exposed: isRacePursued(species), alertLevel: species === "lunarian" ? "active" : "latent" },
     racialLearning: { talentBonus: species === "human" ? 0.1 : 0 },
     status: "alive",
@@ -110,6 +112,7 @@ function normalize(character) {
   };
   character.appearance = { ...character.avatarConfig };
   character.avatarActivity ??= "idle";
+  character.starterChallenge ??= false;
   character.faction = character.faction === "Marina" ? "Marine" : character.faction;
   character.autonomy ??= { mode: "active", paused: false, tickCount: 0 };
   character.autonomy.paused ??= character.autonomy.mode === "paused";
@@ -130,8 +133,15 @@ function normalize(character) {
   character.racialLearning ??= { talentBonus: character.race === "human" ? 0.1 : 0 };
   character.ship ??= { health: 100, maxHealth: 100, reinforced: character.race !== "giant" };
   character.ship.reinforced ??= character.race !== "giant";
+  character.ship.acquired ??= true;
   character.fruit ??= null;
-  if (character.fruit) character.fruit.swimming = false;
+  if (character.fruit) {
+    character.fruit.swimming = false;
+    character.fruit.masteryLevel = clamp(Number(character.fruit.masteryLevel) || 1, 1, 5);
+    character.fruit.masteryPoints = character.fruit.masteryLevel >= 5
+      ? 0
+      : clamp(Number(character.fruit.masteryPoints) || 0, 0, 2);
+  }
   character.originSea ??= "East Blue";
   const route = routeFor(character.originSea);
   character.location ??= { region: character.originSea, island: route[0], routeIndex: 0 };
@@ -259,6 +269,9 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
   const rivalInitiative = rivalLevel * 2 + rand(14);
   const playerFirst = initiative >= rivalInitiative || observation;
   const race = character.race || "human";
+  const route = routeFor(character.originSea);
+  const reverseMountain = route.indexOf("Reverse Mountain");
+  const atGrandLine = reverseMountain >= 0 && Number(character.location?.routeIndex) >= reverseMountain;
   const moonlitSulong = race === "mink" && character.world.day % 28 >= 12 && character.world.day % 28 <= 15 && character.world.minuteOfDay >= 19 * 60;
   const reachBonus = ["longlimb", "tontatta"].includes(race) ? 2 : 0;
   const attackPower = character.stats.strength + character.level * 2 + (armament ? 9 : 0) + fruitBonus + (conqueror ? 12 : 0) + reachBonus + (moonlitSulong ? 5 : 0) + rand(12);
@@ -273,15 +286,31 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
   if (observation) damage = Math.max(0, damage - 5);
   if (conqueror) damage = Math.floor(damage / 2);
   character.stats.health = Math.max(0, character.stats.health - damage);
-  if (character.soulCard?.latentHaki && character.haki.conquerorPotential && character.stats.health <= character.stats.maxHealth * 0.1 && /Nuevo Mundo/.test(character.location?.region || "")) {
+  if (character.fruit && character.stats.health > 0 && hpRatio <= 0.2) {
+    const fruit = character.fruit;
+    fruit.masteryLevel = Math.max(1, Number(fruit.masteryLevel) || 1);
+    fruit.masteryPoints = Math.max(0, Number(fruit.masteryPoints) || 0) + 1;
+    if (fruit.masteryPoints >= 3 && fruit.masteryLevel < 5) {
+      fruit.masteryPoints -= 3;
+      fruit.masteryLevel += 1;
+      fruit.bonus = (Number(fruit.bonus) || 0) + 2;
+      addLog(character, `🍈 ${fruit.name} alcanza maestría ${fruit.masteryLevel}; su poder de combate aumenta.`);
+    } else if (fruit.masteryLevel >= 5) {
+      fruit.masteryPoints = 0;
+      addLog(character, `🍈 ${fruit.name} ya domina su potencial; la batalla al límite no puede elevar más su maestría.`);
+    } else {
+      addLog(character, `🍈 Sobrevivir al límite fortalece el vínculo con ${fruit.name} (+1 punto de maestría).`);
+    }
+  }
+  if (dangerous && atGrandLine && character.stats.health > 0 &&
+      character.stats.health <= character.stats.maxHealth * 0.1 && !character.haki.haoshoku) {
     character.haki.haoshoku = true;
     character.soulCard.latentHaki = false;
-    addLog(character, "[HAOSHOKU] Una voluntad dormida estalla ante el abismo del Nuevo Mundo.");
+    addLog(character, "[HAOSHOKU] Tras sobrevivir al límite en la Grand Line, su voluntad despierta el Haki del Conquistador.");
   }
   if (character.race === "lunarian" && character.stats.health <= character.stats.maxHealth * 0.3) character.raceHunt.flameActive = false;
   const style = [armament && "Haki de Armadura", observation && "Haki de Observación", conqueror && "Haki del Conquistador", technique && `${technique} (${character.fruit.name})`].filter(Boolean).join(" + ");
   if (wins) {
-    const atGrandLine = Number(character.location?.routeIndex) >= routeFor(character.originSea).indexOf("Reverse Mountain") && routeFor(character.originSea).indexOf("Reverse Mountain") >= 0;
     if (atGrandLine) {
       character.haki.grandLineSince ??= Date.now();
       character.haki.survivalEvents += 1;
@@ -338,6 +367,8 @@ function completeMission(character) {
   } else if (!result.dead) addLog(character, `La misión «${mission.title}» sigue pendiente; recupera fuerzas o vuelve a intentarlo en ${mission.island}.`);
 }
 function navigate(character) {
+  if (!character.ship?.acquired) return "No puedes zarpar sin conseguir primero un barco en el astillero.";
+  if (character.starterChallenge && !hasNauticalCrew(character)) return "Necesitas reclutar al menos un navegante o carpintero antes de zarpar.";
   const route = routeFor(character.originSea);
   if (character.redirectTarget) {
     const target = character.redirectTarget;
@@ -443,6 +474,16 @@ function rest(character) {
 export function performAction(character, action, { availableFruitIds } = {}) {
   if (character.status === "dead") return "El avatar está en el Panteón; crea un heredero para continuar.";
   if (character.captured) return "El avatar está cautivo; rescátalo desde el menú Más.";
+  if (action === "navigate" && character.starterChallenge && !character.ship?.acquired) {
+    const message = "No puedes zarpar sin conseguir primero un barco en el astillero.";
+    addLog(character, message);
+    return message;
+  }
+  if (action === "navigate" && character.starterChallenge && !hasNauticalCrew(character)) {
+    const message = "Necesitas reclutar al menos un navegante o carpintero antes de zarpar.";
+    addLog(character, message);
+    return message;
+  }
   const handlers = { navigate, train, rest };
   const previousIsland = character.location?.island;
   const previousAtSea = Boolean(character.location?.atSea);
@@ -624,7 +665,7 @@ export function createHeir(predecessor, { name, username } = {}) {
   const first = pick(TRAITS);
   const second = pick(TRAITS.filter((trait) => trait !== first));
   const heirRace = rollLineageRace(predecessor.race);
-  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, race: heirRace, profession: predecessor.profession, allowRareRace: true, dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: [first, second], appearance: predecessor.appearance });
+  const heir = createCharacter({ name: name || `Heredero de ${family}`, username: username || `@linaje${predecessor.lineage.generation + 1}`, faction: predecessor.faction, race: heirRace, profession: predecessor.profession, allowRareRace: true, starterChallenge: Boolean(predecessor.starterChallenge), dream: predecessor.soulCard.dream, alignment: predecessor.soulCard.alignment, traits: [first, second], appearance: predecessor.appearance });
   heir.lineage = { family, generation: predecessor.lineage.generation + 1, inheritedFrom: predecessor.id, legacyChest: [...predecessor.lineage.legacyChest], inheritedReputation: Math.floor((predecessor.reputation || predecessor.bounty || 0) * 0.3) };
   const ancestralTraits = [...predecessor.soulCard.traits.pros, ...predecessor.soulCard.traits.cons, predecessor.soulCard.latentTrait].filter((trait) => trait && !heir.soulCard.traits.pros.includes(trait));
   if (ancestralTraits.length && Math.random() < 0.15) heir.soulCard.latentTrait = pick(ancestralTraits);
@@ -639,6 +680,7 @@ export function createHeir(predecessor, { name, username } = {}) {
   heir.world = predecessor.world;
   heir.systems = { testament: predecessor.systems?.testament ?? null, treasureMaps: [...(predecessor.systems?.treasureMaps ?? [])], discoveries: [...(predecessor.systems?.discoveries ?? [])], dangerMapCreated: false };
   heir.ancientLanguage = structuredClone(ensureAncientLanguage(predecessor));
+  heir.ship = { ...heir.ship, ...(predecessor.ship || {}) };
   heir.crew = [...(predecessor.crew ?? [])];
   heir.log = [...predecessor.log.slice(0, 25)];
   if (heir.psyche.inheritedMemory) addLog(heir, heir.psyche.inheritedMemory);

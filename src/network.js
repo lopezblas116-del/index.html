@@ -245,7 +245,10 @@ export function createNetwork({ config = SUPABASE_CONFIG, fetcher = globalThis.f
     },
     async scout(x, y) {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-      if (!configured && !configError) return world.bosses.find((boss) => boss.status === "fugitive" && boss.secret_location && Math.hypot(x - boss.secret_location.x, y - boss.secret_location.y) <= 80)?.name ?? null;
+      if (!configured && !configError) return world.bosses.find((boss) => {
+        const location = boss.travel?.position || boss.secret_location;
+        return boss.status === "fugitive" && location && Math.hypot(x - location.x, y - location.y) <= 80;
+      })?.name ?? null;
       if (status !== "online") return null;
       try {
         await authenticate();

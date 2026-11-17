@@ -410,7 +410,7 @@ function drawRoute(from, to) {
   ctx.setLineDash([]);
   ctx.lineDashOffset = 0;
 }
-function drawBoat(point, destination) {
+function drawBoat(point, destination, { avatar = true } = {}) {
   const p = projectPoint(point);
   if (!p.visible) return;
   let angle = 0;
@@ -440,13 +440,33 @@ function drawBoat(point, destination) {
   pixel(-3, -8, 2, 2, "#e8d9ad");
   pixel(1, -5, 4, 7, "#f1e4be");
   pixel(1, -9, 4, 2, "#f4b41a");
-  if (character?.location?.atSea && character.status !== "dead") {
+  if (avatar && character?.location?.atSea && character.status !== "dead") {
     drawPixelAvatar(ctx, character.avatarConfig || character.appearance, {
       x: -5, y: -16, scale: .14, size: 64, action: avatarAction(character), time: performance.now(),
       equipment: character.equipped, emotion: avatarEmotion(character)
     });
   }
   ctx.restore();
+}
+function drawFugitiveFleets() {
+  const bosses = character?.world?.shared?.world?.bosses || [];
+  for (const boss of bosses) {
+    if (boss.status !== "fugitive") continue;
+    const position = boss.travel?.position || boss.secret_location;
+    const destination = boss.travel?.target || islands.find((island) => island.id === boss.island_id);
+    if (!position || !destination) continue;
+    drawRoute(position, destination);
+    drawBoat(position, destination, { avatar: false });
+    const point = projectPoint(position);
+    if (!point.visible) continue;
+    ctx.fillStyle = "#ef6258";
+    ctx.fillRect(point.x + 5, point.y - 13, 5, 5);
+    if (zoom > 0.72) {
+      ctx.fillStyle = "#ffe4a8";
+      ctx.font = "bold 9px system-ui";
+      ctx.fillText(`${boss.name} · FUGA`, point.x + 8, point.y - 15);
+    }
+  }
 }
 function drawSeaLabel(point, label) {
   const p = projectPoint(point);
@@ -554,11 +574,12 @@ function render(now = performance.now()) {
   drawIslandLabels();
   const target = character?.navigationTarget;
   if (Number.isFinite(target?.x) && Number.isFinite(target?.y)) drawPoint(target, target.name || "Rumbo", "◎", "#f4b41a");
-  if (boatPosition) {
+  if (boatPosition && character?.ship?.acquired !== false) {
     const destination = routeDestination();
     if (destination) drawRoute(boatPosition, destination);
     drawBoat(boatPosition, destination);
   }
+  drawFugitiveFleets();
   const climate = character?.travel?.climate;
   if (climate === "calm-belt") {
     const drift = (now / 120) % Math.max(width, 1);

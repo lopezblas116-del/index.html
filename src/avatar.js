@@ -15,7 +15,8 @@ const WORLD_NEWS = [
 ];
 const traits = (character) => [
   ...(character.soulCard?.traits?.pros ?? []),
-  ...(character.soulCard?.traits?.cons ?? [])
+  ...(character.soulCard?.traits?.cons ?? []),
+  ...(character.soulCard?.latentTrait ? [character.soulCard.latentTrait] : [])
 ].map((trait) => String(trait).toLowerCase());
 const pick = (items) => items[Math.floor(Math.random() * items.length)];
 
@@ -40,7 +41,10 @@ export function decideAvatarAction(character) {
   const cautious = personality.includes("astuto") || personality.includes("prudente");
   if (hp < 0.25 && cautious) return "rest";
   if (hp < 0.30) return "rest";
-  const weights = { navigate: 1.2, train: 1, searchFruit: 1, rest: 0.1 };
+  const canNavigate = !character.starterChallenge ||
+    (Boolean(character.ship?.acquired) &&
+      (character.crew || []).some((member) => /^(navegante|carpintero)$/i.test(String(member.role || "").trim())));
+  const weights = { navigate: canNavigate ? 1.2 : 0, train: 1, searchFruit: 1, rest: 0.1 };
   const dream = (character.soulCard?.dream || "Libertad").toLowerCase();
   if (dream.includes("libertad") || dream.includes("fama") || dream.includes("lazos")) weights.navigate += 2.4;
   if (dream.includes("poder")) weights.train += 2.8;
@@ -49,6 +53,9 @@ export function decideAvatarAction(character) {
   if (personality.includes("impulsivo") || personality.includes("agresivo")) { weights.navigate += 1.8; weights.train += 1.4; }
   if (personality.includes("valiente")) weights.navigate += 1.5;
   if (personality.includes("astuto")) weights.searchFruit += 2;
+  if (personality.includes("codicioso")) weights.searchFruit += 2;
+  if (personality.includes("rencoroso")) weights.train += 1.4;
+  if (personality.includes("desconfiado")) weights.searchFruit += 0.8;
   if (personality.includes("prudente")) { weights.rest += hp < 0.5 ? 2.5 : 0.6; weights.navigate -= 0.3; }
   if (hp < 0.45) weights.rest += 1.4;
   const pool = Object.entries(weights).flatMap(([action, weight]) => Array(Math.max(0, Math.round(weight * 10))).fill(action));

@@ -22,8 +22,10 @@ export function ensureAdvancedSystems(character) {
   character.tavern ??= { port: "", visitors: [] };
   character.tavern.visitors ??= [];
   character.ship ??= { health: 100, maxHealth: 100 };
+  character.ship.acquired ??= true;
   character.ship.maxHealth = Math.max(1, Number(character.ship.maxHealth) || 100);
   character.ship.health = clamp(character.ship.health ?? character.ship.maxHealth, 0, character.ship.maxHealth);
+  character.inventory.timber = Math.max(0, Number(character.inventory.timber) || 0);
   character.travel ??= { docked: true, logPoseCharge: 0, climate: "normal", weather: "clear", speedMultiplier: 1 };
   character.travel.logPoseCharge = clamp(character.travel.logPoseCharge);
   character.nauticalStress ??= { value: 0, moralCompass: character.faction === "Marine" ? 65 : 50, calmBeltDays: 0 };
@@ -46,6 +48,62 @@ export function ensureAdvancedSystems(character) {
   character.avatarActivity ??= "idle";
   ensureAncientLanguage(character);
   return character;
+}
+
+export function hasNauticalCrew(character) {
+  return (character?.crew || []).some((member) => /^(navegante|carpintero)$/i.test(String(member.role || "").trim()));
+}
+
+export function performDockyardAction(character, action, random = Math.random) {
+  ensureAdvancedSystems(character);
+  if (character.status === "dead" || character.captured || character.location?.atSea) {
+    return { ok: false, message: "Solo puedes trabajar en un astillero mientras estés libre y atracado." };
+  }
+  if (character.ship.acquired) return { ok: false, message: "Ya tienes un barco en condiciones de zarpar." };
+
+  if (action === "work") {
+    const earned = 90;
+    character.berries += earned;
+    character.log.unshift({ time: new Date().toISOString(), message: `🛠️ Trabajas en el muelle y ganas ฿${earned} para tu primer barco.` });
+    return { ok: true, message: `Trabajo completado: +฿${earned}.` };
+  }
+  if (action === "gather") {
+    const timber = 1 + (random() < 0.35 ? 1 : 0);
+    character.inventory.timber += timber;
+    character.log.unshift({ time: new Date().toISOString(), message: `🪵 Reúnes ${timber} tablón(es) recuperable(s) para construir un barco.` });
+    return { ok: true, message: `Materiales reunidos: +${timber} tablón(es).` };
+  }
+  if (action === "purchase") {
+    const cost = 300;
+    if (character.berries < cost) return { ok: false, message: `La carabela cuesta ฿${cost}; trabaja en el muelle para reunir Berries.` };
+    character.berries -= cost;
+  } else if (action === "craft") {
+    const cost = 120;
+    if (character.inventory.timber < 3 || character.berries < cost) {
+      return { ok: false, message: "Construir una chalupa requiere 3 tablones y ฿120 para herrajes y provisiones." };
+    }
+    character.inventory.timber -= 3;
+    character.berries -= cost;
+    character.ship.model = "chalupa";
+  } else if (action === "steal") {
+    if (random() < 0.45) {
+      character.ship.model = "carabela robada";
+    } else {
+      const damage = Math.min(12, Math.max(0, character.stats.health - 1));
+      character.stats.health -= damage;
+      character.bounty = (Number(character.bounty) || 0) + 5000;
+      character.log.unshift({ time: new Date().toISOString(), message: `🚨 Falla el robo del barco: recibes ${damage} de daño y la Marina suma ฿5.000 a tu recompensa.` });
+      return { ok: false, message: "El robo fracasa; recibiste daño y la Marina te busca." };
+    }
+  } else {
+    return { ok: false, message: "Método de adquisición de barco desconocido." };
+  }
+
+  character.ship.acquired = true;
+  character.ship.model ||= "carabela";
+  character.ship.health = character.ship.maxHealth;
+  character.log.unshift({ time: new Date().toISOString(), message: `⛵ Consigues el barco «${character.ship.model}». Aún necesitas un navegante o carpintero en tu tripulación para zarpar.` });
+  return { ok: true, message: `¡Ya tienes un barco: ${character.ship.model}! Recluta un navegante o carpintero antes de zarpar.` };
 }
 
 export function suggestNavigation(character, target, random = Math.random) {

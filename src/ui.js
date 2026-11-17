@@ -6,6 +6,7 @@ import { avatarEmotion, drawPixelAvatar, npcAppearanceFor, ISLAND_SCENE_WIDTH, I
 import { canReadAncient } from "./archaeology_system.js";
 import { aggregateSmartFeed, maritimeHeadline } from "./event_dispatcher.js";
 import { animateCount } from "./vfx_engine.js";
+import { rollCreationRace } from "./character_creation.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -303,6 +304,7 @@ export function showSetup() {
   if (game) { game.hidden = true; game.style.display = "none"; }
   if (reset) reset.hidden = true;
   closeDialog("legacy-modal");
+  animateWizardPreview();
 }
 
 export function showGame() {
@@ -514,6 +516,186 @@ const TRAITS = [
 let wizardInitialized = false;
 let selectedTraits = [];
 let currentStep = 0;
+let raceRollsRemaining = 3;
+let raceRollCandidate = "";
+let previewFrame = 0;
+function animateWizardPreview() {
+  if (previewFrame || typeof globalThis.requestAnimationFrame !== "function") return;
+  let lastDraw = 0;
+  const draw = (timestamp) => {
+    previewFrame = 0;
+    if (byId("wizard-container")?.hidden || document.hidden) return;
+    if (timestamp - lastDraw >= 250) {
+      lastDraw = timestamp;
+      updateWizardSummary();
+    }
+    previewFrame = globalThis.requestAnimationFrame(draw);
+  };
+  previewFrame = globalThis.requestAnimationFrame(draw);
+}
+function stepHeader(number, title) {
+  const header = document.createElement("div");
+  header.className = "step-header";
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = `Fase ${number} / 4`;
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  header.append(eyebrow, heading);
+  return header;
+}
+function moveStepContent(step) {
+  const content = [...step.children].filter((child) => !child.classList.contains("step-header"));
+  content.forEach((child) => child.remove());
+  return content;
+}
+function configureWizardLayout(form) {
+  const original = [...form.querySelectorAll(".wizard-step")];
+  if (original.length !== 5) return;
+  const appearanceGrid = original[0].querySelector(".appearance-grid");
+  const getField = (name) => form.elements.namedItem(name)?.closest("label");
+  const visual = original[0], race = original[1], story = original[2], direction = original[3];
+  const summary = original[4];
+  const choiceSections = [
+    { source: original[1], title: "Bando", content: moveStepContent(original[1]) },
+    { source: original[2], title: "Rasgos de conducta", content: moveStepContent(original[2]) },
+    { source: direction, title: "Motivación y brújula ideológica", content: moveStepContent(direction) },
+    { source: summary, title: "Retrato del alma", content: moveStepContent(summary) }
+  ];
+  const visualFields = ["name", "handle", "skin", "eyes", "hair", "outfit", "accessory"].map(getField).filter(Boolean);
+  const raceFields = ["race", "profession"].map(getField).filter(Boolean);
+  const storyField = getField("story");
+  const raceDescription = appearanceGrid?.querySelector("#race-description");
+  const originNote = [...(appearanceGrid?.querySelectorAll("p") || [])].find((item) => item !== raceDescription);
+  const preview = appearanceGrid?.querySelector(".avatar-editor-preview");
+
+  const visualGrid = document.createElement("div");
+  visualGrid.className = "appearance-grid";
+  visualFields.forEach((field) => visualGrid.append(field));
+  if (preview) visualGrid.append(preview);
+  visual.replaceChildren(stepHeader(1, "Aspecto visual"));
+  visual.append(visualGrid);
+
+  const raceContent = document.createElement("div");
+  raceContent.className = "appearance-grid";
+  const originSelect = document.createElement("label");
+  originSelect.textContent = "Mar de origen";
+  const origin = document.createElement("select");
+  origin.name = "originSea";
+  for (const sea of ["East Blue", "West Blue", "North Blue", "South Blue"]) {
+    const option = document.createElement("option");
+    option.value = sea;
+    option.textContent = sea;
+    origin.append(option);
+  }
+  originSelect.append(origin);
+  const rerollPanel = document.createElement("div");
+  rerollPanel.className = "race-reroll";
+  const rerollButton = document.createElement("button");
+  rerollButton.id = "race-reroll";
+  rerollButton.className = "button button-secondary";
+  rerollButton.type = "button";
+  rerollButton.textContent = "Tirar raza · 3 intentos";
+  const rerollNote = document.createElement("p");
+  rerollNote.id = "race-reroll-note";
+  rerollNote.className = "muted";
+  rerollNote.textContent = "Cada intento tiene 94% de probabilidad humana y 6% de una raza exótica.";
+  rerollPanel.append(rerollButton, rerollNote);
+  raceContent.append(...raceFields, ...(raceDescription ? [raceDescription] : []), originSelect, rerollPanel);
+  const rarePermission = document.createElement("input");
+  rarePermission.type = "hidden";
+  rarePermission.name = "allowRareRace";
+  rarePermission.value = "false";
+  raceContent.append(rarePermission);
+  race.replaceChildren(stepHeader(2, "Raza y origen"), raceContent);
+
+  const storyContent = document.createElement("div");
+  storyContent.className = "story-phase";
+  const storyHeading = document.createElement("p");
+  storyHeading.className = "muted";
+  storyHeading.textContent = "Resume tu origen en hasta 280 caracteres. Algunas palabras pueden moldear un rasgo oculto de conducta.";
+  const storyCount = document.createElement("p");
+  storyCount.id = "story-character-count";
+  storyCount.className = "muted small-text";
+  storyCount.textContent = "0 / 280";
+  if (storyField) {
+    const textarea = storyField.querySelector("textarea");
+    if (textarea) textarea.maxLength = 280;
+    storyContent.append(storyField, storyCount);
+  }
+  story.replaceChildren(stepHeader(3, "Trasfondo escrito"), storyHeading, storyContent);
+
+  const directionContent = document.createElement("div");
+  directionContent.className = "direction-phase";
+  for (const { title, content } of choiceSections) {
+    const section = document.createElement("section");
+    section.className = "wizard-choice-section";
+    const heading = document.createElement("h4");
+    heading.textContent = title;
+    section.append(heading, ...content);
+    directionContent.append(section);
+  }
+  direction.replaceChildren(stepHeader(4, "Bando y brújula"), directionContent);
+  original[4].remove();
+
+  const nav = form.closest("#wizard-container")?.querySelector(".wizard-progress");
+  nav?.replaceChildren();
+  for (const [index, label] of ["Aspecto", "Raza y origen", "Trasfondo", "Brújula"].entries()) {
+    const button = document.createElement("button");
+    button.className = "progress-step";
+    button.type = "button";
+    button.dataset.stepNav = String(index + 1);
+    if (index === 0) button.classList.add("active");
+    const number = document.createElement("span");
+    number.className = "step-number";
+    number.textContent = String(index + 1);
+    const text = document.createElement("span");
+    text.className = "step-label";
+    text.textContent = label;
+    button.append(number, text);
+    nav?.append(button);
+  }
+
+  const compass = document.createElement("div");
+  compass.className = "ideology-compass";
+  compass.id = "ideology-compass";
+  compass.setAttribute("aria-label", "Brújula ideológica animada");
+  const needle = document.createElement("span");
+  needle.className = "ideology-compass-needle";
+  needle.setAttribute("aria-hidden", "true");
+  compass.append(needle);
+  directionContent.prepend(compass);
+  const motivationDescription = document.createElement("p");
+  motivationDescription.id = "dream-description";
+  motivationDescription.className = "muted";
+  const dreamList = directionContent.querySelector("#dream-list");
+  const factionList = directionContent.querySelector("#faction-list");
+  if (factionList && !factionList.querySelector('[value="Revolucionario"]')) {
+    const option = document.createElement("label");
+    option.className = "option-card";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "faction";
+    radio.value = "Revolucionario";
+    const label = document.createElement("span");
+    label.textContent = "🕊 Revolucionario";
+    option.append(radio, label);
+    factionList.append(option);
+  }
+  if (dreamList && !dreamList.querySelector('[value="Justicia"]')) {
+    const justice = document.createElement("label");
+    justice.className = "option-card";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "dream";
+    radio.value = "Justicia";
+    const label = document.createElement("span");
+    label.textContent = "⚖ Justicia";
+    justice.append(radio, label);
+    dreamList.append(justice);
+  }
+  dreamList?.after(motivationDescription);
+}
 function updateWizardSummary() {
   const form = byId("character-form");
   if (!form) return;
@@ -523,7 +705,7 @@ function updateWizardSummary() {
     "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
     "summary-race": form.querySelector('[name="race"] option:checked')?.textContent || "Humano",
     "summary-profession": form.querySelector('[name="profession"] option:checked')?.textContent || "Navegante",
-    "summary-sea": "Aleatorio",
+    "summary-sea": form.elements.namedItem("originSea")?.value || "East Blue",
     "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
@@ -537,8 +719,24 @@ function updateWizardSummary() {
     ctx.fillStyle = "#0b1329";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const scale = canvas.width / 128 * 1.15;
-    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 32 * scale, y: canvas.height * .06, scale, fullBody: true, size: 64 });
+    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 32 * scale, y: canvas.height * .06, scale, fullBody: true, size: 64, time: Date.now() });
   }
+  const story = form.elements.namedItem("story")?.value || "";
+  if (byId("story-character-count")) byId("story-character-count").textContent = `${story.length} / 280`;
+  updateMotivationCompass(form);
+}
+function updateMotivationCompass(form) {
+  const motivation = form.querySelector('[name="dream"]:checked')?.value || "Libertad";
+  const motivationText = {
+    Libertad: "Abrir rutas nuevas y proteger la autonomía de la tripulación.",
+    Poder: "Entrenar, superar rivales y buscar una posición de mando.",
+    Riqueza: "Buscar oportunidades, tesoros y mercados rentables.",
+    Fama: "Convertir cada hazaña en una historia que recorra los mares.",
+    Justicia: "Defender a quienes no pueden protegerse."
+  };
+  if (byId("dream-description")) byId("dream-description").textContent = motivationText[motivation] || "Tu sueño influirá en las decisiones autónomas.";
+  const angle = { Libertad: 0, Justicia: 90, Poder: 180, Caos: 270 }[form.querySelector('[name="alignment"]:checked')?.value || "Libertad"] || 0;
+  byId("ideology-compass")?.style.setProperty("--compass-angle", `${angle}deg`);
 }
 function showWizardStep(index) {
   const steps = [...document.querySelectorAll(".wizard-step")];
@@ -575,7 +773,31 @@ export function initWizard() {
   wizardInitialized = true;
   const form = byId("character-form");
   if (!form) return;
+  configureWizardLayout(form);
   selectedTraits = [];
+  const raceSelect = form.elements.namedItem("race");
+  const racePermission = form.elements.namedItem("allowRareRace");
+  const rerollButton = byId("race-reroll");
+  if (rerollButton && raceSelect) rerollButton.addEventListener("click", () => {
+    if (raceRollsRemaining <= 0) return;
+    const race = rollCreationRace();
+    if (!raceSelect.querySelector(`option[value="${race}"]`)) {
+      const option = document.createElement("option");
+      option.value = race;
+      option.textContent = RACES[race]?.name || race;
+      raceSelect.append(option);
+    }
+    raceSelect.value = race;
+    raceRollCandidate = race;
+    if (racePermission) racePermission.value = String(Boolean(RACES[race]?.rare));
+    raceRollsRemaining -= 1;
+    rerollButton.textContent = raceRollsRemaining
+      ? `Tirar raza · ${raceRollsRemaining} intento${raceRollsRemaining === 1 ? "" : "s"} restante${raceRollsRemaining === 1 ? "" : "s"}`
+      : "Intentos de raza agotados";
+    rerollButton.disabled = raceRollsRemaining === 0;
+    if (byId("race-description")) byId("race-description").textContent = RACES[race]?.tagline || "";
+    updateWizardSummary();
+  });
   document.querySelectorAll(".trait-card").forEach((button) => {
     if (!button) return;
     button.addEventListener("click", () => {
@@ -601,7 +823,7 @@ export function initWizard() {
         return;
       }
     }
-    if (currentStep === 2 && selectedTraits.length !== 2) { window.alert("Selecciona exactamente dos rasgos."); return; }
+    if (currentStep === 3 && selectedTraits.length !== 2) { window.alert("Selecciona exactamente dos rasgos."); return; }
     showWizardStep(currentStep + 1);
   });
   const prevButton = byId("prev-step");
@@ -611,7 +833,13 @@ export function initWizard() {
   });
   form.addEventListener("input", updateWizardSummary);
   form.addEventListener("change", (event) => {
-    if (event.target.name === "race" && byId("race-description")) byId("race-description").textContent = RACES[event.target.value]?.tagline || "";
+    if (event.target.name === "race") {
+      if (RACES[event.target.value]?.rare && event.target.value !== raceRollCandidate) {
+        event.target.value = "human";
+      }
+      if (racePermission) racePermission.value = String(Boolean(RACES[event.target.value]?.rare && event.target.value === raceRollCandidate));
+      if (byId("race-description")) byId("race-description").textContent = RACES[event.target.value]?.tagline || "";
+    }
     if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
       const list = `${event.target.name}-list`;
       document.querySelectorAll(`#${list} .option-card, #${list} .dream-option`).forEach((card) => card.classList.toggle("selected", Boolean(card.querySelector("input[type=radio]")?.checked)));
@@ -623,8 +851,12 @@ export function initWizard() {
 }
 export function resetWizard() {
   selectedTraits = [];
+  raceRollsRemaining = 3;
+  raceRollCandidate = "";
   const form = byId("character-form");
   form?.reset();
+  if (form?.elements.namedItem("allowRareRace")) form.elements.namedItem("allowRareRace").value = "false";
+  if (byId("race-reroll")) { byId("race-reroll").disabled = false; byId("race-reroll").textContent = "Tirar raza · 3 intentos"; }
   document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
   document.querySelectorAll("#faction-list .option-card, #dream-list .option-card, #alignment-list .option-card").forEach((card) => {
     card.classList.toggle("selected", Boolean(card.querySelector('input[type="radio"]')?.checked));
