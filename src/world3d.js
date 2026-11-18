@@ -26,6 +26,7 @@ let lastIslandFrame = 0;
 let lastAmbientFrame = 0;
 let regionalChartView = null;
 let modalOpen = false;
+let mapRenderPaused = false;
 const mapCovered = () => modalOpen
   || Boolean(document.querySelector?.("dialog[open]"))
   || Boolean(document.querySelector?.(".one-hud-backdrop.open"))
@@ -373,7 +374,7 @@ function drawRegionalChart(now) {
   ctx.restore();
 }
 function scheduleFrame() {
-  if (!mapCovered() && !document.hidden && frame === null) frame = requestAnimationFrame(animate);
+  if (!mapRenderPaused && !mapCovered() && !document.hidden && frame === null) frame = requestAnimationFrame(animate);
 }
 function stopFrame() {
   if (frame !== null) cancelAnimationFrame(frame);
@@ -502,7 +503,7 @@ function drawCompassRose(x, y, radius) {
   ctx.restore();
 }
 function render(now = performance.now()) {
-  if (!ctx || !width || !height) return;
+  if (mapRenderPaused || !ctx || !width || !height) return;
   ctx.clearRect(0, 0, width, height);
   const size = globeRadius();
   planetRenderer?.draw({ width, height, radius: size, longitude, latitude, now });
@@ -589,7 +590,7 @@ function sceneKey(island) {
   ]);
 }
 function renderLocalIsland(now = performance.now()) {
-  if (!localIsland) return;
+  if (mapRenderPaused || !localIsland) return;
   islandFrame(localIsland, 1, now);
   localRenderKey = sceneKey(localIsland);
 }
@@ -602,7 +603,7 @@ function suspendTransition() {
   if (transition && transition.suspendedAt == null) transition.suspendedAt = performance.now();
 }
 function resumeRendering() {
-  if (mapCovered() || document.hidden) return;
+  if (mapRenderPaused || mapCovered() || document.hidden) return;
   if (transition) {
     if (transition.suspendedAt != null) {
       transition.started += performance.now() - transition.suspendedAt;
@@ -624,6 +625,7 @@ function positionFor(c) {
 }
 function animate(now) {
   frame = null;
+  if (mapRenderPaused) return;
   if (mapCovered() || document.hidden) { suspendTransition(); return; }
   if (transition) {
     const t = clamp((now - transition.started) / 1400, 0, 1);
@@ -817,7 +819,7 @@ export function returnToGlobalMap(immediate = false) {
     savedCamera = null;
   }
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: cameraState } }));
-  if (!mapCovered() && !document.hidden && !transition) render();
+  if (!mapRenderPaused && !mapCovered() && !document.hidden && !transition) render();
   if (transition || (!immediate && character && (animation || shouldAnimateRoute() || ambientMotionEnabled()))) scheduleFrame();
 }
 export function resizeMap() {
@@ -830,7 +832,7 @@ export function resizeMap() {
   canvas.width = width;
   canvas.height = height;
   radius = Math.max(70, Math.min(width * 0.44, height * 0.37));
-  if (!mapCovered() && !document.hidden) {
+  if (!mapRenderPaused && !mapCovered() && !document.hidden) {
     if (cameraState === ISLAND_VIEW) renderLocalIsland();
     else render();
   }
@@ -868,7 +870,14 @@ export function focusMap(point) {
   longitude = position.lon;
   latitude = clamp(position.lat, -1.35, 1.35);
   zoomFocus = zoomAnchor = null;
-  render();
+  if (!mapRenderPaused) render();
+}
+export function setMapRenderPaused(paused) {
+  mapRenderPaused = Boolean(paused);
+  if (mapRenderPaused) {
+    suspendTransition();
+    stopFrame();
+  } else resumeRendering();
 }
 export function initMap() {
   if (canvas) return;
@@ -929,9 +938,9 @@ export function renderMap(c) {
     animation = null;
     if (!transition) stopFrame();
   }
-  if (!mapCovered() && !document.hidden) {
+  if (!mapRenderPaused && !mapCovered() && !document.hidden) {
     if (cameraState === ISLAND_VIEW && localIsland && sceneKey(localIsland) !== localRenderKey) renderLocalIsland();
     else if (cameraState === GLOBAL_MAP && !transition) render();
   }
-  if ((cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute() || ambientMotionEnabled())) || (cameraState === ISLAND_VIEW && animateIsland())) scheduleFrame();
+  if (!mapRenderPaused && ((cameraState === GLOBAL_MAP && (transition || animation || shouldAnimateRoute() || ambientMotionEnabled())) || (cameraState === ISLAND_VIEW && animateIsland()))) scheduleFrame();
 }

@@ -29,6 +29,8 @@ import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js"
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
 import { celebrateAvatar } from "./island_renderer.js";
+import { importEvents, registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
+import "./mundo/index.js";
 
 let character = loadGame();
 initVfx();
@@ -50,6 +52,7 @@ function paint() {
   renderIslandView(character);
   renderHud(character);
   trackVisualChanges(character);
+  if (syncCharacter(character)) saveGame(character);
   clearTimeout(branchTimer);
   const pending = character.autonomy?.pendingBranch;
   if (pending && !character.autonomy.paused) {
@@ -179,6 +182,17 @@ listen(document, "onepiece:local-suggestion", (event) => {
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
+window.addEventListener("mil-almas:ready", () => {
+  if (!character) return;
+  registerCharacter(character);
+  paint();
+});
+window.addEventListener("mil-almas:tick", () => {
+  if (character && importEvents(character)) {
+    saveGame(character);
+    renderGame(character);
+  }
+});
 function resumeOffline() {
   if (!character) return;
   const pending = character.autonomy.pendingBranch;
@@ -226,7 +240,9 @@ listen(document, "onepiece:map-destination", (event) => {
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
   const before = publicSnapshot(character);
-  sendConsciousnessWhisper(character, event.detail?.text || "");
+  const text = event.detail?.text || "";
+  sendConsciousnessWhisper(character, text);
+  susurrar(text);
   publishChanges(before, character, true);
   if (character.location?.atSea) scoutFugitive(character);
   persistRender();
@@ -243,6 +259,7 @@ listen(byId("character-form"), "submit", (event) => {
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
   const randomOrigin = generateRandomOrigin();
   character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), ...randomOrigin, starterChallenge: true, profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  registerCharacter(character);
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;
@@ -250,8 +267,8 @@ listen(byId("character-form"), "submit", (event) => {
   ensureBlockOneData(character);
   persistRender(true);
 });
-listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const before = publicSnapshot(character); sendConsciousnessWhisper(character, input.value); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
-listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
+listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const text = input.value; const before = publicSnapshot(character); sendConsciousnessWhisper(character, text); susurrar(text); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
+listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; registerCharacter(character); ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
 listen(document.querySelector("[data-close-pantheon]"), "click", closePantheon);
 listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal);
 listen(document.querySelector("[data-open-heir]"), "click", () => { const modal = byId("legacy-modal"); if (modal && !modal.open) modal.showModal(); });
@@ -259,6 +276,7 @@ function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
   returnToGlobalMap(true);
+  retirarUser("nueva partida");
   removeStorage(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();
