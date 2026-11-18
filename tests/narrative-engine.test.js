@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { islandEncountersFor } from "../src/island_encounters.js";
-import { activeIslandCrisis, advanceIslandStory, beginIslandCrisis, ensureNarrativeState, resolveIslandCrisis } from "../src/narrative_engine.js";
+import { activeIslandCrisis, advanceIslandStory, beginIslandCrisis, beginStarterIslandAdventure, ensureNarrativeState, recordStarterClueVisit, resolveIslandCrisis } from "../src/narrative_engine.js";
 
 function makeCaptain() {
   return {
@@ -71,4 +71,38 @@ test("the active island crisis exposes its three player interventions", () => {
   const encounter = islandEncountersFor(island, captain).find((entry) => entry.action === "story-crisis");
   assert.deepEqual(encounter.actions.map(({ choice }) => choice), ["help", "mediate", "ignore"]);
   assert.match(encounter.description, /Lina reúne a los vecinos/);
+});
+
+test("the starter adventure requires an actual island visit before the player's decision", () => {
+  const captain = makeCaptain();
+  captain.starterChallenge = true;
+  captain.berries = 100;
+  captain.location.routeIndex = 0;
+  captain.location.localVenue = null;
+  const startingIsland = { ...island, pois: [{ id: "port-market", name: "Mercado" }] };
+
+  assert.equal(beginStarterIslandAdventure(captain, startingIsland), true);
+  const crisis = activeIslandCrisis(captain, startingIsland.id);
+  assert.ok(crisis);
+  assert.equal(islandEncountersFor(startingIsland, captain).find(({ action }) => action === "story-crisis").actions.length, 0);
+  assert.equal(resolveIslandCrisis(captain, "help").ok, false);
+
+  captain.world.day += 1;
+  assert.equal(advanceIslandStory(captain), null);
+  captain.location.localVenue = { id: "port-market" };
+  assert.equal(recordStarterClueVisit(captain, startingIsland, startingIsland.pois[0]), true);
+  assert.equal(recordStarterClueVisit(captain, startingIsland, startingIsland.pois[0]), false);
+
+  const encounter = islandEncountersFor(startingIsland, captain).find(({ action }) => action === "story-crisis");
+  assert.equal(encounter.actions.length, 3);
+  assert.match(encounter.description, /La pista ya está en tu bitácora/);
+
+  const result = resolveIslandCrisis(captain, "mediate");
+  assert.equal(result.ok, true);
+  assert.equal(captain.world.story.starterAdventure.status, "complete");
+  assert.equal(captain.inventory.timber, 3);
+  assert.equal(captain.berries, 120);
+  assert.equal(captain.world.story.islands.bruma.trust, 58);
+  assert.equal(captain.world.story.islands.bruma.tension, 41);
+  assert.match(result.event.text, /3 tablones y ฿20/);
 });

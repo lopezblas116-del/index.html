@@ -12,12 +12,19 @@ export function islandEncountersFor(island, character) {
   const encounters = [];
   const crisis = activeIslandCrisis(character, island.id);
   if (crisis) {
+    const adventure = character.world?.story?.starterAdventure;
+    const isStarterAdventure = adventure?.crisisId === crisis.id;
+    const canChoose = !isStarterAdventure || adventure.status === "decision-ready";
     encounters.push({
       action: "story-crisis",
       title: crisis.title,
-      description: crisis.opening,
+      description: isStarterAdventure && !canChoose
+        ? `${crisis.opening} Antes de decidir, visita un lugar destacado de la isla con uno de sus marcadores.`
+        : isStarterAdventure
+          ? `${crisis.opening} La pista ya está en tu bitácora; decide qué hacer con el cargamento.`
+          : crisis.opening,
       warning: "La decisión quedará en la bitácora y cambiará los vínculos de esta isla.",
-      actions: [
+      actions: !canChoose ? [] : [
         { choice: "help", label: "Ayudar a la comunidad" },
         { choice: "mediate", label: "Negociar una tregua" },
         { choice: "ignore", label: "Seguir de largo" }

@@ -110,7 +110,11 @@ function renderIslandEncounters(island, character, present) {
       warning.textContent = encounter.warning;
       card.append(warning);
     }
-    if (encounter.actions) {
+    if (Array.isArray(encounter.actions)) {
+      if (!encounter.actions.length) {
+        section.append(card);
+        continue;
+      }
       const actions = document.createElement("div");
       actions.className = "island-encounter-actions";
       for (const option of encounter.actions) {
@@ -139,7 +143,8 @@ export function renderIslandView(character) {
   const present = isAtIsland(character, islandView);
   const localWorld = character.world?.shared?.world;
   const islandControl = localWorld?.islands_control?.find((entry) => entry.island_id === islandView.id);
-  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.world?.story?.activeCrisis?.id || ""}:${character.world?.story?.activeCrisis?.status || ""}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
+  const starterAdventure = character.world?.story?.starterAdventure;
+  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.world?.story?.activeCrisis?.id || ""}:${character.world?.story?.activeCrisis?.status || ""}:${starterAdventure?.status || ""}:${starterAdventure?.visitedPoiIds?.length || 0}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
   if (key === islandRenderKey) return;
   islandRenderKey = key;
   byId("island-title").textContent = islandView.landmark || islandView.name;

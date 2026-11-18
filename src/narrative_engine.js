@@ -108,6 +108,47 @@ export function beginIslandCrisis(character, island, random = Math.random) {
   return crisis;
 }
 
+export function beginStarterIslandAdventure(character, island) {
+  if (!character?.starterChallenge || character.status === "dead" || character.location?.atSea ||
+      character.location?.routeIndex !== 0 || character.location?.island !== island?.name || !island?.id) return false;
+  const story = ensureNarrativeState(character);
+  if (!story || story.starterAdventure) return false;
+  const crisis = beginIslandCrisis(character, island, () => 0);
+  if (!crisis) return false;
+  crisis.starterAdventure = true;
+  story.starterAdventure = {
+    crisisId: crisis.id,
+    islandId: island.id,
+    status: "investigating",
+    visitedPoiIds: []
+  };
+  return true;
+}
+
+export function recordStarterClueVisit(character, island, poi) {
+  const story = ensureNarrativeState(character);
+  const adventure = story?.starterAdventure;
+  const crisis = story?.activeCrisis;
+  if (adventure?.status !== "investigating" || adventure.crisisId !== crisis?.id ||
+      adventure.islandId !== island?.id || !poi?.id || character.location?.localVenue?.id !== poi.id ||
+      adventure.visitedPoiIds.includes(poi.id)) return false;
+
+  adventure.visitedPoiIds.push(poi.id);
+  adventure.status = "decision-ready";
+  recordStoryEvent(character, {
+    id: `${crisis.id}:clue:${poi.id}`,
+    type: "crisis-clue",
+    title: "Rastro en la isla",
+    text: `${character.name} revisó ${poi.name} y encontró un rastro del cargamento desaparecido.`,
+    actor: character.name,
+    location: island.name,
+    day: Math.max(0, Number(character.world.day) || 0),
+    minuteOfDay: Number(character.world.minuteOfDay) || 0,
+    causeId: `${crisis.id}:started`
+  });
+  return true;
+}
+
 export function activeIslandCrisis(character, islandId) {
   const crisis = ensureNarrativeState(character)?.activeCrisis;
   return crisis?.status === "active" && crisis.islandId === islandId ? crisis : null;
@@ -119,6 +160,11 @@ export function resolveIslandCrisis(character, choice, { source = "jugador" } = 
   const outcome = CHOICES[choice];
   if (!crisis || crisis.status !== "active" || !outcome || character.status === "dead") {
     return { ok: false, message: "Ese conflicto ya no está disponible." };
+  }
+  const adventure = story.starterAdventure;
+  const isStarterAdventure = adventure?.crisisId === crisis.id;
+  if (isStarterAdventure && adventure.status !== "decision-ready") {
+    return { ok: false, message: "Primero visita un lugar de la isla para encontrar una pista." };
   }
 
   const [first, second] = crisis.participants;
@@ -139,12 +185,21 @@ export function resolveIslandCrisis(character, choice, { source = "jugador" } = 
   crisis.status = "resolved";
   crisis.choice = choice;
   crisis.resolvedDay = Math.max(0, Number(character.world.day) || 0);
+  let rewardText = "";
+  if (isStarterAdventure) {
+    adventure.status = "complete";
+    adventure.choice = choice;
+    character.inventory ??= { provisions: 0, equipment: [], items: [] };
+    character.inventory.timber = Math.max(0, Number(character.inventory.timber) || 0) + 3;
+    character.berries = Math.max(0, Number(character.berries) || 0) + 20;
+    rewardText = " El puerto aporta 3 tablones y ฿20; ya tienes materiales y fondos para construir una chalupa en el astillero.";
+  }
 
   const event = {
     id: `${crisis.id}:resolved`,
     type: "crisis-resolved",
     title: crisis.title,
-    text: `${character.name} ${outcome.title} en ${crisis.location}. Vínculo con ${first}: ${relationships[first].score}/100; con ${second}: ${relationships[second].score}/100. La confianza del puerto queda en ${islandState.trust}/100 y la tensión en ${islandState.tension}/100.`,
+    text: `${character.name} ${outcome.title} en ${crisis.location}. Vínculo con ${first}: ${relationships[first].score}/100; con ${second}: ${relationships[second].score}/100. La confianza del puerto queda en ${islandState.trust}/100 y la tensión en ${islandState.tension}/100.${rewardText}`,
     actor: character.name,
     participants: [...crisis.participants],
     location: crisis.location,
@@ -160,8 +215,10 @@ export function resolveIslandCrisis(character, choice, { source = "jugador" } = 
 }
 
 export function advanceIslandStory(character) {
-  const crisis = ensureNarrativeState(character)?.activeCrisis;
+  const story = ensureNarrativeState(character);
+  const crisis = story?.activeCrisis;
   if (!crisis || crisis.status !== "active" || Number(character.world?.day) <= crisis.startedDay) return null;
+  if (story.starterAdventure?.crisisId === crisis.id) return null;
   const traits = [
     ...(character.soulCard?.traits?.pros || []),
     ...(character.soulCard?.traits?.cons || [])

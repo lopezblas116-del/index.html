@@ -24,7 +24,7 @@ import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
-import { resolveIslandCrisis } from "./narrative_engine.js";
+import { beginStarterIslandAdventure, resolveIslandCrisis } from "./narrative_engine.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
@@ -46,13 +46,15 @@ function paint() {
   if (!character) return;
   ensureBlockOneData(character);
   ensureAdvancedSystems(character);
+  const startingIsland = getMapIslands(character).find((island) => island.name === character.location?.island);
+  const starterAdventureStarted = beginStarterIslandAdventure(character, startingIsland);
   if (syncCodex(character)) saveGame(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
   renderIslandView(character);
   renderHud(character);
   trackVisualChanges(character);
-  if (syncCharacter(character)) saveGame(character);
+  if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
   clearTimeout(branchTimer);
   const pending = character.autonomy?.pendingBranch;
   if (pending && !character.autonomy.paused) {
