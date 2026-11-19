@@ -8,28 +8,28 @@
 #mil-almas-ui .oculto { display: none !important; }
 #map-panel #canvas-container { position: absolute; inset: 0; overflow: hidden; }
 #canvas-container #mapa { display: none; }
+#canvas-container .mil-chip { display: none; }
+#map-panel.mil-vivo #canvas-container .mil-chip {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 14px; z-index: 3; display: block;
+  padding: 6px 12px; color: #f0f6fc; font: inherit; font-size: .85rem; pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 22, 38, .72); backdrop-filter: blur(6px);
+}
 #map-panel.mil-vivo #world-map,
 #map-panel.mil-vivo #planet-map,
 #map-panel.mil-vivo #worldMapCanvas { display: none !important; }
 #map-panel.mil-vivo #canvas-container #mapa {
   position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%;
-  margin: 0; border: 0; border-radius: 0; background: #123c59; touch-action: none;
+  margin: 0; border: 0; border-radius: 0; background: #2161a7; touch-action: none;
 }
 
 #mil-almas-ui { position: fixed; inset: 0; z-index: 110; display: none; pointer-events: none; }
 body.game-active #mil-almas-ui { display: block; }
 #mil-almas-ui button { min-height: 40px; padding: 7px 11px; color: #f0f6fc; border: 1px solid var(--ma-border); border-radius: 8px; background: #10233a; cursor: pointer; }
 #mil-almas-ui button:hover, #mil-almas-ui button:focus-visible { border-color: var(--ma-gold); background: #1b2b45; }
-#mil-almas-ui .mil-map-tabs,
 #mil-almas-ui .mil-world-bar,
 #mil-almas-ui .mil-feed-drawer,
 #mil-almas-ui .mil-panel,
 #mil-almas-ui .mil-toast { pointer-events: auto; }
-#mil-almas-ui .mil-map-tabs {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; z-index: 5;
-  display: flex; gap: 7px; transform: translateX(-50%);
-}
-#mil-almas-ui .mil-map-tabs .active { color: #15191f; border-color: var(--ma-gold); background: var(--ma-gold); font-weight: 700; }
 #mil-almas-ui .mil-feed-toggle { color: var(--ma-gold); }
 #mil-almas-ui .mil-world-bar {
   position: absolute; top: 66px; left: 14px; right: 14px; z-index: 4; display: none;
@@ -37,6 +37,8 @@ body.game-active #mil-almas-ui { display: block; }
   border: 1px solid var(--ma-border); border-radius: 10px; background: var(--ma-panel); backdrop-filter: blur(9px);
 }
 body.mil-live-mode #mil-almas-ui .mil-world-bar { display: flex; }
+body[data-camera-state="ISLAND_VIEW"] #mil-almas-ui .mil-world-bar { display: none; }
+body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: none; }
 #mil-almas-ui .mil-world-bar > div:first-child { display: grid; gap: 3px; }
 #mil-almas-ui .mil-world-bar strong, #mil-almas-ui .mil-eyebrow { color: var(--ma-gold); letter-spacing: .08em; }
 #mil-almas-ui .mil-world-bar span { color: var(--ma-muted); font-size: .85rem; }
@@ -76,10 +78,11 @@ body.mil-live-mode #mil-almas-ui .mil-world-bar { display: flex; }
 #mil-almas-ui .mil-settings-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
 #mil-almas-ui .mil-toast { position: absolute; bottom: 20px; left: 50%; z-index: 8; padding: 10px 14px; border: 1px solid var(--ma-gold); border-radius: 8px; background: var(--ma-panel); transform: translateX(-50%); }
 #mil-almas-ui #wizard, #mil-almas-ui #ov-wizard { display: none !important; }
+.mil-island-scene { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+#mil-almas-ui button:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (max-width: 600px) {
-  #mil-almas-ui .mil-map-tabs { top: max(8px, env(safe-area-inset-top)); gap: 4px; }
-  #mil-almas-ui .mil-map-tabs button { padding: 6px 8px; font-size: .82rem; }
+  #map-panel.mil-vivo #canvas-container .mil-chip { top: 180px; left: 8px; }
   #mil-almas-ui .mil-world-bar { top: 58px; left: 8px; right: 8px; align-items: flex-start; }
   #mil-almas-ui .mil-world-actions { justify-content: flex-end; }
   #mil-almas-ui .mil-world-actions button { padding: 5px 7px; font-size: .8rem; }

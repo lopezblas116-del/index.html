@@ -91,6 +91,15 @@
     wire();
     UI.renderHeader(); UI.renderFeed(true);
     arrancaTimer();
+    let ultimoFrame = 0;
+    function animaMapa(t) {
+      if (!document.hidden && $('mapa').offsetParent && t - ultimoFrame >= 50) {
+        MAPA.render(J.sim, t);
+        ultimoFrame = t;
+      }
+      requestAnimationFrame(animaMapa);
+    }
+    requestAnimationFrame(animaMapa);
     window.dispatchEvent(new CustomEvent('mil-almas:ready'));
     setInterval(() => J.guardar(true), 8000);
   };
@@ -107,7 +116,6 @@
       const pop = $('pop-isla');
       if (!pop.classList.contains('oculto')) UI.abrirIsla(D.ISLA[selActual()] || null);
       if (sim.user && !$('ficha').classList.contains('oculto')) UI.renderSusurros();
-      MAPA.render(sim, performance.now());
       window.dispatchEvent(new CustomEvent('mil-almas:tick'));
     }, Math.max(60, J.msPorMin));
   }

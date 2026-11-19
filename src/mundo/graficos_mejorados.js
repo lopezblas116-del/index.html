@@ -203,33 +203,14 @@
       const ctx = cv.getContext('2d');
       const ancho = cv.clientWidth, alto = cv.clientHeight;
       const cam = G.MAPA.cam || { x: D.W / 2, y: D.H / 2, z: 1 };
-      // mar con profundidad
-      const g = ctx.createLinearGradient(0, 0, 0, alto);
-      g.addColorStop(0, '#0f3a61'); g.addColorStop(0.5, '#145080'); g.addColorStop(1, '#0e385c');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, ancho, alto);
+      const M = G.MAPA;
+      ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
       ctx.save();
       ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
+      // capa base unificada (mar, franjas, muralla y rótulos) del mapa único
+      for (const off of [-D.W, 0, D.W]) ctx.drawImage(M.capaBase(), off, 0, D.W, D.H);
+      M.actualizaEventos(sim, t);
       GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
-      // franjas (calma y gran ruta) — igual que el mapa base
-      ctx.fillStyle = 'rgba(6,40,70,0.5)';
-      ctx.fillRect(0, D.CB_T, D.W, D.GL_Y0 - D.CB_T);
-      ctx.fillRect(0, D.GL_Y1, D.W, D.CB_B - D.GL_Y1);
-      ctx.fillStyle = 'rgba(30,90,140,0.35)';
-      ctx.fillRect(0, D.GL_Y0, D.W, D.GL_Y1 - D.GL_Y0);
-      ctx.font = '700 22px Georgia, serif'; ctx.fillStyle = 'rgba(255,255,255,0.20)'; ctx.textAlign = 'center';
-      ctx.fillText('N O R T H   B L U E', 390, 60);
-      ctx.fillText('E A S T   B L U E', 1210, 60);
-      ctx.fillText('W E S T   B L U E', 390, 770);
-      ctx.fillText('S O U T H   B L U E', 1210, 770);
-      ctx.font = '700 18px Georgia, serif';
-      ctx.fillText('N U E V O   M U N D O', 390, D.GL_Y0 + 68);
-      ctx.fillText('P A R A Í S O', 1210, D.GL_Y0 + 68);
-      for (const off of [-D.W, 0, D.W]) {
-        ctx.fillStyle = '#7c3a22'; ctx.fillRect(D.RL_X + off - 14, 0, 28, D.H);
-        ctx.fillStyle = '#93462a'; ctx.fillRect(D.RL_X + off - 10, 0, 6, D.H); ctx.fillRect(D.RL_X + off + 4, 0, 6, D.H);
-        ctx.font = '700 11px Georgia, serif'; ctx.fillStyle = 'rgba(255,230,220,0.8)';
-        ctx.save(); ctx.translate(D.RL_X + off, D.H - 60); ctx.rotate(-Math.PI / 2); ctx.fillText('M U R A L L A   R O J A', 0, 0); ctx.restore();
-      }
       for (const s of sim.storms) {
         ctx.fillStyle = 'rgba(30,40,60,0.55)';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
@@ -239,7 +220,13 @@
       // islas mejoradas
       for (const i of D.ISLAS) {
         if (i.oculta) continue;
-        for (const off of [0, -D.W, D.W]) GFX.pintaIslaMejorada(ctx, i, t, off);
+        for (const off of [0, -D.W, D.W]) {
+          M.sombraIsla(i, off);
+          GFX.pintaIslaMejorada(ctx, i, t, off);
+          M.edificiosIsla(i, off);
+          M.anilloIsla(i, off, t);
+          M.etiquetaIsla(i, off);
+        }
       }
       // barcos con sprite (recalcula posición como el mapa base)
       for (const s of sim.ships) {
@@ -262,18 +249,16 @@
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
       // tu avatar
       const u = sim.user;
-      if (u && u.isl) {
+      if (u && u.isl && !sim._fusionAtSea) {
         const isl = D.ISLA[u.isl];
         if (isl && !u.plan) {
           const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
-          ctx.fillStyle = '#f6e05e';
-          ctx.beginPath(); ctx.arc(px, py - 8, 3.2, 0, 7); ctx.fill();
+          M.cubo(px, py);
           ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(px, py - 4, 11 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
+          ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
         }
       }
       ctx.restore();
-      GFX.vineta(ctx, ancho, alto);
     };
     return true;
   };

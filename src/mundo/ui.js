@@ -81,6 +81,12 @@
       return '<div class="bubble"><b>' + esc(quien.name) + ':</b> ' + UI.textoCharla(lin[1]) + '</div>';
     }).join('');
     UI.renderBurbujas(i);
+    const viajar = $('pi-viajar');
+    if (viajar) {
+      viajar.classList.toggle('oculto', !i.juego);
+      viajar.disabled = true;
+      viajar.title = 'Viaje directo pendiente: seleccionar un destino solo permite sugerir un rumbo, no zarpar.';
+    }
   };
 
   UI.renderBurbujas = function (i) {

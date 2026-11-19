@@ -1,3 +1,5 @@
+import { getMapIslands } from '../map.js';
+
 // Datos del mundo: geografía (del lorebook del usuario), facciones, carácter y catálogos.
 (function (G) {
   const D = (G.D = G.D || {});
@@ -89,6 +91,53 @@
   ];
   D.ISLA = {};
   D.ISLAS.forEach(i => { D.ISLA[i.id] = i; });
+
+  // Islas del juego que ya existen en el mundo vivo con otro nombre/id.
+  const ENLACES = {
+    dawn: 'foosha', orange: 'naranja', arlong: 'arlong', loguetown: 'logue', flevance: 'flence', whiskey: 'whisky',
+    ennies: 'enies', ohara: 'ohara', reverse: 'reverse', kano: 'kano', torino: 'torino', wano: 'wano'
+  };
+  const REGION_MAR = { 'East Blue': 'EB', 'West Blue': 'WB', 'North Blue': 'NB', 'South Blue': 'SB', 'Grand Line': 'PAR', 'Paraíso': 'PAR', 'Nuevo Mundo': 'NW' };
+  const TEMA_MAR = { EB: 'verde', WB: 'rocosa', NB: 'blanco', SB: 'tropical', PAR: 'puerto', NW: 'jungla' };
+  const norm = (t) => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  function posicionLibre(id, reg) {
+    const R = D.REGIONS[reg];
+    let h = 0;
+    for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 4294967296; };
+    for (const r of [18, 14, 10, 8]) {
+      for (let k = 0; k < 5000; k++) {
+        const x = Math.round(R.x0 + r + rnd() * (R.x1 - R.x0 - 2 * r));
+        const y = Math.round(R.y0 + r + rnd() * (R.y1 - R.y0 - 2 * r));
+        if (D.ISLAS.every(o => Math.hypot(o.x - x, o.y - y) >= Math.max(26, o.r + r + 2))) return { x, y, r };
+      }
+    }
+    throw new Error(`No hay espacio para ${id} en ${reg}`);
+  }
+
+  D.vincularIslasJuego = function () {
+    for (const g of getMapIslands()) {
+      const nombre = g.name;
+      let isla = D.ISLAS.find(i => i.juegoId === g.id || norm(i.n) === norm(nombre)) || D.ISLA[ENLACES[g.id]];
+      if (!isla) {
+        const reg = REGION_MAR[g.sea];
+        if (!reg) throw new Error(`Mar desconocido para ${nombre}: ${g.sea}`);
+        const pos = posicionLibre(g.id, reg);
+        isla = I('j_' + g.id, nombre, reg, pos.x, pos.y, pos.r, TEMA_MAR[reg]);
+        D.ISLAS.push(isla);
+        D.ISLA[isla.id] = isla;
+      }
+      isla.juego = true;
+      isla.juegoId = g.id;
+      isla.juegoNombre = nombre;
+    }
+  };
+  D.islaDeJuego = function (nombre) {
+    const k = norm(nombre);
+    return D.ISLAS.find(i => i.juego && (norm(i.juegoNombre) === k || norm(i.n) === k || i.juegoId === nombre)) || null;
+  };
+  D.vincularIslasJuego();
 
   // Temas visuales: colores [r,g,b]
   D.TEMAS = {
@@ -284,3 +333,5 @@
     { k: 'amigos', n: 'Haz amigos', fx: { taberna: 1.8, charla: 2.4 } }
   ];
 })(typeof window !== 'undefined' ? window : globalThis);
+
+export const islaDeJuego = (nombre) => (typeof window !== 'undefined' ? window : globalThis).D.islaDeJuego(nombre);

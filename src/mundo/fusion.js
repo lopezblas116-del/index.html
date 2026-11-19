@@ -1,4 +1,6 @@
 import { setMapRenderPaused } from "../world3d.js";
+import { getMapIslands } from "../map.js";
+import { drawIslandSceneContext, ISLAND_SCENE_WIDTH, ISLAND_SCENE_HEIGHT } from "../island_renderer.js";
 
 const MAP_IDS = {
   "East Blue": "EB",
@@ -35,6 +37,21 @@ const TRAIT_POLES = {
   Leal: ["lazos", 0]
 };
 const byId = (id) => document.getElementById(id);
+let lastCharacter = null;
+let localIsland = null;
+let localCanvas = null;
+
+function renderLocalIsland() {
+  if (!localIsland || !localCanvas) return;
+  const present = lastCharacter?.location?.island === localIsland.name && !lastCharacter.location.atSea;
+  drawIslandSceneContext(localCanvas.getContext("2d"), localIsland, present ? lastCharacter : null, performance.now());
+}
+
+function closeLocalIsland() {
+  localIsland = null;
+  localCanvas.hidden = true;
+  document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: "GLOBAL_MAP" } }));
+}
 
 function installWorldUi() {
   const mapPanel = byId("map-panel");
@@ -45,18 +62,25 @@ function installWorldUi() {
   canvas.id = "mapa";
   canvas.setAttribute("aria-label", "Mapa vivo de las islas y tripulaciones");
   canvasContainer.append(canvas);
+  const chip = document.createElement("div");
+  chip.className = "mil-chip";
+  chip.id = "mil-chip";
+  chip.textContent = "Sin zarpar";
+  canvasContainer.append(chip);
+  localCanvas = document.createElement("canvas");
+  localCanvas.width = ISLAND_SCENE_WIDTH;
+  localCanvas.height = ISLAND_SCENE_HEIGHT;
+  localCanvas.className = "mil-island-scene";
+  localCanvas.hidden = true;
+  document.querySelector(".island-scene").prepend(localCanvas);
 
   const ui = document.createElement("div");
   ui.id = "mil-almas-ui";
   ui.innerHTML = `
-    <nav class="mil-map-tabs" aria-label="Vistas del mapa">
-      <button type="button" class="mil-tab active" data-map-view="globo" aria-pressed="true">🗺 Globo</button>
-      <button type="button" class="mil-tab" data-map-view="vivo" aria-pressed="false">🌊 Mundo vivo</button>
-      <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">Bitácora viva</button>
-    </nav>
     <header class="mil-world-bar">
       <div><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
       <div class="mil-world-actions">
+        <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">Bitácora viva</button>
         <button id="btn-nuevo" type="button">Mi alma</button>
         <button id="btn-peri" type="button">Hemeroteca</button>
         <button id="btn-ajustes" type="button" aria-label="Ajustes del mundo">⚙</button>
@@ -72,6 +96,7 @@ function installWorldUi() {
       <h2 id="pi-titulo"></h2><p id="pi-region"></p>
       <h3>Almas presentes</h3><div id="pi-presentes"></div>
       <div id="pi-charlas"></div><h3>Rumores</h3><div id="pi-news"></div><p id="pi-disc"></p>
+      <button id="pi-viajar" type="button" class="oculto">⛵ Viajar aquí</button>
     </section>
     <section id="ficha" class="mil-panel mil-soul-card oculto" aria-label="Tarjeta del Alma">
       <button id="ficha-cerrar" type="button" class="mil-close" aria-label="Cerrar tarjeta">×</button>
@@ -108,9 +133,6 @@ function installWorldUi() {
       <button id="wz-atras" type="button">Atrás</button><button id="wz-siguiente" type="button">Siguiente</button>
     </section>`;
   document.body.append(ui);
-  ui.querySelectorAll("[data-map-view]").forEach((button) => {
-    button.addEventListener("click", () => setMapView(button.dataset.mapView));
-  });
   ui.querySelector(".mil-feed-toggle").addEventListener("click", (event) => {
     const drawer = byId("mil-feed-drawer");
     const opened = drawer.classList.toggle("oculto") === false;
@@ -120,25 +142,68 @@ function installWorldUi() {
     byId("mil-feed-drawer").classList.add("oculto");
     ui.querySelector(".mil-feed-toggle").setAttribute("aria-expanded", "false");
   });
-  setMapView("globo");
+  document.addEventListener("click", (event) => {
+    const navigation = event.target.closest('[data-hud-panel="navigation"]');
+    const back = event.target.closest("#island-back");
+    const zoom = event.target.closest("[data-map-zoom]");
+    if (back && localIsland) {
+      event.stopPropagation();
+      closeLocalIsland();
+    } else if (navigation && lastCharacter && !lastCharacter.location?.atSea) {
+      event.stopPropagation();
+      const island = getMapIslands(lastCharacter).find((entry) => entry.name === lastCharacter.location?.island);
+      if (!island) {
+        window.UI?.toast("No se encontró la isla actual.");
+        return;
+      }
+      if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
+      window.UI?.abrirIsla(null);
+      localIsland = island;
+      localCanvas.hidden = false;
+      document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: "ISLAND_VIEW", island } }));
+      renderLocalIsland();
+    } else if (zoom) {
+      event.stopPropagation();
+      window.MAPA?.zoom?.(zoom.dataset.mapZoom === "in" ? 1 : -1);
+    }
+  }, true);
+  window.addEventListener("mil-almas:tick", () => {
+    syncLocation(lastCharacter);
+    renderLocalIsland();
+  });
+  setMapView();
 }
 
-function setMapView(view) {
+// Hay una única vista: el mapa del mundo vivo, siempre activo (el globo 3D queda pausado).
+function setMapView() {
   const panel = byId("map-panel");
   if (!panel) return;
-  const live = view === "vivo";
-  panel.classList.toggle("mil-vivo", live);
-  document.body.classList.toggle("mil-live-mode", live);
-  setMapRenderPaused(live);
-  document.querySelectorAll("#mil-almas-ui [data-map-view]").forEach((button) => {
-    const selected = button.dataset.mapView === view;
-    button.classList.toggle("active", selected);
-    button.setAttribute("aria-pressed", String(selected));
-  });
-  if (live) requestAnimationFrame(() => {
+  panel.classList.add("mil-vivo");
+  document.body.classList.add("mil-live-mode");
+  setMapRenderPaused(true);
+  requestAnimationFrame(() => {
     window.MAPA?.resize?.();
     if (window.JUEGO?.sim) window.MAPA?.render?.(window.JUEGO.sim, performance.now());
   });
+}
+
+const SEA_ES = { "East Blue": "Mar del Este", "West Blue": "Mar del Oeste", "North Blue": "Mar del Norte", "South Blue": "Mar del Sur" };
+
+function updateChip(character) {
+  const chip = byId("mil-chip");
+  if (!chip) return;
+  const user = window.JUEGO?.sim?.user;
+  if (!character) {
+    chip.textContent = "Sin zarpar";
+    return;
+  }
+  if (character.location?.atSea) {
+    chip.textContent = "📍 En alta mar";
+    return;
+  }
+  const island = user?.isl ? window.D.ISLA[user.isl] : null;
+  const region = character.location?.region || window.D.REGIONS[island?.reg]?.name;
+  chip.textContent = `📍 ${character.location?.island || island?.n || "Puerto desconocido"} · ${SEA_ES[region] || region || "Mar desconocido"}`;
 }
 
 function originCode(character) {
@@ -157,8 +222,23 @@ function traitsFor(character) {
 
 function islandIdFor(character, sim) {
   const name = character.location?.island;
-  const match = Object.values(window.D.ISLA).find((island) => island.n === name);
+  const match = window.D.islaDeJuego(name);
   return match?.id || HOME_ISLANDS[originCode(character)] || sim.user?.isl;
+}
+
+function syncLocation(character) {
+  const sim = window.JUEGO?.sim;
+  const user = sim?.user;
+  if (!character || !user || user._oneLatamId !== character.id) return;
+  sim._fusionAtSea = Boolean(character.location?.atSea);
+  if (!sim._fusionAtSea) {
+    const destination = islandIdFor(character, sim);
+    if (destination && (user.isl !== destination || user.plan)) {
+      user.plan = null;
+      user.state = "libre";
+      sim.mover(user, destination);
+    }
+  }
 }
 
 function retireUser(reason = "despedida") {
@@ -169,6 +249,10 @@ function retireUser(reason = "despedida") {
   user.state = "retirado";
   sim.ev("retiro", { a: sim.nm(user), isla: window.D.ISLA[user.isl]?.n || "el mar", razon: reason, esJugador: true }, { ids: [user.id] });
   sim.user = null;
+  sim._fusionCrisisIsland = null;
+  lastCharacter = null;
+  if (localIsland) closeLocalIsland();
+  updateChip(null);
   window.JUEGO.guardar(true);
 }
 
@@ -177,6 +261,8 @@ function registerCharacter(character) {
   if (!sim || !character) return null;
   if (sim.user?._oneLatamId === character.id) {
     syncCharacter(character);
+    const island = window.D.ISLA[sim.user.isl];
+    if (island && !character.location?.atSea) window.MAPA?.centra(island.x, island.y);
     return sim.user;
   }
   if (sim.user) retireUser("un nuevo linaje");
@@ -191,6 +277,8 @@ function registerCharacter(character) {
   });
   user._oneLatamId = character.id;
   syncCharacter(character);
+  const island = window.D.ISLA[user.isl];
+  if (island && !character.location?.atSea) window.MAPA?.centra(island.x, island.y);
   window.JUEGO.guardar(true);
   requestAnimationFrame(() => window.MAPA?.resize?.());
   return user;
@@ -200,6 +288,7 @@ function syncCharacter(character) {
   const sim = window.JUEGO?.sim;
   const user = sim?.user;
   if (!sim || !user || !character) return false;
+  lastCharacter = character;
   if (user._oneLatamId !== character.id) {
     registerCharacter(character);
     return true;
@@ -221,12 +310,12 @@ function syncCharacter(character) {
   user.rasgos = { ...user.rasgos, ...traitsFor(character) };
   user.state = character.status === "dead" ? "muerto" : "libre";
 
-  if (!character.location?.atSea) {
-    const destination = islandIdFor(character, sim);
-    if (destination && user.isl !== destination) sim.mover(user, destination);
-  }
+  syncLocation(character);
+  sim._fusionCrisisIsland = window.D.islaDeJuego(character.world?.story?.activeCrisis?.location)?.id || null;
+  renderLocalIsland();
   const mirroredEvents = importEvents(character);
   if (character.status === "dead") retireUser("fin del linaje");
+  updateChip(character);
   return mirroredEvents;
 }
 

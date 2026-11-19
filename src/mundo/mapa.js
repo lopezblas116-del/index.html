@@ -5,7 +5,7 @@
   const MAPA = (G.MAPA = {});
 
   let cv = null, ctx = null, cam = { x: 800, y: 400, z: 1 }, ancho = 0, alto = 0;
-  let selIsl = null, onSel = null;
+  let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   const nubes = [];
   for (let i = 0; i < 26; i++) {
     nubes.push({ x: Math.random() * D.W, y: Math.random() * D.H, r: 20 + Math.random() * 46, v: 1.2 + Math.random() * 2.4 });
@@ -19,10 +19,12 @@
       cv.width = Math.round(ancho * devicePixelRatio); cv.height = Math.round(alto * devicePixelRatio);
       cv.style.width = ancho + 'px'; cv.style.height = alto + 'px';
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      base = null;
     };
     MAPA.resize = fit;
     fit();
     window.addEventListener('resize', fit);
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(cv.parentElement);
     // interacción
     let drag = null;
     cv.addEventListener('mousedown', e => { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false }; });
@@ -70,6 +72,7 @@
   };
 
   MAPA.centra = function (x, y) { cam.x = x; cam.y = y; };
+  MAPA.zoom = function (direction) { cam.z = clamp(cam.z * (direction > 0 ? 1.15 : 0.87), 0.55, 3.2); };
   // Exposiciones para la capa de gráficos mejorados (GFX)
   MAPA.cam = cam;
   MAPA.nubes = nubes;
@@ -92,9 +95,43 @@
     i._pts = pts; return pts;
   }
 
+  function sombraIsla(i, ox) {
+    ctx.beginPath();
+    ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
+    ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
+  }
+
+  // 2 a 5 puntitos blancos (edificios) sobre la tierra, deterministas por isla
+  function edificiosIsla(i, ox) {
+    if (!i.edif) {
+      let h = 7;
+      for (const ch of i.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+      i.edif = [];
+      const n = 2 + (h % 4);
+      for (let k = 0; k < n; k++) {
+        h = (h * 1103515245 + 12345) >>> 0;
+        const a = ((h >>> 8) % 628) / 100, rr = i.r * 0.45 * (((h >>> 16) % 100) / 100);
+        i.edif.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.7 });
+      }
+    }
+    ctx.fillStyle = '#fff';
+    for (const e of i.edif) ctx.fillRect(Math.round(i.x + ox + e.x), Math.round(i.y + e.y), 2, 2);
+  }
+
+  // anillo blanco punteado girando en islas con evento activo
+  function anilloIsla(i, ox, t) {
+    if (!eventoIsl.has(i.id)) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t / 80;
+    ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r * 1.9, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+
   function dibujaIsla(i, ox, t) {
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const pts = formaIsla(i);
+    sombraIsla(i, ox);
     // agua clara alrededor (bajío)
     ctx.beginPath();
     ctx.ellipse(i.x + ox, i.y, i.r * 1.5, i.r * 1.22, 0, 0, 7);
@@ -130,6 +167,8 @@
       else if (d.t === 1) { ctx.fillStyle = rgb(T.roof[d.x % T.roof.length | 0] || T.roof[0]); ctx.fillRect(px - 3, py - 2, 6, 4); }
       else { ctx.fillStyle = rgb(T.land2); ctx.fillRect(px - 2, py - 1, 5, 3); }
     }
+    edificiosIsla(i, ox);
+    anilloIsla(i, ox, t);
     // banderín de base de Marina / símbolo especial
     if (i.base) { ctx.fillStyle = '#f5f0e6'; ctx.fillRect(i.x + ox - 1, i.y - i.r - 9, 2, 9); ctx.fillStyle = '#2b6cb0'; ctx.fillRect(i.x + ox + 1, i.y - i.r - 9, 7, 5); }
     if (i.tribunal) { ctx.fillStyle = '#d69e2e'; ctx.beginPath(); ctx.arc(i.x + ox, i.y - i.r - 8, 3.5, 0, 7); ctx.fill(); }
@@ -178,39 +217,104 @@
     s._px = x; s._py = y;
   }
 
+  // ruido determinista (semilla fija) para la rugosidad de la Muralla Roja
+  function ruido(k) { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
+
+  function crearBase() {
+    const esc = 2;
+    const cb = document.createElement('canvas');
+    cb.width = D.W * esc; cb.height = D.H * esc;
+    const c = cb.getContext('2d');
+    c.scale(esc, esc);
+    c.fillStyle = '#2161a7'; c.fillRect(0, 0, D.W, D.H);
+    // manchas amplias de tono sutil
+    c.fillStyle = '#2365ad';
+    for (let k = 0; k < 14; k++) {
+      c.beginPath();
+      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 90 + ruido(k + 99) * 130, 40 + ruido(k + 7) * 60, ruido(k + 3) * 3, 0, 7);
+      c.fill();
+    }
+    // Franjas de Calma y Gran Ruta
+    c.fillStyle = 'rgba(87,147,153,0.45)';
+    c.fillRect(0, D.CB_T, D.W, D.GL_Y0 - D.CB_T);
+    c.fillRect(0, D.GL_Y1, D.W, D.CB_B - D.GL_Y1);
+    c.fillStyle = 'rgba(255,255,255,0.06)';
+    c.fillRect(0, D.GL_Y0, D.W, D.GL_Y1 - D.GL_Y0);
+    c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,0.35)'; c.font = '12px Georgia, serif';
+    for (let x = 210; x < D.W; x += 420) {
+      c.fillText('F R A N J A   D E   C A L M A', x, D.CB_T + 14);
+      c.fillText('F R A N J A   D E   C A L M A', x, D.CB_B - 6);
+    }
+    // rótulos de mares y de la Gran Ruta
+    c.font = '700 26px Georgia, serif'; c.fillStyle = 'rgba(255,255,255,0.30)';
+    c.fillText('M A R   D E L   N O R T E', 390, 60);
+    c.fillText('M A R   D E L   E S T E', 1210, 60);
+    c.fillText('M A R   D E L   O E S T E', 390, 770);
+    c.fillText('M A R   D E L   S U R', 1210, 770);
+    c.fillText('N U E V O   M U N D O', 390, D.GL_Y0 + 68);
+    c.fillText('P A R A Í S O', 1210, D.GL_Y0 + 68);
+    // Muralla Roja rugosa (~38px)
+    const x0 = D.RL_X, paso = 8;
+    c.beginPath();
+    for (let y = 0; y <= D.H; y += paso) c.lineTo(x0 - 19 + (ruido(y / paso) - 0.5) * 7, y);
+    for (let y = D.H; y >= 0; y -= paso) c.lineTo(x0 + 19 + (ruido(y / paso + 500) - 0.5) * 7, y);
+    c.closePath(); c.fillStyle = '#b15f47'; c.fill();
+    c.fillStyle = '#c97a5a';
+    c.fillRect(x0 - 11, 0, 6, D.H); c.fillRect(x0 + 5, 0, 6, D.H);
+    c.font = '700 12px Georgia, serif'; c.fillStyle = 'rgba(255,240,230,0.9)';
+    c.save(); c.translate(x0 + 4, D.H - 60); c.rotate(-Math.PI / 2); c.fillText('M U R A L L A   R O J A', 0, 0); c.restore();
+    return cb;
+  }
+
+  // La simulación conserva las tormentas activas; las crisis del juego se sincronizan desde fusion.
+  function actualizaEventos(sim, t) {
+    if (t - eventoT < 500) return;
+    eventoT = t;
+    eventoIsl = new Set();
+    for (const i of D.ISLAS) {
+      if (sim._fusionCrisisIsland === i.id || (sim.storms || []).some(s => dist(s.x, s.y, i.x, i.y) < s.r + i.r)) eventoIsl.add(i.id);
+    }
+  }
+
+  function dibujaCubo(px, py) {
+    const s = 5; // media arista isométrica (~10px de ancho)
+    ctx.fillStyle = 'rgba(10,30,50,0.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + 2, s * 1.5, s * 0.7, 0, 0, 7); ctx.fill();
+    const cy = py - s; // centro de la cara superior
+    ctx.fillStyle = '#e05252';
+    ctx.beginPath(); ctx.moveTo(px, cy - s); ctx.lineTo(px + s, cy - s / 2); ctx.lineTo(px, cy); ctx.lineTo(px - s, cy - s / 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b03a3a';
+    ctx.beginPath(); ctx.moveTo(px - s, cy - s / 2); ctx.lineTo(px, cy); ctx.lineTo(px, cy + s); ctx.lineTo(px - s, cy + s / 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8f2f2f';
+    ctx.beginPath(); ctx.moveTo(px + s, cy - s / 2); ctx.lineTo(px, cy); ctx.lineTo(px, cy + s); ctx.lineTo(px + s, cy + s / 2); ctx.closePath(); ctx.fill();
+  }
+
+  MAPA.capaBase = function () { return base || (base = crearBase()); };
+  MAPA.actualizaEventos = actualizaEventos;
+  MAPA.sombraIsla = sombraIsla;
+  MAPA.edificiosIsla = edificiosIsla;
+  MAPA.anilloIsla = anilloIsla;
+  MAPA.cubo = dibujaCubo;
+  MAPA.etiquetaIsla = function (i, ox) {
+    ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textAlign = 'center';
+    ctx.fillText(i.n, i.x + ox, i.y + i.r + 13);
+    if (selIsl === i) {
+      ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
+    }
+  };
+
   MAPA.render = function (sim, t) {
     if (!ctx) return;
-    // mar
-    const g = ctx.createLinearGradient(0, 0, 0, alto);
-    g.addColorStop(0, '#14416b'); g.addColorStop(0.5, '#17538a'); g.addColorStop(1, '#123f66');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, ancho, alto);
+    // capa base estática (mar, franjas, muralla, rótulos): se pre-renderiza una vez por refit/resize
+    ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
+    if (!base) base = crearBase();
+    actualizaEventos(sim, t);
     ctx.save();
     ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
-    // franjas de calma y gran ruta
-    ctx.fillStyle = 'rgba(6,40,70,0.5)';
-    ctx.fillRect(0, D.CB_T, D.W, D.GL_Y0 - D.CB_T);
-    ctx.fillRect(0, D.GL_Y1, D.W, D.CB_B - D.GL_Y1);
-    ctx.fillStyle = 'rgba(30,90,140,0.35)';
-    ctx.fillRect(0, D.GL_Y0, D.W, D.GL_Y1 - D.GL_Y0);
-    // mares (rótulos)
-    ctx.font = '700 22px Georgia, serif'; ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.textAlign = 'center';
-    ctx.fillText('N O R T H   B L U E', 390, 60);
-    ctx.fillText('E A S T   B L U E', 1210, 60);
-    ctx.fillText('W E S T   B L U E', 390, 770);
-    ctx.fillText('S O U T H   B L U E', 1210, 770);
-    ctx.font = '700 18px Georgia, serif';
-    ctx.fillText('N U E V O   M U N D O', 390, D.GL_Y0 + 68);
-    ctx.fillText('P A R A Í S O', 1210, D.GL_Y0 + 68);
-    // Muralla Roja (dos trazos por envoltura)
-    for (const off of [-D.W, 0, D.W]) {
-      ctx.fillStyle = '#7c3a22';
-      ctx.fillRect(D.RL_X + off - 14, 0, 28, D.H);
-      ctx.fillStyle = '#93462a';
-      ctx.fillRect(D.RL_X + off - 10, 0, 6, D.H);
-      ctx.fillRect(D.RL_X + off + 4, 0, 6, D.H);
-      ctx.font = '700 11px Georgia, serif'; ctx.fillStyle = 'rgba(255,230,220,0.8)';
-      ctx.save(); ctx.translate(D.RL_X + off, D.H - 60); ctx.rotate(-Math.PI / 2); ctx.fillText('M U R A L L A   R O J A', 0, 0); ctx.restore();
-    }
+    for (const off of [-D.W, 0, D.W]) ctx.drawImage(base, off, 0, D.W, D.H);
     // tormentas
     for (const s of sim.storms) {
       ctx.fillStyle = 'rgba(30,40,60,0.55)';
@@ -233,16 +337,13 @@
     }
     // tu avatar
     const u = sim.user;
-    if (u && u.isl) {
+    if (u && u.isl && !sim._fusionAtSea) {
       const isl = D.ISLA[u.isl];
       if (isl && !u.plan) {
         const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
-        ctx.fillStyle = '#f6e05e';
-        ctx.beginPath(); ctx.arc(px, py - 8, 3.2, 0, 7); ctx.fill();
-        ctx.fillStyle = '#2d3748';
-        ctx.fillRect(px - 2, py - 6, 4, 7);
+        dibujaCubo(px, py);
         ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(px, py - 4, 11 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
       }
     }
     ctx.restore();
