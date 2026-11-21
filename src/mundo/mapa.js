@@ -484,6 +484,36 @@
     return cam.z >= MAPA.LOD_ZOOM;
   };
 
+  // Marcas del mundo sobre cada isla: secretos sin descubrir (?) y Cubos Rojos hallados.
+  // Tamaño compensado por zoom: se ven igual de chicos en pantalla a cualquier escala.
+  MAPA.marcasIsla = function (c2, i, t, ox) {
+    const sm = MAPA._sim;
+    if (!sm) return;
+    const s = 1 / cam.z;
+    const sec = sm.secretos && sm.secretos[i.id];
+    if (sec && !sec.descubierto) {
+      const pul = 7 + Math.sin(t / 380 + i.x * 1.7) * 1.6;
+      c2.save();
+      c2.globalAlpha = 0.9;
+      c2.fillStyle = '#1d3a63'; c2.strokeStyle = '#f6e05e'; c2.lineWidth = 1.6 * s;
+      c2.beginPath(); c2.arc(i.x + ox, i.y - i.r - 16 * s, pul * s, 0, 7); c2.fill(); c2.stroke();
+      c2.fillStyle = '#f6e05e'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.font = 'bold ' + (13 * s) + 'px ui-sans-serif, system-ui, sans-serif';
+      c2.fillText('?', i.x + ox, i.y - i.r - 16 * s);
+      c2.restore();
+    }
+    const cb = sm.cubos && sm.cubos[i.id];
+    if (cb && cb.hallado) {
+      const y = i.y - i.r - 14 * s + Math.sin(t / 600 + i.x) * 1.5 * s;
+      c2.save();
+      c2.fillStyle = '#8a2b22'; c2.fillRect(i.x + ox - 6 * s, y - 6 * s, 12 * s, 12 * s);
+      c2.fillStyle = '#e74c3c'; c2.fillRect(i.x + ox - 6 * s, y - 6 * s, 12 * s, 5 * s);
+      c2.strokeStyle = 'rgba(0,0,0,0.35)'; c2.lineWidth = 1 * s;
+      c2.strokeRect(i.x + ox - 6 * s, y - 6 * s, 12 * s, 12 * s);
+      c2.restore();
+    }
+  };
+
   function dibujaIsla(i, ox, t) {
     // Con el zoom acercado, la isla ES su diorama 16-bit (NPCs caminando incluidos).
     if (MAPA.usaDiorama(i) && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
@@ -545,6 +575,7 @@
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
     }
+    MAPA.marcasIsla(ctx, i, t, ox);
     // islas del cielo: puff de nubes sosteniendo la isla (Skypiea y compañía)
     if (i.cielo || i.id === 'skypiea') {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -852,6 +883,7 @@
 
   MAPA.render = function (sim, t) {
     if (!ctx) return;
+    MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     const g = globoF();
     if (g >= 0.999) {

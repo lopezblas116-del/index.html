@@ -19,6 +19,10 @@
     this.frutasLibres = [];        // {k, isl}
     this.descubiertas = {};        // islaId -> agentId (primer pisa)
     this.cofres = {};              // islaId -> {until} rumor con cofre
+    this.secretos = {};            // islaId -> {tipo, obj, descubierto, por, t}
+    this.cubos = {};               // islaId -> {hallado, esMio, por, pistas, pista}
+    this.cubosFin = false;
+    this.initCubos();
     this.pozo = { prof: 0, cavadores: {}, fin: false, premio: 0 };
     this.emperadores = [];
     this.user = null;              // el agente del jugador
@@ -464,6 +468,83 @@
     const arr = this.pop[a.isl];
     if (arr) { const i = arr.indexOf(a.id); if (i >= 0) arr.splice(i, 1); }
   };
+  // ── Secretos de islas y los Cuatro Cubos Rojos (el mar guarda misterios) ──
+  const PISTAS_CUBO = {
+    tottoland: 'la cama dulce donde duerme un imperio de comida',
+    wano: 'el país cerrado tras sus cascadas de nieve',
+    zou: 'la espalda del elefante que camina desde hace mil años',
+    hachinosu: 'la tumba de piratas que ningún mapa se atreve a nombrar'
+  };
+  Sim.prototype.initCubos = function () {
+    ['tottoland', 'wano', 'zou', 'hachinosu'].forEach(id => {
+      if (D.ISLA[id]) this.cubos[id] = { hallado: false, esMio: false, por: null, pistas: 0, pista: null };
+    });
+  };
+  // Pista en taberna: el mundo susurra dónde puede dormir un Cubo Rojo.
+  Sim.prototype.pistaCubo = function (a) {
+    const libres = Object.keys(this.cubos).filter(id => !this.cubos[id].hallado && this.cubos[id].pistas < 3);
+    if (!libres.length) return;
+    const c = this.cubos[this.rng.pick(libres)];
+    c.pistas++;
+    c.pista = PISTAS_CUBO[Object.keys(this.cubos).find(k => this.cubos[k] === c)] || 'un lugar que los mapas esquivan';
+    if (a.user) {
+      this.ev('pistaCubo', { a: this.nm(a), isla: this.isl(a).n, obj: c.pista }, { ids: [a.id] });
+      (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Pista de Cubo Rojo: «' + c.pista + '»' });
+    }
+  };
+  // Hallazgo de Cubo Rojo: el jugador explorando, o un capitán legendario rival.
+  Sim.prototype.intentarCubo = function (a, rival) {
+    const c = this.cubos[a.isl]; if (!c || c.hallado) return false;
+    const pistas = Math.min(3, c.pistas);
+    if (!this.rng.chance(rival ? 0.08 : 0.30 * (1 + 0.15 * pistas))) return false;
+    c.hallado = true; c.esMio = !!a.user; c.por = a.user ? 'ti' : this.nm(a);
+    if (a.user) {
+      a.berries += 2e7;
+      a.insignias['cuborojo'] = 'cuborojo';
+      (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Hallaste el Cubo Rojo de ' + D.ISLA[a.isl].n });
+      this.ev('cuboHallado', { a: this.nm(a), isla: D.ISLA[a.isl].n }, { ids: [a.id], impAdd: 2 });
+    } else {
+      const crew = this.crewOf(a);
+      this.ev('cuboRival', { crew: crew ? crew.name : 'un capitán sin bandera', isla: D.ISLA[a.isl].n }, {});
+    }
+    if (Object.keys(this.cubos).every(k => this.cubos[k].hallado)) {
+      this.cubosFin = true;
+      this.ev('cubosFin', {}, {});
+    }
+    return true;
+  };
+  // El director siembra secretos por las islas (pocos a la vez, para que importen).
+  Sim.prototype.secretoNuevo = function () {
+    const pendientes = Object.keys(this.secretos).filter(k => !this.secretos[k].descubierto).length;
+    const libres = D.ISLAS.filter(i => !i.noNav && !i.oculta && !this.secretos[i.id]);
+    if (!libres.length || pendientes >= 5) return;
+    const isl = this.rng.pick(libres);
+    const t = this.rng.pick([
+      ['un cofre atado con cuerdas de barco fantasma', 'cofre'],
+      ['una ruina con letras talladas que nadie sabe leer', 'ruina'],
+      ['una cueva que respira vapor tibio', 'cueva'],
+      ['un jardín de frutas que solo abre de noche', 'jardin']
+    ]);
+    this.secretos[isl.id] = { tipo: t[1], obj: t[0], descubierto: false, por: null, t: Math.floor(this.t) };
+  };
+  // Explorar puede topar con un secreto (el Atlas lo recoge).
+  Sim.prototype.intentarSecreto = function (a) {
+    const s = this.secretos[a.isl]; if (!s || s.descubierto) return false;
+    const suerte = (a.habil.includes('ojo') ? 1.35 : 1) * (a.user ? 1.25 : 1);
+    if (!this.rng.chance(0.28 * suerte)) return false;
+    s.descubierto = true; s.por = this.nm(a);
+    a.berries += this.rng.int(5000, 60000);
+    (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Descubriste en ' + D.ISLA[a.isl].n + ': ' + s.obj });
+    if (a.user) {
+      a.secretosHallados = (a.secretosHallados || 0) + 1;
+      if (a.secretosHallados >= 5) a.insignias['explorador'] = 'explorador';
+      this.ev('secreto', { a: this.nm(a), isla: D.ISLA[a.isl].n, obj: s.obj }, { ids: [a.id], impAdd: 1 });
+    } else {
+      this.ev('secreto', { a: this.nm(a), isla: D.ISLA[a.isl].n, obj: s.obj }, {});
+    }
+    return true;
+  };
+
   Sim.prototype.llegarIsla = function (a, islId) {
     this.leaveIsland(a);
     a.isl = islId; a.state = 'libre'; a.plan = null; a.pos = { x: this.rng.rango(-0.6, 0.6), y: this.rng.rango(-0.6, 0.6) };
@@ -482,9 +563,17 @@
         const blues = { EB: 1, NB: 1, WB: 1, SB: 1 }; let b4 = true;
         for (const b of Object.keys(blues)) if (!Object.keys(a.islasPisadas).some(id => D.ISLA[id] && D.ISLA[id].reg === b)) b4 = false;
         if (b4) a.insignias['cuatromares'] = 'cuatromares';
+        // Atlas del Alma: cada pisa queda registrada en su propio viaje
+        a.atlas = a.atlas || {};
+        const reg = a.atlas[islId] || (a.atlas[islId] = { n: 0, t0: Math.floor(this.t) });
+        reg.n++;
       }
     }
     this.ev('atraca', { a: this.nm(a), isla: isl.n, esJugador: !!a.user }, { ids: [a.id] });
+    // un capitán legendario puede hacerse con un Cubo Rojo aunque no seas tú
+    if (!a.user && a.level >= 22 && this.cubos[islId] && !this.cubos[islId].hallado && this.rng.chance(0.05)) {
+      this.intentarCubo(a, true);
+    }
   };
 
   // ── Taberna: robo y rondas ──
@@ -511,11 +600,14 @@
       this.ev('ronda', { a: this.nm(a), isla: this.isl(a).n, esJugador: a.user }, { ids: [a.id] });
       otros.forEach(v => this.setOp(v, a, this.rng.int(2, 6)));
     }
+    // en la taberna corren los rumores: pistas de los Cubos Rojos
+    if (a.user && this.rng.chance(0.3)) this.pistaCubo(a);
   };
 
   // ── Hallazgos (explorar/tesoro) ──
   Sim.prototype.hallazgo = function (a, conTesoro) {
     const R = this.rng;
+    if (this.intentarSecreto(a) || this.intentarCubo(a, false)) return;
     const suerte = (a.habil.includes('ojo') ? 1.3 : 1) * (conTesoro ? 1.6 : 1);
     if (R.chance(0.30 * suerte)) {
       const reg = this.islReg(a);
@@ -699,6 +791,8 @@
       this.fest = this.fest || {}; this.fest[isl.id] = this.t + 300;
       this.ev('festival', { isla: isl.n }, {});
     }
+    // secretos de islas: el mar guarda misterios que esperan ser pisados
+    if (R.chance(0.35)) this.secretoNuevo();
     // rumor con cofre
     if (R.chance(0.2)) {
       const isl = R.pick(D.ISLAS.filter(i => !i.noNav && !i.oculta));
@@ -790,7 +884,15 @@
     // opiniones heredadas (la mitad hacia la familia)
     Object.keys(a.opinion).forEach(k => { if (!k.endsWith('_f')) heredero.opinion[k] = Math.round((a.opinion[k] || 0) * 0.5); });
     this.agents.push(heredero);
-    this.mover(heredero, a.isl || a.birthIsl);
+    // despierta en una playa cualquiera: el mar decide dónde empieza la nueva historia
+    const playas = D.ISLAS.filter(i => !i.noNav && !i.oculta && (i.reg === 'EB' || i.reg === 'SB'));
+    const playa = playas.length ? this.rng.pick(playas) : D.ISLA[a.birthIsl];
+    this.mover(heredero, playa.id);
+    // la playa del despertar es la primera página de su Atlas
+    heredero.atlas = heredero.atlas || {};
+    heredero.atlas[playa.id] = { n: 1, t0: Math.floor(this.t) };
+    (heredero.momentos = heredero.momentos || []).push({ t: Math.floor(this.t), txt: 'Despertaste en la playa de ' + playa.n });
+    this.ev('despierta', { a: this.nm(heredero), isla: playa.n }, { ids: [heredero.id] });
     this.leaveIsland(a);
     a.state = 'muerto';
     this.ev('heredero', { a: this.nm(a), b: this.nm(heredero), isla: this.isl(a).n, esJugador: true }, { ids: [heredero.id] });

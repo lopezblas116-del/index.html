@@ -44,7 +44,7 @@
   J.guardar = function (silencioso) {
     if (!J.sim) return;
     try {
-      const datos = { v: 1, seed: J.sim.seed, t: J.sim.t, agents: J.sim.agents, crews: J.sim.crews, ships: J.sim.ships, storms: J.sim.storms, feed: J.sim.feed, archive: J.sim.archive, pop: J.sim.pop, charlasActivas: J.sim.charlasActivas || [], charlaMem: J.sim.charlaMem, frutasLibres: J.sim.frutasLibres, descubiertas: J.sim.descubiertas, cofres: J.sim.cofres, pozo: J.sim.pozo, emperadores: J.sim.emperadores, user: J.sim.user ? J.sim.user.id : null, evId: J.sim.evId, rutas: null, vecinos: null };
+      const datos = { v: 1, seed: J.sim.seed, t: J.sim.t, agents: J.sim.agents, crews: J.sim.crews, ships: J.sim.ships, storms: J.sim.storms, feed: J.sim.feed, archive: J.sim.archive, pop: J.sim.pop, charlasActivas: J.sim.charlasActivas || [], charlaMem: J.sim.charlaMem, frutasLibres: J.sim.frutasLibres, descubiertas: J.sim.descubiertas, cofres: J.sim.cofres, secretos: J.sim.secretos, cubos: J.sim.cubos, cubosFin: J.sim.cubosFin, pozo: J.sim.pozo, emperadores: J.sim.emperadores, user: J.sim.user ? J.sim.user.id : null, evId: J.sim.evId, rutas: null, vecinos: null };
       localStorage.setItem(CLAVE, JSON.stringify(datos));
       if (!silencioso) UI.toast('Partida guardada.');
     } catch (e) { UI.toast('No se pudo guardar (almacenamiento lleno)'); }
@@ -64,6 +64,8 @@
       sim.charlasActivas = d.charlasActivas || []; sim.charlaMem = d.charlaMem || {};
       sim.frutasLibres = d.frutasLibres || []; sim.descubiertas = d.descubiertas || {};
       sim.cofres = d.cofres || {}; sim.pozo = d.pozo; sim.emperadores = d.emperadores || [];
+      if (d.secretos) sim.secretos = d.secretos;
+      if (d.cubos) { sim.cubos = d.cubos; sim.cubosFin = !!d.cubosFin; }
       sim.evId = d.evId || 0;
       sim.t = d.t;
       sim.byId = function (id) { return this.agents.find(a => a.id === id); };

@@ -139,6 +139,45 @@
   };
   UI.cerrarFicha = function () { $('ficha').classList.add('oculto'); };
 
+  // ── Atlas del Alma: islas pisadas, momentos y los Cuatro Cubos Rojos ──
+  UI.abrirAtlas = function () {
+    const a = sim.user;
+    if (!a) { UI.wizardAbrir(); return; }
+    $('atlas').classList.remove('oculto');
+    const total = D.ISLAS.filter(i => !i.oculta && !i.noNav && i.reg !== 'RL' && i.reg !== 'BM').length;
+    const pisadas = Object.keys(a.atlas || {});
+    const pct = Math.min(100, Math.round(pisadas.length * 100 / Math.max(1, total)));
+    $('at-progreso').innerHTML = '<b>' + pisadas.length + '</b> de ' + total + ' islas cartografiadas (' + pct + '%)';
+    $('at-barra').style.width = pct + '%';
+    // momentos: los grandes sucesos de TU alma (hemeroteca filtrada por id)
+    const mos = (sim.archive || []).filter(r => r.ids && r.ids.includes(a.id)).slice(-12).reverse();
+    $('at-momentos').innerHTML = mos.length
+      ? mos.map(r => '<div class="obj"><small>Día ' + Math.ceil(r.t / 1440) + '</small> ' + esc(r.txt) + '</div>').join('')
+      : '<div class="obj vacio">Tu historia apenas empieza: zarpa, explora, pelea.</div>';
+    // islas visitadas
+    $('at-islas').innerHTML = pisadas.length
+      ? pisadas.map(id => {
+          const isl = D.ISLA[id]; if (!isl) return '';
+          const d = a.atlas[id];
+          const mar = D.REGIONS[isl.reg] ? D.REGIONS[isl.reg].name : isl.reg;
+          return '<div class="at-isla"><b>' + esc(isl.n) + '</b><small>' + esc(mar) + ' · ' + d.n + (d.n === 1 ? ' visita' : ' visitas') + '</small></div>';
+        }).join('')
+      : '<div class="obj vacio">Sin islas aún. El mar espera.</div>';
+    // los Cuatro Cubos Rojos
+    const cubos = sim.cubos || {};
+    $('at-cubos').innerHTML = Object.keys(cubos).map(id => {
+      const c = cubos[id], isl = D.ISLA[id]; if (!isl) return '';
+      const estado = c.hallado ? (c.esMio ? 'hallado por ti' : 'hallado por ' + esc(c.por || 'otros'))
+                               : (c.pistas ? c.pistas + (c.pistas === 1 ? ' pista' : ' pistas') : 'sin pistas');
+      return '<div class="at-cubo' + (c.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>' + esc(isl.n) + '</b><small>' + estado + '</small>' +
+        (c.pista && !c.hallado ? '<em>«' + esc(c.pista) + '»</em>' : '') + '</div></div>';
+    }).join('');
+    $('at-cubos-nota').textContent = sim.cubosFin
+      ? 'Los cuatro Cubos Rojos fueron hallados. La isla final abre sus puertas: una era nueva corre el mar.'
+      : 'Cuatro Cubos Rojos duermen en el Nuevo Mundo. Las tabernas susurran pistas; quien reúna los cuatro escribe la próxima era.';
+  };
+  UI.cerrarAtlas = function () { $('atlas').classList.add('oculto'); };
+
   UI.renderSusurros = function () {
     const a = sim.user; if (!a) return;
     $('ft-susurros').innerHTML = D.SUSURROS.map(s => {

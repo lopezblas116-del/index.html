@@ -65,7 +65,22 @@ body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: non
 #mil-almas-ui .mil-close { float: right; min-width: 40px; font-size: 1.2rem; }
 #mil-almas-ui .mil-island-pop { top: 125px; right: 14px; width: min(340px, calc(100% - 28px)); }
 #mil-almas-ui .mil-soul-card { top: 125px; right: 14px; width: min(380px, calc(100% - 28px)); }
-#mil-almas-ui .mil-newspaper, #mil-almas-ui .mil-settings { top: 125px; left: 50%; width: min(620px, calc(100% - 28px)); transform: translateX(-50%); }
+#mil-almas-ui .mil-newspaper, #mil-almas-ui .mil-settings, #mil-almas-ui .mil-atlas { top: 125px; left: 50%; width: min(620px, calc(100% - 28px)); transform: translateX(-50%); }
+#mil-almas-ui .mil-atlas { max-height: calc(100% - 170px); overflow-y: auto; }
+#mil-almas-ui .mil-atlas h3 { margin: 14px 0 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: #f6c445; }
+#mil-almas-ui .mil-atlas-barra { height: 8px; border-radius: 6px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 6px 0 4px; }
+#mil-almas-ui .mil-atlas-barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f6c445, #e8912d); transition: width 0.6s ease; }
+#mil-almas-ui .mil-atlas-islas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+#mil-almas-ui .at-isla { background: rgba(255,255,255,0.06); border: 1px solid rgba(246,196,69,0.25); border-radius: 8px; padding: 6px 8px; }
+#mil-almas-ui .at-isla b { display: block; font-size: 0.85rem; }
+#mil-almas-ui .at-isla small { color: rgba(255,255,255,0.6); }
+#mil-almas-ui .at-cubo { display: flex; gap: 10px; align-items: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(192,57,43,0.4); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+#mil-almas-ui .at-cubo.hallado { border-color: #c0392b; background: rgba(192,57,43,0.18); }
+#mil-almas-ui .at-cubo .cubo-g { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 3px; background: #8a2b22; border: 2px solid #c0392b; border-top-color: #e74c3c; }
+#mil-almas-ui .at-cubo.hallado .cubo-g { background: #c0392b; box-shadow: 0 0 10px rgba(231,76,60,0.8); }
+#mil-almas-ui .at-cubo b { display: block; font-size: 0.9rem; }
+#mil-almas-ui .at-cubo small { color: rgba(255,255,255,0.6); }
+#mil-almas-ui .at-cubo em { display: block; color: #f6c445; font-style: italic; font-size: 0.8rem; margin-top: 2px; }
 #mil-almas-ui #pi-presentes, #mil-almas-ui #pi-news, #mil-almas-ui #pi-charlas,
 #mil-almas-ui #per-cuerpo, #mil-almas-ui #ft-cofre, #mil-almas-ui #ft-insignias { display: grid; gap: 6px; }
 #mil-almas-ui .pre, #mil-almas-ui .pn, #mil-almas-ui .bubble, #mil-almas-ui .obj { padding: 7px; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; overflow-wrap: anywhere; }

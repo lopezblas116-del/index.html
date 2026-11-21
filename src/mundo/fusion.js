@@ -124,6 +124,7 @@ function installWorldUi() {
       <div class="mil-world-actions">
         <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">Bitácora viva</button>
         <button id="btn-nuevo" type="button">Mi alma</button>
+        <button id="btn-atlas" type="button">Atlas</button>
         <button id="btn-peri" type="button">Hemeroteca</button>
         <button id="btn-ajustes" type="button" aria-label="Ajustes del mundo">⚙</button>
         <button id="btn-sonido" type="button" aria-label="Activar o silenciar sonidos">♫</button>
@@ -154,6 +155,20 @@ function installWorldUi() {
       <button id="per-cerrar" type="button" class="mil-close" aria-label="Cerrar hemeroteca">×</button>
       <h2>Hemeroteca del mar</h2><div id="per-cuerpo"></div>
     </section>
+    <section id="atlas" class="mil-panel mil-atlas oculto" aria-label="Atlas del Alma">
+      <button id="atlas-cerrar" type="button" class="mil-close" aria-label="Cerrar atlas">×</button>
+      <p class="mil-eyebrow">Tu viaje · Mundo vivo</p>
+      <h2>Atlas del Alma</h2>
+      <p id="at-progreso"></p>
+      <div class="mil-atlas-barra"><i id="at-barra"></i></div>
+      <h3>Los Cuatro Cubos Rojos</h3>
+      <div id="at-cubos" class="mil-atlas-cubos"></div>
+      <p id="at-cubos-nota" class="mil-muted"></p>
+      <h3>Islas de tu historia</h3>
+      <div id="at-islas" class="mil-atlas-islas"></div>
+      <h3>Momentos</h3>
+      <div id="at-momentos"></div>
+    </section>
     <section id="ajustes" class="mil-panel mil-settings oculto" aria-label="Ajustes del mundo">
       <button id="aj-cerrar" type="button" class="mil-close" aria-label="Cerrar ajustes">×</button>
       <h2>Ajustes del mundo vivo</h2>
@@ -183,6 +198,13 @@ function installWorldUi() {
   ui.querySelector("[data-close-feed]").addEventListener("click", () => {
     byId("mil-feed-drawer").classList.add("oculto");
     ui.querySelector(".mil-feed-toggle").setAttribute("aria-expanded", "false");
+  });
+  ui.querySelector("#btn-atlas").addEventListener("click", () => {
+    byId("mil-feed-drawer").classList.add("oculto");
+    window.UI?.abrirAtlas?.();
+  });
+  ui.querySelector("#atlas-cerrar").addEventListener("click", () => {
+    byId("atlas").classList.add("oculto");
   });
   document.addEventListener("click", (event) => {
     const navigation = event.target.closest('[data-hud-panel="navigation"]');

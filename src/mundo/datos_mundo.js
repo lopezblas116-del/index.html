@@ -302,6 +302,8 @@ import { getMapIslands } from '../map.js';
 
   // ── Insignias de la Tarjeta del Alma ──
   D.INSIGNIAS = {
+    cuborojo: { n: 'Portador de Cubo Rojo', d: 'Hallaste uno de los cuatro Cubos Rojos.', r: 'raro' },
+    explorador: { n: 'Buscador de Secretos', d: 'Cinco secretos de islas descubiertos.', r: 'raro' },
     'primer cartel': { n: 'Primer cartel', r: 'oro', d: 'El Gobierno te tomó por persona de interés.' },
     bandera: { n: 'Bandera propia', r: 'oro', d: 'Fundó su propia tripulación.' },
     veterano: { n: 'Veterano', r: 'oro', d: 'Diez combates ganados.' },

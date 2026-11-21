@@ -238,6 +238,7 @@
           M.edificiosIsla(i, off);
           M.anilloIsla(i, off, t);
           M.etiquetaIsla(i, off);
+          if (M.marcasIsla) M.marcasIsla(ctx, i, t, off);
         }
       }
       // barcos con sprite (recalcula posición como el mapa base);
