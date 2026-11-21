@@ -8,7 +8,7 @@
   let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   const nubes = [];
   for (let i = 0; i < 26; i++) {
-    nubes.push({ x: Math.random() * D.W, y: Math.random() * D.H, r: 20 + Math.random() * 46, v: 1.2 + Math.random() * 2.4 });
+    nubes.push({ x: Math.random() * D.W, y: Math.random() * D.H, r: 16 + Math.random() * 30, v: 1.0 + Math.random() * 1.8 });
   }
 
   MAPA.init = function (canvas, cbSel) {
@@ -332,7 +332,7 @@
     // nubes
     for (const n of nubes) {
       n.x += n.v / 60; if (n.x > D.W + 60) n.x = -60;
-      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillStyle = 'rgba(255,255,255,0.09)';
       ctx.beginPath(); ctx.ellipse(n.x, n.y, n.r, n.r * 0.42, 0, 0, 7); ctx.fill();
     }
     // tu avatar

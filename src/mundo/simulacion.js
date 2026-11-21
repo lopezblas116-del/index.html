@@ -81,7 +81,7 @@
   Sim.prototype.crearMundo = function () {
     const R = this.rng;
     // Tripulaciones NPC por región
-    const regiones = [['NB', 3], ['WB', 3], ['EB', 4], ['SB', 3], ['PAR', 5], ['NW', 4]];
+    const regiones = [['NB', 5], ['WB', 5], ['EB', 7], ['SB', 5], ['PAR', 8], ['NW', 6]];
     const nombreCrew = () => 'Los Piratas del ' + R.pick(D.CREW_ANIMAL);
     let idA = 0;
     const mkAgent = (cfg) => {
@@ -133,11 +133,11 @@
       }
     }
     // Cazarrecompensas sueltos y ciudadanos
-    for (let k = 0; k < 8; k++) {
+    for (let k = 0; k < 14; k++) {
       const a = mkAgent({ fac: 'caz', birthIsl: R.pick(islasNav).id, isl: R.pick(islasNav).id });
       this.agents.push(a);
     }
-    for (let k = 0; k < 10; k++) {
+    for (let k = 0; k < 16; k++) {
       const isl = R.pick(islasNav).id;
       const a = mkAgent({ fac: 'ciu', name: R.pick(D.NPC_CIU) + ' ' + String.fromCharCode(65 + (idA % 26)) + '.', birthIsl: isl, isl });
       a.level = R.int(1, 4); this.agents.push(a);

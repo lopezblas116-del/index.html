@@ -23,6 +23,9 @@
     const almas = sim.agents.filter(a => a.state !== 'muerto' && a.state !== 'retirado').length;
     $('cab-almas').textContent = almas.toLocaleString('es');
     $('cab-reloj').textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + (esNoche(sim.minOfDay()) ? ' 🌙' : '');
+    // Un solo reloj: el HUD superior refleja el mismo tiempo del mundo vivo.
+    const hudDia = document.querySelector('[data-hud-day]');
+    if (hudDia) hudDia.textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + ' · 1:4';
   };
 
   // ── Feed ──
