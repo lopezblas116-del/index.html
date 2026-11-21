@@ -70,6 +70,12 @@
       if (d.cuboDorado) sim.cuboDorado = d.cuboDorado;
       if (d.control) sim.control = d.control;
       sim.abrirRutaFinal(); // las rutas se recalculan al cargar: reabre la final si la saga ya cerró
+      // migración de mundos antiguos (creados antes de las razas y la política):
+      // cada alma recibe raza por sorteo ponderado con la semilla del mundo, y
+      // el mapa político arranca si no existía (bases de la Marina, tirano, células rev)
+      const sinRaza = sim.agents.some(a => !a.raza);
+      if (sinRaza) sim.agents.forEach(a => { if (!a.raza) { a.raza = sim.razaDe(); sim.aplicarRaza(a); } });
+      if (!Object.keys(sim.control).length) sim.semillasPoliticas();
       sim.evId = d.evId || 0;
       sim.t = d.t;
       sim.byId = function (id) { return this.agents.find(a => a.id === id); };
