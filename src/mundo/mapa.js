@@ -228,28 +228,38 @@
   }
   MAPA.rectDiorama = rectDiorama;
 
-  // ── Registro por frame: los dioramas SON rectángulos grandes y si dos islas vecinas
-  //    entran a la vez se pintaban uno encima del otro. Ahora el más cercano a la cámara
-  //    gana y el vecino cae a la vista blob (pintaIslaVista) hasta que te acerques a él. ──
-  let dioFrameT = -1e9, dioOcupados = [];
-  function dioramaLibre(r, t) {
-    if (t !== dioFrameT) { dioFrameT = t; dioOcupados = []; }
-    for (const q of dioOcupados) {
-      if (r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y) return false;
+  // ── Dioramas sin superposiciones, por RESERVA y PASADAS:
+  //    1) cada isla con diorama reserva su rectángulo (prioridad: seleccionada y cercanía),
+  //    2) las islas que quedarían debajo de un rect reservado NO se pintan encima,
+  //    3) se pintan los dioramas reservados, 4) barcos y etiquetas solo fuera de ellos. ──
+  let dioFrameT = -1e9, dioReservados = [];
+  MAPA.reservaDiorama = function (i, off, t) {
+    const r = rectDiorama(i, off);
+    const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
+    if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return null;
+    if (t !== dioFrameT) { dioFrameT = t; dioReservados = []; }
+    for (const q of dioReservados) {
+      if (r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y) return null;
     }
-    dioOcupados.push(r);
-    return true;
-  }
+    dioReservados.push(r);
+    return r;
+  };
+  // ¿algo de esto (blob de isla, barco, etiqueta) cae bajo un diorama ya reservado?
+  MAPA.bajoDiorama = function (x0, y0, x1, y1, t) {
+    if (t !== dioFrameT) return false;
+    for (const q of dioReservados) {
+      if (x0 < q.x + q.w && x1 > q.x && y0 < q.y + q.h && y1 > q.y) return true;
+    }
+    return false;
+  };
+  MAPA.dioramasReservados = () => dioReservados;
 
   MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
     const r = rectDiorama(i, off);
-    // culling: solo se dibuja si el diorama cruza la vista actual
-    const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
-    if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return true;
-    // el registro decide: si el rectángulo ya lo ocupa otra isla (más prioritaria),
-    // esta cae a la vista blob. El orden de dibujo pone primero a la seleccionada y
-    // luego por cercanía a la cámara.
-    if (!dioramaLibre(r, t)) return false;
+    // solo pinta la escena si ESTA isla reservó su rectángulo este frame;
+    // si no, la llamada cae a la vista blob (return false)
+    if (t !== dioFrameT) return false;
+    if (!dioReservados.some(q => q.x === r.x && q.y === r.y && q.w === r.w)) return false;
     const s = r.w / 640;
     const juego = apiEscenas?.juegoDe ? apiEscenas.juegoDe(i) : null;
     if (juego && apiEscenas?.pinta) {
@@ -705,6 +715,9 @@
       y = isl.y + isl.r * 0.55 + 14;
       ang = lado > 0 ? 0 : Math.PI;
     }
+    // si cae bajo un diorama reservado, no se dibuja: no cruza por encima de la escena
+    s._px = x; s._py = y;
+    if (MAPA.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) return;
     // estela
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(x - Math.cos(ang) * 9, y - Math.sin(ang) * 9); ctx.lineTo(x - Math.cos(ang) * 16, y - Math.sin(ang) * 16); ctx.stroke();
@@ -715,7 +728,6 @@
     ctx.fillStyle = s.crew >= 0 && sim.crews[s.crew] ? '#d33' : '#8a6d3b';
     ctx.beginPath(); ctx.moveTo(0, -3.5); ctx.lineTo(0, -10); ctx.lineTo(7, -6); ctx.closePath(); ctx.fill();
     ctx.restore();
-    s._px = x; s._py = y;
   }
 
   // ruido determinista (semilla fija) para texturas de la capa base
@@ -1212,10 +1224,8 @@
       ctx.strokeStyle = 'rgba(180,200,255,0.5)';
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
     }
-    // islas: SOLO las que cruzan la vista (culling con margen por diorama) — antes se pintaban
-    // todas ×3 envolturas siempre y eso era el tirón de rendimiento.
-    // Orden por prioridad: la seleccionada primero y luego por cercanía a la cámara,
-    // para que el registro de dioramas le gane el rectángulo a la isla que estás mirando.
+    // islas: SOLO las que cruzan la vista (culling con margen por diorama).
+    // Orden por prioridad: la seleccionada primero y luego por cercanía a la cámara.
     const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
     const vy0 = cam.y - alto / (2 * cam.z), vy1 = cam.y + alto / (2 * cam.z);
     const visibles = [];
@@ -1235,9 +1245,8 @@
       return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
         - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
     });
-    const enviadas = new Set(); // envoltura ya dibujada por isla (la más cercana a la cámara)
-    const dibujadas = [];
-    for (const i of visibles) {
+    // PASADA 0: reservas de diorama (el rectángulo lo gana la isla más prioritaria)
+    const mejorEnvoltura = (i) => {
       const mg = Math.max(190, i.r * 16);
       let mejor = null, mejorD = 1e18;
       for (const off of [0, -D.W, D.W]) {
@@ -1246,15 +1255,38 @@
         const d = (x - cam.x) * (x - cam.x) + (i.y - cam.y) * (i.y - cam.y);
         if (d < mejorD) { mejorD = d; mejor = off; }
       }
-      if (mejor === null || enviadas.has(i.id)) continue;
-      enviadas.add(i.id);
-      dibujaIsla(i, mejor, t);
-      dibujadas.push([i, mejor]);
+      return mejor;
+    };
+    const conDiorama = new Map(); // id → envoltura elegida
+    for (const i of visibles) {
+      if (!MAPA.usaDiorama(i)) continue;
+      const off = mejorEnvoltura(i);
+      if (off === null) continue;
+      if (MAPA.reservaDiorama(i, off, t)) conDiorama.set(i.id, off);
     }
-    // barcos
+    // PASADA 1: blobs de las islas SIN diorama; si su zona cae bajo un diorama
+    // reservado, no se pinta (antes quedaba como mancha encima de la escena vecina)
+    const dibujadas = [];
+    for (const i of visibles) {
+      if (conDiorama.has(i.id)) continue;
+      const off = mejorEnvoltura(i);
+      if (off === null) continue;
+      const cx = i.x + off, cy = i.y;
+      if (MAPA.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
+      dibujaIsla(i, off, t);
+      dibujadas.push([i, off]);
+    }
+    // PASADA 2: los dioramas reservados, encima de todo lo demás
+    for (const [id, off] of conDiorama) {
+      const i = D.ISLA[id];
+      if (i) MAPA.dibujaEscenaIsla(ctx, i, t, off);
+    }
+    // barcos — dentro de dibujaBarco se comprueba si caen bajo un diorama reservado
     for (const s of sim.ships) dibujaBarco(s, sim, t);
     // etiquetas al final: ningún barco las tapa (antes se pintaban bajo los barcos y quedaban ilegibles)
-    for (const [i, off] of dibujadas) MAPA.etiquetaIsla(i, off);
+    for (const [i, off] of dibujadas) {
+      if (!MAPA.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) MAPA.etiquetaIsla(i, off);
+    }
     // nubes
     for (const n of nubes) {
       n.x += n.v / 60; if (n.x > D.W + 60) n.x = -60;

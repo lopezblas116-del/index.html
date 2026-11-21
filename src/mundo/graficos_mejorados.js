@@ -225,9 +225,7 @@
         ctx.strokeStyle = 'rgba(180,200,255,0.5)';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
       }
-      // islas con el pintor unificado del mapa (bajío claro, casas, árboles sin chocar)
-      // — con zoom cerca, cada isla es su diorama 16-bit completo; orden por cercanía
-      //   y registro anti-superposición de dioramas (el más cercano gana el rectángulo)
+      // islas en PASADAS: reservas de diorama → blobs no tapados → dioramas encima.
       const visibles = [];
       for (const i of D.ISLAS) {
         if (i.oculta) continue;
@@ -246,8 +244,7 @@
         return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
           - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
       });
-      const dibujadas = [];
-      for (const i of visibles) {
+      const mejorEnv = (i) => {
         const mg = Math.max(190, i.r * 16);
         let mejor = null, mejorD = 1e18;
         for (const off of [0, -D.W, D.W]) {
@@ -256,13 +253,31 @@
           const d = (x - cam.x) * (x - cam.x) + (i.y - cam.y) * (i.y - cam.y);
           if (d < mejorD) { mejorD = d; mejor = off; }
         }
-        if (mejor === null) continue;
-        if (M.usaDiorama && M.usaDiorama(i) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, mejor)) continue;
-        M.sombraIsla(i, mejor);
-        M.pintaIslaVista(i, mejor, t);
-        M.anilloIsla(i, mejor, t);
-        if (M.marcasIsla) M.marcasIsla(ctx, i, t, mejor);
-        dibujadas.push([i, mejor]);
+        return mejor;
+      };
+      const conDiorama = new Map();
+      for (const i of visibles) {
+        if (!M.usaDiorama(i)) continue;
+        const off = mejorEnv(i);
+        if (off === null) continue;
+        if (M.reservaDiorama(i, off, t)) conDiorama.set(i.id, off);
+      }
+      const dibujadas = [];
+      for (const i of visibles) {
+        if (conDiorama.has(i.id)) continue;
+        const off = mejorEnv(i);
+        if (off === null) continue;
+        const cx = i.x + off, cy = i.y;
+        if (M.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
+        M.sombraIsla(i, off);
+        M.pintaIslaVista(i, off, t);
+        M.anilloIsla(i, off, t);
+        if (M.marcasIsla) M.marcasIsla(ctx, i, t, off);
+        dibujadas.push([i, off]);
+      }
+      for (const [id, off] of conDiorama) {
+        const i = D.ISLA[id];
+        if (i && M.dibujaEscenaIsla) M.dibujaEscenaIsla(ctx, i, t, off);
       }
       // barcos con sprite (recalcula posición como el mapa base);
       // con zoom cerca, los anclados se omiten: el diorama ya dibuja los suyos en el muelle
@@ -287,10 +302,13 @@
           ang = lado > 0 ? 0 : Math.PI;
         }
         if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
+        if (M.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) continue; // no cruzan por encima de una escena
         GFX.pintaBarco(ctx, s, sim, t, x, y, ang);
       }
-      // etiquetas al final: ningún barco las tapa
-      for (const [i, off] of dibujadas) M.etiquetaIsla(i, off);
+      // etiquetas al final: ningún barco las tapa y ninguna cae bajo un diorama
+      for (const [i, off] of dibujadas) {
+        if (!M.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) M.etiquetaIsla(i, off);
+      }
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
       // tu avatar (el cubo solo con zoom lejos; cerca, el diorama ya muestra su sprite 16-bit)
       const u = sim.user;
