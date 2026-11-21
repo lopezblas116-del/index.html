@@ -1371,7 +1371,7 @@
         "Zō"
       ],
       "resumen": "",
-      "texto": "",
+      "texto": "<mink_tribe>\nDefinition\nThe tribu Mink is a race of furry mammalian humanoids, also known as the Warrior Beast Tribe.\n\nHomeland\n- Primarily native to Zou\n- Most live in the Mokomo Dukedom\n- Largely isolated from human civilization for around 1,000 years\n\nCharacteristics\n- Humanoids with traits based on mammalian animals\n- Bodies are covered in fur, which they consider a point of pride\n- Each mink resembles a specific animal species\n- Males tend to appear more beast-like\n- Females tend to appear more human-like\n- Possess humanoid hands and feet, though some retain paw traits\n\nBiology\n- Species traits are not strictly hereditary\n- Offspring may resemble different mammalian lineages within their ancestry\n- All minks are natural-born warriors regardless of age\n- Maintain strong physical ability even in old age\n- Possess fast recovery and strong metabolism\n- Thick fur makes them vulnerable to heat\n\nInter-Species Relations\n- Often call humans “Lesser los Mink” due to viewing them as sparsely furred relatives\n- Do not inherently hate humans\n- Some admire, trust, or live among them\n- Welcoming to guests despite their isolationist reputation\n- Highly loyal to allies and willing to sacrifice themselves to protect them\n- Valued heavily in the slave trade\n\nStrength\n- Physically superior to normal humans\n- Naturally agile, strong, and stealth-capable\n- Skilled fighters from birth\n- Capable of high-level combat even without formal training\n\nElectro\nDefinition\nElectro is the natural ability of all minks to generate and discharge electricity.\n\nRule\nLack of Electro indicates an animal-like being is not a mink.\n\nSulong\nDefinition\nSulong is the mink tribe’s full-moon transformation, considered their true form.\n\nTrigger\n- Activated by looking directly at the full moon\n\nBeliefs and Culture\n- Fur is a major part of mink identity\n- They appear to revere deities\n- Recognize internal species distinctions within the tribe\n- Avoid eating animals with fur\n- Freely eat fish, reptiles, amphibians, and non-furred animals\n\nCustoms\n- “Garchu” is used as both greeting and thanks\n- Show affection through “minkship,” including cuddling, licking, nibbling, and exchanging clothes\n- Tend to openly follow instincts tied to their animal nature\n\nSpeech\n- Some use distinctive verbal patterns tied to gender\n- This trait may fade in minks who live away from Zou\n</mink_tribe>\n\n<guardians>\nThe Guardians ",
       "uid": 86
     },
     {
@@ -1428,7 +1428,7 @@
         "Kingdom Under the Ocean"
       ],
       "resumen": "",
-      "texto": "",
+      "texto": "<fish_man_island>\nDefinition\nFish-Man Island is an underwater island beneath the Red Line that serves as the homeland of fish-men and merfolk and a gateway to the New World.\n\nRole\n- Primary residence of fish-men and merfolk\n- Houses the Ryugu Kingdom\n- Functions as an alternative route to the New World for those unable to cross the Red Line legally\n\nLocation\n- Situated 10,000 meters below sea level\n- Located directly beneath the Red Line inside a deep ocean trench\n\nAccess\n- Requires ship coating from Sabaody Archipelago\n- Only a portion of ships survive the descent\n- Entry is regulated through inspection\n\nEnvironment\n- Enclosed in a massive double-layered bubble\n- Contains both breathable air and aquatic zones\n- Illuminated by the Sunlight Tree Eve\n\nStructure\n- Main island within a large bubble\n- Ryugu Palace located in a smaller elevated bubble\n- Entire territory governed by the Ryugu Kingdom\n\nProtection\n- Formerly protected by Whitebeard and Big Mom\n- Currently under Straw Hat influence\n\nSociety\n\nPopulation\n- Primarily fish-men and merfolk\n\nSocial Structure\n- Divided by class and species\n- Wealthier residents live in upper, well-lit areas\n- Lower classes reside in deeper, darker zones\n- Fish-Man District isolates poorer populations\n\nCulture\n- Intermarriage between fish-men and merfolk allowed\n- Blood transfusion between humans and fish-men forbidden\n- Fish-Man Karate practiced and taught locally\n\nSystem Role\n- Acts as the primary underwater transit point beneath the Red Line (illegal route alternative to Red Port)\n</fish_man_island>",
       "uid": 90
     },
     {
@@ -2822,7 +2822,7 @@
         "Grand Line Story Book"
       ],
       "resumen": "",
-      "texto": "",
+      "texto": "Libro de viajes legendario atribuido a los hermanos Brag. En él se narran expediciones y monstruos marinos con detalle dudoso; los navegantes lo citan en tabernas más como relato de borrachos que como carta náutica. Aunque la Marina lo considera exageración, varios capitanes juran que sus páginas describen aguas que ningún Log Pose ha registrado.",
       "uid": 169
     },
     {
@@ -3200,7 +3200,7 @@
         "Supreme Grade Blade"
       ],
       "resumen": "",
-      "texto": "",
+      "texto": "<famous_blades>\nDefinition\nFamous Blades (Meitō) are high-quality weapons, primarily swords, known for superior craftsmanship and use by notable combatants. \n\nNature\n- Individually forged by master craftsmen\n- Possess distinct names, designs, and identities\n- Known for sharpness, durability, and overall quality\n- Often wielded by highly skilled fighters\n\nGraded Blades\nBlades with officially recognized quality rankings.\n\nRecognition\n- Can be identified by experts\n- Catalogued in official records\n- High market value depending on grade\n\nGrades\n- Supreme Grade (12 total)\n- Great Grade (21 total)\n- Skillful Grade (50 total)\n- Grade (unknown total)\n\nUngraded Blades\nSome Famous Blades have no official rank but are still well-known.\n\nScope\nWhile primarily swords, the term may extend to:\n- spears\n- halberds\n- similar high-quality weapons\n\nBlade-Wielder Relationship\n- High-grade blades require advanced skill to use\n- Some blades are difficult or dangerous to wield (e.g. cursed blades)\n- It is often implied a blade \"chooses\" its wielder\n\nBlack Blades\nA rare evolved state of a blade.\n\nProperties\n- Permanently blackened through extensive combat\n- Significantly increased durability and strength\n- Retains state regardless of wielder\n\nMechanism\n- Linked to Armament Haki (exact process unknown)\n- May increase a blade’s rank upon transformation\n</famous_blades>",
       "uid": 190
     },
     {

@@ -49,10 +49,11 @@ test("el catálogo queda registrado como extensión de datos sin colisión", () 
   assert.equal(getExtension("catalogo")?.total, CATALOGO.entradas.length);
 });
 
-test("las entradas pendientes del lorebook muestran un texto de cortesía", () => {
-  const pending = CATALOGO_ENTRADAS.find((entry) => !entry.texto);
-  assert.ok(pending, "deben existir entradas pendientes del lorebook");
-  assert.match(textoCatalogo(pending), /pendiente/);
+test("el catálogo completo del lorebook no necesita textos de cortesía", () => {
+  const pendientes = CATALOGO_ENTRADAS.filter((entry) => !entry.texto);
+  assert.equal(pendientes.length, 0, "el lorebook llenó todas las entradas del catálogo");
   const completa = CATALOGO_ENTRADAS.find((entry) => entry.texto.length > 100);
   assert.equal(textoCatalogo(completa), completa.texto);
+  // la cortesía queda como red de seguridad para entradas futuras sin texto
+  assert.match(textoCatalogo({ texto: "" }), /pendiente/);
 });
