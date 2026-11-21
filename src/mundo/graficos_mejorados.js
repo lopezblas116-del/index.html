@@ -207,10 +207,16 @@
       // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
       if (M.enGlobo && M.enGlobo()) return original(sim, t);
       ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
+      // vista del mundo (para el culling: no pintar lo que no se ve)
+      const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
+      const vy0 = cam.y - alto / (2 * cam.z), vy1 = cam.y + alto / (2 * cam.z);
       ctx.save();
       ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
-      // capa base unificada (mar, franjas, muralla y rótulos) del mapa único
-      for (const off of [-D.W, 0, D.W]) ctx.drawImage(M.capaBase(), off, 0, D.W, D.H);
+      // capa base unificada (mar, franjas, muralla y rótulos) del mapa único — solo envolturas visibles
+      for (const off of [-D.W, 0, D.W]) {
+        if (off + D.W < vx0 - 40 || off > vx1 + 40) continue;
+        ctx.drawImage(M.capaBase(), off, 0, D.W, D.H);
+      }
       M.actualizaEventos(sim, t);
       GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
       for (const s of sim.storms) {
@@ -219,11 +225,14 @@
         ctx.strokeStyle = 'rgba(180,200,255,0.5)';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
       }
-      // islas mejoradas (con zoom cerca, cada isla es su diorama 16-bit completo)
+      // islas mejoradas (con zoom cerca, cada isla es su diorama 16-bit completo) — con culling
       for (const i of D.ISLAS) {
         if (i.oculta) continue;
+        const mg = Math.max(190, i.r * 16);
         for (const off of [0, -D.W, D.W]) {
-          if (cam.z >= (M.LOD_ZOOM || 1.5) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, off)) continue;
+          const x = i.x + off;
+          if (x + mg < vx0 || x - mg > vx1 || i.y + mg < vy0 || i.y - mg > vy1) continue;
+          if (M.usaDiorama && M.usaDiorama(i) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, off)) continue;
           M.sombraIsla(i, off);
           GFX.pintaIslaMejorada(ctx, i, t, off);
           M.edificiosIsla(i, off);
@@ -249,6 +258,7 @@
           const isl = D.ISLA[s.isl]; if (!isl) continue;
           x = isl.x + Math.sin(t / 800 + s.id) * 6; y = isl.y + isl.r + 10; ang = 0;
         }
+        if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
         GFX.pintaBarco(ctx, s, sim, t, x, y, ang);
       }
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);

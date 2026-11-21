@@ -87,7 +87,7 @@
     const cargado = J.cargar();
     if (!cargado) { J.nuevo(); }
     UI.setSim(J.sim);
-    MAPA.init($('mapa'), (i) => UI.abrirIsla(i));
+    MAPA.init($('mapa'), (i) => { if (i && typeof MAPA.enfocarIsla === 'function') MAPA.enfocarIsla(i); UI.abrirIsla(i); });
     wire();
     UI.renderHeader(); UI.renderFeed(true);
     arrancaTimer();
@@ -99,6 +99,9 @@
         // La cámara avanza ANTES de renderizar: funciona igual con el mapa base o con GFX.
         if (typeof MAPA.volando === 'function' && MAPA.volando() && typeof MAPA.avanzaVuelo === 'function') MAPA.avanzaVuelo(t);
         MAPA.render(J.sim, t);
+        // pista del globo visible solo en modo globo (una sola vez por frame, sirve a MAPA y GFX)
+        const pista = MAPA._pista;
+        if (pista) pista.style.opacity = MAPA.enGlobo && MAPA.enGlobo() ? '0.95' : '0';
         ultimoFrame = t;
       }
       requestAnimationFrame(animaMapa);

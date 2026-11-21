@@ -197,7 +197,7 @@ function installWorldUi() {
       }
       if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
       // Vuelo directo a tu isla en modo diorama (zoom cercano = escena 16-bit en el mapa).
-      window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
+      if (window.MAPA?.enfocarIsla) window.MAPA.enfocarIsla(mapa); else window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
     } else if (zoom) {
       event.stopPropagation();
       window.MAPA?.zoom?.(zoom.dataset.mapZoom === "in" ? 1 : -1);

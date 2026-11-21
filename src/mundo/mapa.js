@@ -6,8 +6,13 @@
   const MAPA = (G.MAPA = {});
 
   // Zoom: 0.5 = globo completo (esfera), 0.62 = aterrizando en el mar, 6.0 = dioramas.
+  // La rueda y los botones mueven un OBJETIVO (zT) y la cámara lo persigue: zoom lupa, no salto.
   const Z_MIN = 0.5, Z_MAX = 6.0, UMBRAL_GLOBO = 0.62;
+  MAPA.LOD_ZOOM = 1.5;          // entrar al diorama
+  MAPA.LOD_SALIDA = 1.12;       // salir del diorama (histéresis: alejarse un poco no te expulsa)
   let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: Z_MIN }, ancho = 0, alto = 0;
+  let zT = cam.z;               // objetivo de zoom (la lupa persigue esto)
+  let ultT = 0;                 // timestamp del último frame, para el easing del zoom
   let vuelo = null;
   let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   // ── Globo ──
@@ -94,6 +99,7 @@
         const r = cv.getBoundingClientRect();
         const mx = (a.clientX + b.clientX) / 2 - r.left, my = (a.clientY + b.clientY) / 2 - r.top;
         cam.z = clamp(pellizco.z0 * (d / pellizco.d0), Z_MIN, Z_MAX);
+        zT = cam.z; // la pinza es entrada viva: el objetivo la sigue sin retraso
         if (globoF() < 0.5) {
           // el punto del mundo bajo los dedos sigue bajo los dedos: zoom real, no centrado
           cam.x = clamp(pellizco.wx - (mx - ancho / 2) / cam.z, 0, D.W);
@@ -159,6 +165,16 @@
   };
 
   MAPA.centra = function (x, y) { cam.x = x; cam.y = y; };
+  // Encuadre completo de una isla: calcula el zoom para que el diorama ENTRE entero en pantalla
+  // y vuela hasta allí. Es el "acercar a una isla y verla completa, no una porción".
+  MAPA.enfocarIsla = function (i) {
+    if (!i || !ancho) return;
+    const r = rectDiorama(i, 0);
+    const z = clamp(Math.min(ancho / (r.w + 90), alto / (r.h + 150)), 1.35, 4.2);
+    dioramasActivos.add(i.id); // forzar el diorama: el clic ES intención de ver la escena
+    vuelo = { t0: performance.now(), dur: 750, fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(i.x, 0, D.W), ty: clamp(i.y + 36, 0, D.H), tz: clamp(z, Z_MIN, Z_MAX) }; // +36: baja la escena por debajo de la barra del HUD
+    zT = vuelo.tz;
+  };
   // Vuelo suave: interpola la cámara hacia el destino con easing cúbico (sensación fluida).
   MAPA.volar = function (x, y, z, dur = 650) {
     vuelo = { t0: performance.now(), dur: Math.max(1, dur), fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(x, 0, D.W), ty: clamp(y, 0, D.H), tz: clamp(z, Z_MIN, Z_MAX) };
@@ -172,20 +188,30 @@
     cam.x = vuelo.fx + (vuelo.tx - vuelo.fx) * e;
     cam.y = vuelo.fy + (vuelo.ty - vuelo.fy) * e;
     cam.z = vuelo.fz + (vuelo.tz - vuelo.fz) * e;
+    zT = cam.z; // el vuelo manda: el objetivo acompaña para que la lupa no pelee con él
     if (k >= 1) vuelo = null;
   }
-  // zoom(direction, cx, cy): con foco opcional (la rueda sobre un punto lo mantiene fijo)
+  // zoom(direction, cx, cy): mueve el OBJETIVO de zoom (la lupa); con foco opcional en el cursor
   MAPA.zoom = function (direction, cx, cy) {
-    const z0 = cam.z;
-    cam.z = clamp(cam.z * (direction > 0 ? 1.16 : 0.86), Z_MIN, Z_MAX);
-    if (cx != null && globoF() < 0.5 && cv) {
+    const z0 = zT;
+    zT = clamp(zT * (direction > 0 ? 1.16 : 0.86), Z_MIN, Z_MAX);
+    if (cx != null && globoFT(zT) < 0.5 && cv) {
       const r = cv.getBoundingClientRect();
       const mx = cx - r.left, my = cy - r.top;
       const wx = cam.x + (mx - ancho / 2) / z0, wy = cam.y + (my - alto / 2) / z0;
-      cam.x = clamp(wx - (mx - ancho / 2) / cam.z, 0, D.W);
-      cam.y = clamp(wy - (my - alto / 2) / cam.z, 0, D.H);
+      cam.x = clamp(wx - (mx - ancho / 2) / zT, 0, D.W);
+      cam.y = clamp(wy - (my - alto / 2) / zT, 0, D.H);
     }
   };
+  // mezcla globo evaluada sobre el objetivo (para decidir el anclaje antes de mover la cámara)
+  function globoFT(z) { return clamp((UMBRAL_GLOBO - z) / (UMBRAL_GLOBO - Z_MIN), 0, 1); }
+  // La cámara persigue el objetivo: sensación de lupa (easing independiente del framerate).
+  function pasaZoom(t) {
+    const dt = Math.min(100, Math.max(1, t - ultT));
+    const k = 1 - Math.pow(0.72, dt / 50); // ~28% por frame a 20fps, más rápido a 60
+    if (Math.abs(zT - cam.z) > 0.001) cam.z = clamp(cam.z + (zT - cam.z) * k, Z_MIN, Z_MAX);
+    ultT = t;
+  }
 
   // ── Dioramas 16-bit EN el mapa: al acercar el zoom, cada isla se convierte en su escena completa ──
   MAPA.LOD_ZOOM = 1.5;
@@ -194,37 +220,54 @@
   MAPA.configuraEscenas = function (api) { apiEscenas = api; };
 
   function rectDiorama(i, off) {
-    const w = Math.max(i.r * 30, 300);
+    const w = Math.min(Math.max(i.r * 30, 300), 560); // tope: dioramas que siempre caben en pantalla
     const h = w * 400 / 640;
     return { x: i.x - w / 2 + off, y: i.y - h / 2, w, h };
   }
   MAPA.rectDiorama = rectDiorama;
 
   MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
-    if (!apiEscenas?.juegoDe || !apiEscenas?.pinta) return false;
-    const juego = apiEscenas.juegoDe(i);
-    if (!juego) return false;
     const r = rectDiorama(i, off);
     // culling: solo se dibuja si el diorama cruza la vista actual
     const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
     if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return true;
     const s = r.w / 640;
-    // NPCs: temáticos de la isla + almas presentes del sim (copia nueva, sin mutar la isla).
-    const escena = { ...juego, npcs: [...(juego.npcs || []), ...(apiEscenas.npcsDe ? apiEscenas.npcsDe(i) : [])].slice(0, 10) };
-    const pers = apiEscenas.personajeDe ? apiEscenas.personajeDe(juego) : null;
-    c2.save();
-    c2.translate(r.x, r.y);
-    c2.scale(s, s);
-    c2.beginPath();
-    c2.moveTo(26, 0);
-    c2.arcTo(640, 0, 640, 400, 26);
-    c2.arcTo(640, 400, 0, 400, 26);
-    c2.arcTo(0, 400, 0, 0, 26);
-    c2.arcTo(0, 0, 640, 0, 26);
-    c2.closePath();
-    c2.clip();
-    apiEscenas.pinta(c2, escena, pers, t);
-    c2.restore();
+    const juego = apiEscenas?.juegoDe ? apiEscenas.juegoDe(i) : null;
+    if (juego && apiEscenas?.pinta) {
+      // NPCs: temáticos de la isla + almas presentes del sim (copia nueva, sin mutar la isla).
+      const escena = { ...juego, npcs: [...(juego.npcs || []), ...(apiEscenas.npcsDe ? apiEscenas.npcsDe(i) : [])].slice(0, 10) };
+      const pers = apiEscenas.personajeDe ? apiEscenas.personajeDe(juego) : null;
+      c2.save();
+      c2.translate(r.x, r.y);
+      c2.scale(s, s);
+      c2.beginPath();
+      c2.moveTo(26, 0);
+      c2.arcTo(640, 0, 640, 400, 26);
+      c2.arcTo(640, 400, 0, 400, 26);
+      c2.arcTo(0, 400, 0, 0, 26);
+      c2.arcTo(0, 0, 640, 0, 26);
+      c2.closePath();
+      c2.clip();
+      apiEscenas.pinta(c2, escena, pers, t);
+      c2.restore();
+    } else {
+      // isla de simulación (sin escena del catálogo): diorama temático procedural cacheado
+      if (!i._dio) i._dio = renderDioramaTema(i);
+      c2.save();
+      c2.translate(r.x, r.y);
+      c2.scale(s, s);
+      c2.beginPath();
+      c2.moveTo(26, 0);
+      c2.arcTo(640, 0, 640, 400, 26);
+      c2.arcTo(640, 400, 0, 400, 26);
+      c2.arcTo(0, 400, 0, 0, 26);
+      c2.arcTo(0, 0, 640, 0, 26);
+      c2.closePath();
+      c2.clip();
+      c2.drawImage(i._dio, 0, 0);
+      propsVivas(c2, i, t);
+      c2.restore();
+    }
     // marco dorado y nombre, fuera del recorte
     c2.save();
     c2.translate(r.x, r.y);
@@ -277,6 +320,118 @@
     i._pts = pts; return pts;
   }
 
+  // ── Dioramas temáticos para islas de simulación (sin escena del catálogo) ──
+  // Se pre-renderizan una vez por isla (640×400) y en vivo solo se animan olas y almas.
+  function renderDioramaTema(i) {
+    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
+    const tema = i.tema || 'verde';
+    const c = document.createElement('canvas');
+    c.width = 640; c.height = 400;
+    const g = c.getContext('2d');
+    const cielos = { desierto: ['#ffdca6', '#ffb371'], blanco: ['#cfe4ff', '#f0f8ff'], industrial: ['#a8b8cc', '#d2dfe9'], prision: ['#2e3d59', '#5a7095'], mar: ['#7fc3ee', '#cfeeff'], tropical: ['#ffe8b8', '#ffcb8f'], fortaleza: ['#9fc0e8', '#dcecfb'] };
+    const [cs1, cs2] = cielos[tema] || ['#a4dcf4', '#ddf2ff'];
+    const sky = g.createLinearGradient(0, 0, 0, 208);
+    sky.addColorStop(0, cs1); sky.addColorStop(1, cs2);
+    g.fillStyle = sky; g.fillRect(0, 0, 640, 208);
+    // astro y nubes fijas
+    g.fillStyle = tema === 'prision' ? 'rgba(210,225,255,0.5)' : 'rgba(255,240,190,0.9)';
+    g.beginPath(); g.arc(540, 60, 26, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let k = 0; k < 3; k++) {
+      const cx = 60 + ruido(k * 3.3 + i.r) * 380, cy = 40 + ruido(k * 7.1) * 60;
+      g.beginPath(); g.ellipse(cx, cy, 34, 12, 0, 0, 7); g.fill();
+      g.beginPath(); g.ellipse(cx + 22, cy - 8, 22, 9, 0, 0, 7); g.fill();
+    }
+    // mar de fondo con horizonte
+    g.fillStyle = '#2a6cb0'; g.fillRect(0, 200, 640, 60);
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    for (let k = 0; k < 14; k++) g.fillRect(20 + ruido(k * 2.7 + i.r) * 600, 208 + ruido(k * 5.3) * 44, 22, 2);
+    // terreno: playa y tierra con borde pixelado
+    g.fillStyle = rgb(T.sand); g.fillRect(0, 248, 640, 152);
+    g.fillStyle = rgb(T.land); g.fillRect(0, 266, 640, 134);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 264, 640, 4);
+    // props por tema
+    const arbusto = (x, y, s, col) => { g.fillStyle = col; g.fillRect(x, y, 10 * s, 8 * s); g.fillRect(x + 3 * s, y - 5 * s, 6 * s, 6 * s); };
+    const palmera = (x, y, s) => {
+      g.fillStyle = '#8a5a33'; g.fillRect(x, y - 26 * s, 5 * s, 26 * s);
+      g.fillStyle = rgb(T.tree); g.fillRect(x - 14 * s, y - 34 * s, 33 * s, 9 * s);
+      g.fillRect(x + 8 * s, y - 40 * s, 8 * s, 8 * s);
+    };
+    const pino = (x, y, s, col) => { g.fillStyle = '#6b4a2f'; g.fillRect(x + 4 * s, y - 8 * s, 4 * s, 8 * s); g.fillStyle = col || rgb(T.tree); g.fillRect(x - 6 * s, y - 30 * s, 24 * s, 23 * s); g.fillRect(x - 3 * s, y - 38 * s, 18 * s, 9 * s); };
+    const casa = (x, y, s, techo) => { g.fillStyle = '#f0e6d2'; g.fillRect(x, y - 18 * s, 26 * s, 18 * s); g.fillStyle = techo; g.fillRect(x - 3 * s, y - 24 * s, 32 * s, 7 * s); g.fillStyle = '#6b4a2f'; g.fillRect(x + 10 * s, y - 10 * s, 6 * s, 10 * s); };
+    const fabrica = (x, y, s) => { g.fillStyle = '#9aa5b1'; g.fillRect(x, y - 34 * s, 48 * s, 34 * s); g.fillStyle = '#7d8794'; g.fillRect(x + 6 * s, y - 52 * s, 10 * s, 20 * s); g.fillRect(x + 24 * s, y - 60 * s, 10 * s, 28 * s); g.fillStyle = 'rgba(230,235,240,0.75)'; g.fillRect(x + 27 * s, y - 74 * s, 4 * s, 14 * s); };
+    const duna = (x, y, s) => { g.fillStyle = '#e8c98a'; g.beginPath(); g.ellipse(x, y, 60 * s, 14 * s, 0, Math.PI, 0); g.fill(); };
+    const cactusP = (x, y, s) => { g.fillStyle = '#3f8f4f'; g.fillRect(x, y - 22 * s, 7 * s, 22 * s); g.fillRect(x - 8 * s, y - 16 * s, 8 * s, 5 * s); g.fillRect(x + 7 * s, y - 12 * s, 8 * s, 5 * s); };
+    const iglu = (x, y, s) => { g.fillStyle = '#eef6ff'; g.beginPath(); g.arc(x, y - 12 * s, 16 * s, Math.PI, 0); g.fill(); g.fillStyle = '#b8d4ee'; g.fillRect(x - 4 * s, y - 9 * s, 8 * s, 9 * s); };
+    const muro = (x, y, s) => { g.fillStyle = '#8d99a6'; g.fillRect(x, y - 44 * s, 130 * s, 44 * s); g.fillStyle = '#76828e'; for (let k = 0; k < 5; k++) g.fillRect(x + 8 * s + k * 26 * s, y - 52 * s, 14 * s, 9 * s); };
+    const torre = (x, y, s) => { g.fillStyle = '#6d7884'; g.fillRect(x, y - 64 * s, 16 * s, 64 * s); g.fillStyle = '#2b6cb0'; g.fillRect(x + 2 * s, y - 74 * s, 12 * s, 11 * s); };
+    const reja = (x, y, s) => { g.fillStyle = '#4a5568'; g.fillRect(x, y - 40 * s, 90 * s, 6 * s); for (let k = 0; k < 7; k++) g.fillRect(x + 4 * s + k * 13 * s, y - 40 * s, 4 * s, 40 * s); };
+    const farol = (x, y, s) => { g.fillStyle = '#e8e2d2'; g.fillRect(x, y - 56 * s, 10 * s, 56 * s); g.fillStyle = '#d33'; g.fillRect(x + 1 * s, y - 64 * s, 8 * s, 9 * s); };
+    const roca = (x, y, s) => { g.fillStyle = '#78838f'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 18 * s, y - 34 * s); g.lineTo(x + 34 * s, y); g.closePath(); g.fill(); };
+    let k = 0;
+    switch (tema) {
+      case 'desierto':
+        duna(120, 300, 1); duna(420, 330, 1.2); duna(260, 355, 0.9);
+        cactusP(90, 330, 1); cactusP(540, 345, 1.2); cactusP(330, 360, 0.9);
+        g.fillStyle = '#d9b36c'; g.beginPath(); g.moveTo(380, 352); g.lineTo(430, 268); g.lineTo(480, 352); g.closePath(); g.fill(); // pirámide
+        break;
+      case 'blanco':
+        for (k = 0; k < 7; k++) pino(40 + k * 88, 320 + ruido(k) * 40, 1, '#dfeefc');
+        iglu(300, 340, 1.2); iglu(500, 360, 1);
+        g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(0, 266, 640, 8); // nieve fresca
+        break;
+      case 'industrial':
+        fabrica(70, 330, 1); fabrica(250, 350, 1.2); fabrica(450, 325, 0.9);
+        for (k = 0; k < 5; k++) { g.fillStyle = '#5f6a76'; g.fillRect(120 + k * 96, 300, 12, 26); } // chimeneas
+        break;
+      case 'fortaleza':
+        muro(160, 340, 1.4); torre(140, 340, 1); torre(420, 340, 1.1);
+        g.fillStyle = '#2b6cb0'; g.fillRect(300, 268, 8, 22); g.fillStyle = '#f5f0e6'; g.fillRect(308, 268, 14, 9); // bandera
+        break;
+      case 'prision':
+        reja(200, 350, 1.4); g.fillStyle = '#3a4658'; g.fillRect(120, 290, 400, 20); // muralla alta
+        farol(480, 350, 0.8);
+        break;
+      case 'mar': // restaurante flotante estilo Baratie
+        g.fillStyle = '#6b4a2f'; g.fillRect(180, 296, 280, 18);
+        casa(240, 296, 1.6, '#d33'); farol(200, 296, 0.6);
+        break;
+      case 'tropical':
+        palmera(90, 330, 1.1); palmera(200, 360, 0.9); palmera(420, 330, 1.2); palmera(560, 355, 1);
+        casa(300, 350, 1.1, '#c98a3d');
+        break;
+      case 'ciudad': case 'puerto':
+        farol(80, 345, 1.1);
+        for (k = 0; k < 4; k++) casa(140 + k * 90, 330 + (k % 2) * 26, 1 + ruido(k) * 0.4, ['#c0533d', '#3d6bc0', '#c9a13d', '#4f8f5f'][k]);
+        g.fillStyle = '#8a5a33'; g.fillRect(40, 356, 560, 10); // muelle
+        break;
+      case 'rocosa':
+        roca(110, 340, 1.4); roca(300, 355, 1); roca(480, 330, 1.7); roca(560, 360, 0.9);
+        break;
+      default: // verde, bosque, jungla
+        for (k = 0; k < 6; k++) pino(50 + k * 104, 320 + ruido(k * 1.7 + i.r) * 46, 0.9 + ruido(k) * 0.5);
+        arbusto(180, 355, 1.2, rgb(T.land2)); arbusto(400, 345, 1, rgb(T.land2));
+        casa(500, 350, 1, '#7a9a4d');
+    }
+    return c;
+  }
+  // Capa viva encima del diorama cacheado: olas del horizonte y almas caminando.
+  function propsVivas(g, i, t) {
+    g.fillStyle = 'rgba(255,255,255,0.3)';
+    for (let k = 0; k < 5; k++) {
+      const x = ((t / 26 + k * 137 + i.r * 9) % 620) + 10;
+      g.fillRect(x, 212 + (k % 3) * 14, 20, 2);
+    }
+    const n = 2 + (Math.floor(i.r) % 3);
+    for (let k = 0; k < n; k++) {
+      const x = 80 + ruido(k * 9.3 + i.r) * 480;
+      const y = 296 + ruido(k * 3.1) * 60;
+      const paseo = Math.sin(t / 1400 + k * 2.4) * 26;
+      g.fillStyle = '#3d2f23'; g.fillRect(x + paseo, y - 8, 5, 9); // cuerpo
+      g.fillStyle = '#e8c8a0'; g.fillRect(x + paseo + 1, y - 12, 3, 4); // cabeza
+    }
+  }
+
   function sombraIsla(i, ox) {
     ctx.beginPath();
     ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
@@ -315,9 +470,23 @@
     return cam.z >= 0.95 || i.juego || i.base || i.tribunal || i.cuartel || i.natal;
   }
 
+  // Histéresis del diorama: entra a LOD_ZOOM (1.5), solo sale bajando de LOD_SALIDA (1.12).
+  // Así "alejar un poco" no te expulsa de la isla. La usan el mapa base y GFX.
+  // Mientras hay un vuelo en curso NO se borra la marca: el vuelo cruza zooms bajos
+  // al despegar y borrarla anularía el encuadre del clic.
+  const dioramasActivos = new Set();
+  MAPA.usaDiorama = function (i) {
+    if (dioramasActivos.has(i.id)) {
+      if (cam.z >= MAPA.LOD_SALIDA) return true;
+      if (!vuelo) dioramasActivos.delete(i.id);
+      return false;
+    }
+    return cam.z >= MAPA.LOD_ZOOM;
+  };
+
   function dibujaIsla(i, ox, t) {
     // Con el zoom acercado, la isla ES su diorama 16-bit (NPCs caminando incluidos).
-    if (cam.z >= MAPA.LOD_ZOOM && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
+    if (MAPA.usaDiorama(i) && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const pts = formaIsla(i);
     sombraIsla(i, ox);
@@ -375,6 +544,13 @@
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
+    }
+    // islas del cielo: puff de nubes sosteniendo la isla (Skypiea y compañía)
+    if (i.cielo || i.id === 'skypiea') {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      const bob = Math.sin(t / 1100 + i.x) * 2;
+      ctx.beginPath(); ctx.ellipse(i.x + ox - 14, i.y + i.r + 10 + bob, 16, 6, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(i.x + ox + 16, i.y + i.r + 13 - bob, 20, 7, 0, 0, 7); ctx.fill();
     }
   }
 
@@ -477,6 +653,27 @@
     c.fillRect(x0 - 12, 0, 5, D.H); c.fillRect(x0 + 7, 0, 5, D.H);
     c.font = '700 13px Georgia, serif'; c.fillStyle = 'rgba(255,238,226,0.85)';
     c.save(); c.translate(x0 - 8, D.H - 130); c.rotate(-Math.PI / 2); c.fillText('M U R A L L A   R O J A', 0, 0); c.restore();
+    // ── El anillo continúa: SEGUNDA franja de la Muralla Roja en el costurero del mapa ──
+    // (la Red Line rodea el mundo: en el mapa plano se ve dos veces, como en la referencia)
+    const hw2 = 20;
+    for (const xs of [0, D.W]) {
+      c.beginPath();
+      for (let y = 0; y <= D.H; y += paso) c.lineTo(xs - hw2 + (ruido(y / paso + 900) - 0.5) * 8, y);
+      for (let y = D.H; y >= 0; y -= paso) c.lineTo(xs + hw2 + (ruido(y / paso + 1300) - 0.5) * 8, y);
+      c.closePath(); c.fillStyle = '#9c4c38'; c.fill();
+      c.fillStyle = 'rgba(212,150,118,0.4)'; c.fillRect(xs - 9, 0, 4, D.H);
+    }
+    // corrientes del Reverse Mountain: las rutas del mundo convergen en el cruce (la X del mapa)
+    c.save();
+    c.strokeStyle = 'rgba(140,200,255,0.5)'; c.lineWidth = 3;
+    const cruce = { x: D.RL_X, y: (D.GL_Y0 + D.GL_Y1) / 2 - 15 };
+    for (const a of [0.62, Math.PI - 0.62, Math.PI + 0.62, -0.62]) {
+      c.beginPath();
+      c.moveTo(cruce.x + Math.cos(a) * 130, cruce.y + Math.sin(a) * 78);
+      c.lineTo(cruce.x + Math.cos(a) * 14, cruce.y + Math.sin(a) * 9);
+      c.stroke();
+    }
+    c.restore();
     // ── Estilo carta náutica: ruta dorada de la Gran Ruta ──
     const rutaIds = ['dawn', 'shells', 'baratie', 'arlong', 'loguetown', 'sabaody', 'ohara', 'wano'];
     const ruta = rutaIds.map(id => D.ISLAS.find(i => i.juegoId === id)).filter(Boolean);
@@ -655,9 +852,8 @@
 
   MAPA.render = function (sim, t) {
     if (!ctx) return;
+    pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     const g = globoF();
-    // pista visible solo en modo globo (la transición CSS hace el fundido)
-    if (MAPA._pista) MAPA._pista.style.opacity = g > 0.5 ? '0.95' : '0';
     if (g >= 0.999) {
       // vista globo: espacio + esfera. Sin capas de mundo (rendimiento).
       dibujaEstrellas(t, 1);
@@ -678,10 +874,18 @@
       ctx.strokeStyle = 'rgba(180,200,255,0.5)';
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
     }
-    // islas
+    // islas: SOLO las que cruzan la vista (culling con margen por diorama) — antes se pintaban
+    // todas ×3 envolturas siempre y eso era el tirón de rendimiento.
+    const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
+    const vy0 = cam.y - alto / (2 * cam.z), vy1 = cam.y + alto / (2 * cam.z);
     for (const i of D.ISLAS) {
       if (i.oculta) continue;
-      for (const off of [0, -D.W, D.W]) dibujaIsla(i, off, t);
+      const mg = Math.max(190, i.r * 16);
+      for (const off of [0, -D.W, D.W]) {
+        const x = i.x + off;
+        if (x + mg < vx0 || x - mg > vx1 || i.y + mg < vy0 || i.y - mg > vy1) continue;
+        dibujaIsla(i, off, t);
+      }
     }
     // barcos
     for (const s of sim.ships) dibujaBarco(s, sim, t);
