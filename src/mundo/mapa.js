@@ -143,10 +143,12 @@
       const R = radioGlobo(g);
       const dx = (px - ancho / 2) / R, dy = (py - alto / 2) / R;
       if (dx * dx + dy * dy > 1) { selIsl = null; onSel && onSel(null); return; } // toque en el espacio
-      const lam = Math.asin(clamp(dx, -1, 1));
+      const phi = Math.asin(clamp(dy, -1, 1)); // latitud real: y = R·sen(φ)
+      const cf = Math.max(0.3, Math.cos(phi));
+      const lam = Math.asin(clamp(dx / cf, -1, 1));
       wx = (((rotLon + lam + Math.PI) / (2 * Math.PI)) % 1) * D.W;
       if (wx < 0) wx += D.W;
-      wy = clamp(0.5 + dy * 0.55, 0.04, 0.96) * D.H;
+      wy = clamp((phi + Math.PI / 2) / Math.PI, 0.02, 0.98) * D.H;
     } else {
       wx = px / cam.z + cam.x - ancho / (2 * cam.z);
       wy = py / cam.z + cam.y - alto / (2 * cam.z);
@@ -758,21 +760,132 @@
     return Math.min(ancho, alto) * 0.48 * (0.58 + 0.42 * (1 - g));
   }
 
+  // ── Textura del globo: océano pintado con bandas de calma, islas como sprites pixel
+  //    con arena y terreno temático, y la Muralla Roja como cordillera rugosa ──
   function crearTextura() {
-    const tw = 1300, th = Math.round(tw * D.H / D.W);
+    const tw = 2048, th = 1024;
     const t = document.createElement('canvas');
     t.width = tw; t.height = th;
     const g2 = t.getContext('2d');
-    g2.drawImage(MAPA.capaBase(), 0, 0, tw, th);
-    // islas como puntitos: arena alrededor y tierra encima
+    const escX = tw / D.W, escY = th / D.H;
+    // océano: profundo en los polos, vivo en el ecuador
+    const oc = g2.createLinearGradient(0, 0, 0, th);
+    oc.addColorStop(0, '#1a4d8c'); oc.addColorStop(0.24, '#2b6db3');
+    oc.addColorStop(0.5, '#2f79c2'); oc.addColorStop(0.76, '#2b6db3'); oc.addColorStop(1, '#1a4d8c');
+    g2.fillStyle = oc; g2.fillRect(0, 0, tw, th);
+    // manchas amplias de tono: el mar nunca es un color plano
+    for (let k = 0; k < 26; k++) {
+      g2.fillStyle = k % 2 ? 'rgba(96,168,226,0.12)' : 'rgba(8,38,88,0.12)';
+      g2.beginPath();
+      g2.ellipse(ruido(k + 21) * tw, ruido(k + 57) * th, 140 + ruido(k + 91) * 220, 60 + ruido(k + 13) * 110, ruido(k + 5) * 3, 0, 7);
+      g2.fill();
+    }
+    // Franjas de Calma: bandas claras al norte y al sur de la Gran Ruta
+    const bandaCalma = (y0, y1) => {
+      g2.fillStyle = 'rgba(152,202,236,0.28)';
+      g2.fillRect(0, y0, tw, y1 - y0);
+      g2.fillStyle = 'rgba(198,228,246,0.20)';
+      for (let x = 0; x < tw; x += 24) {
+        g2.fillRect(x + ((y0 / 24) % 1) * 12, y0 + 6 + ruido(x * 0.7 + y0) * (y1 - y0 - 14), 13, 2);
+      }
+    };
+    bandaCalma(D.GL_Y0 * escY - 64, D.GL_Y0 * escY);
+    bandaCalma(D.GL_Y1 * escY, D.GL_Y1 * escY + 64);
+    // rótulos de mares grabados en la textura (van girando con el globo)
+    g2.fillStyle = 'rgba(220,240,255,0.34)';
+    g2.font = '600 34px system-ui, sans-serif';
+    g2.textAlign = 'center';
+    const sellos = [
+      ['E A S T  B L U E', 0.16, 0.62], ['N O R T H  B L U E', 0.22, 0.3],
+      ['W E S T  B L U E', 0.62, 0.3], ['S O U T H  B L U E', 0.68, 0.74],
+      ['P A R A Í S O', 0.78, 0.46], ['N U E V O  M U N D O', 0.9, 0.52]
+    ];
+    for (const [txt, fx, fy] of sellos) g2.fillText(txt, fx * tw, fy * th);
+    g2.fillStyle = 'rgba(215,235,250,0.30)';
+    g2.font = '600 20px system-ui, sans-serif';
+    for (const fy of [D.GL_Y0 * escY - 26, D.GL_Y1 * escY + 34]) {
+      for (const fx of [0.12, 0.42, 0.72]) g2.fillText('F R A N J A  D E  C A L M A', fx * tw, fy);
+    }
+    // Muralla Roja: cordillera rugosa de polo a polo con vetas y cumbres
+    const rx = D.RL_X * escX, paso = 30;
+    const muroGrad = g2.createLinearGradient(0, 0, 0, th);
+    muroGrad.addColorStop(0, '#a8503a'); muroGrad.addColorStop(0.5, '#93402c'); muroGrad.addColorStop(1, '#a8503a');
+    const borde = (dir) => {
+      const pts = [];
+      for (let y = -paso; y <= th + paso; y += paso) {
+        const w = (26 + ruido(y * 0.07 + (dir > 0 ? 5 : 9)) * 30) * (1 + 0.25 * Math.sin((y / th) * 6));
+        pts.push([rx + dir * w + Math.sin((y / th) * 9 + 1.7) * 22 + (ruido(y * 0.11) - 0.5) * 26, y]);
+      }
+      return pts;
+    };
+    const izq = borde(-1), der = borde(1);
+    g2.beginPath();
+    izq.forEach(([X, y], k) => { if (k) g2.lineTo(X, y); else g2.moveTo(X, y); });
+    der.reverse().forEach(([X, y]) => g2.lineTo(X, y));
+    g2.closePath();
+    g2.fillStyle = muroGrad; g2.fill();
+    // vetas rocosas: trazos oscuros y cumbres iluminadas
+    for (let q = 0; q < 130; q++) {
+      const y = ruido(q * 3.3) * th;
+      const X = rx + (ruido(q * 7.7) - 0.5) * 90 + Math.sin((y / th) * 9 + 1.7) * 22;
+      const an = 3 + ruido(q * 9.1) * 9;
+      g2.strokeStyle = q % 3 ? 'rgba(70,26,18,0.5)' : 'rgba(230,150,120,0.4)';
+      g2.lineWidth = 1.6 + ruido(q) * 2;
+      g2.beginPath();
+      g2.moveTo(X - an, y - 3 + ruido(q * 2) * 6);
+      g2.lineTo(X + an * 0.7, y + 2 + ruido(q * 4.4) * 5);
+      g2.stroke();
+    }
+    // rótulo vertical de la muralla
+    g2.save();
+    g2.translate(rx + 92, th * 0.24);
+    g2.rotate(Math.PI / 2);
+    g2.fillStyle = 'rgba(255,220,205,0.55)';
+    g2.font = '700 30px Georgia, serif';
+    g2.textAlign = 'center';
+    g2.fillText('M U R A L L A   R O J A', 0, 0);
+    g2.restore();
+    // islas como sprites pixel: arena irregular, terreno temático y detalles
     for (const i of D.ISLAS) {
       if (i.oculta) continue;
       const T = D.TEMAS[i.tema] || D.TEMAS.verde;
-      const x = i.x * tw / D.W, y = i.y * th / D.H;
-      g2.fillStyle = 'rgba(240,224,170,0.9)';
-      g2.beginPath(); g2.ellipse(x, y, Math.max(2.4, i.r / 7), Math.max(2, i.r / 8), 0, 0, 7); g2.fill();
-      g2.fillStyle = rgb(T.land);
-      g2.beginPath(); g2.ellipse(x, y, Math.max(1.6, i.r / 10), Math.max(1.4, i.r / 11), 0, 0, 7); g2.fill();
+      const px = i.x * escX, py = i.y * escY;
+      const rp = clamp(i.r * 0.52 * escX + 4, 6, 30);
+      const K = 10, pts = [];
+      for (let k = 0; k < K; k++) {
+        const a = (k / K) * 6.2832, w = 0.62 + ruido(i.x * 0.13 + k * 3.1) * 0.55;
+        pts.push([Math.cos(a) * rp * w, Math.sin(a) * rp * w * 0.76]);
+      }
+      const blob = (escF, color) => {
+        g2.fillStyle = color;
+        g2.beginPath();
+        pts.forEach(([dx, dy], k) => {
+          const X = px + dx * escF, Y = py + dy * escF;
+          if (k) g2.lineTo(X, Y); else g2.moveTo(X, Y);
+        });
+        g2.closePath(); g2.fill();
+      };
+      const envuelve = (px - rp < 0 || px + rp > tw) ? [0, -tw, tw] : [0];
+      for (const off of envuelve) {
+        g2.save(); g2.translate(off, 0);
+        blob(1.18, 'rgba(236,218,152,0.92)'); // arena perimetral
+        blob(0.84, rgb(T.land));
+        blob(0.52, rgb(T.land2));
+        const nArboles = Math.round(2 + (T.trees || 0.3) * 6);
+        for (let q = 0; q < nArboles; q++) {
+          const a = ruido(i.y * 0.7 + q * 7.7) * 6.2832;
+          const rr = rp * 0.42 * (0.3 + ruido(q * 13.1 + i.x * 0.11) * 0.7);
+          g2.fillStyle = rgb(T.tree);
+          g2.fillRect(px + Math.cos(a) * rr - 1.5, py + Math.sin(a) * rr - 1.5, 3, 3);
+        }
+        if (rp > 13 && (T.dense || (T.roof && T.roof.length > 1))) {
+          g2.fillStyle = rgb(T.roof[0]);
+          g2.fillRect(px - rp * 0.26, py - rp * 0.3, 4, 3);
+          g2.fillStyle = rgb(T.roof[1 % T.roof.length] || T.roof[0]);
+          g2.fillRect(px + rp * 0.14, py + rp * 0.12, 3, 3);
+        }
+        g2.restore();
+      }
     }
     return t;
   }
@@ -796,47 +909,127 @@
     ctx.restore();
   }
 
+  // Esfera en caché: se repinta solo cuando giró o cambió el tamaño; el resto de frames es un blit.
+  let esferaCache = null, esferaRot = 1e9, esferaR = -1;
+
+  function pintaEsfera(Rs, texW, texH) {
+    const S = Math.round(Rs * 2);
+    esferaCache.width = S; esferaCache.height = S;
+    const e2 = esferaCache.getContext('2d');
+    const cc = Rs;
+    e2.save();
+    e2.beginPath(); e2.arc(cc, cc, Rs, 0, 7); e2.clip();
+    // proyección ortográfica por celdas: franjas de longitud × bandas de latitud.
+    // La anchura se escala con cos(latitud): compresión polar real, como el referente.
+    const N = 72, M = 16;
+    for (let k = 0; k < N; k++) {
+      const l1 = -Math.PI / 2 + (k / N) * Math.PI, l2 = l1 + Math.PI / N;
+      const s1 = Math.sin(l1), s2 = Math.sin(l2);
+      if (s2 - s1 < 0.0015) continue;
+      for (let j = 0; j < M; j++) {
+        const f1 = -Math.PI / 2 + (j / M) * Math.PI, f2 = f1 + Math.PI / M;
+        const cf = Math.cos((f1 + f2) / 2);
+        const dw = (s2 - s1) * Rs * cf + 0.8, dx = cc + s1 * Rs * cf;
+        if (dw < 0.4) continue;
+        const dy = cc + Math.sin(f1) * Rs, dh = (Math.sin(f2) - Math.sin(f1)) * Rs + 0.8;
+        let sxT = (((rotLon + (l1 + l2) / 2 + Math.PI) / (2 * Math.PI)) % 1) * texW - texW / (4 * N);
+        if (sxT < 0) sxT += texW;
+        const swT = texW / (2 * N), syT = ((f1 + Math.PI / 2) / Math.PI) * texH, shT = texH / M;
+        if (sxT + swT <= texW) {
+          e2.drawImage(TEX, sxT, syT, swT, shT, dx, dy, dw, dh);
+        } else { // la franja cruza el borde del mundo: dos trozos
+          const w1 = texW - sxT, w2 = swT - w1;
+          e2.drawImage(TEX, sxT, syT, w1, shT, dx, dy, dw * (w1 / swT), dh);
+          e2.drawImage(TEX, 0, syT, w2, shT, dx + dw * (w1 / swT), dy, dw * (w2 / swT), dh);
+        }
+      }
+    }
+    e2.restore();
+  }
+
   function dibujaEsfera(t, alpha) {
     if (!TEX) TEX = crearTextura();
     const g = globoF();
     const cx = ancho / 2, cy = alto / 2;
     const R = radioGlobo(g);
+    if (!esferaCache) esferaCache = document.createElement('canvas');
+    if (Math.abs(rotLon - esferaRot) > 0.008 || Math.abs(R - esferaR) > 1.2) {
+      pintaEsfera(R * devicePixelRatio, TEX.width, TEX.height);
+      esferaRot = rotLon; esferaR = R;
+    }
     ctx.save();
     ctx.globalAlpha = alpha;
-    // halo atmosférico
+    // doble halo atmosférico: el globo respira en el espacio
+    ctx.beginPath(); ctx.arc(cx, cy, R + 16, 0, 7);
+    ctx.fillStyle = 'rgba(90,150,230,0.10)'; ctx.fill();
     ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7);
-    ctx.fillStyle = 'rgba(110,170,255,0.16)'; ctx.fill();
-    // franjas longitudinales: proyección ortográfica de la textura sobre la esfera
+    ctx.fillStyle = 'rgba(110,170,255,0.18)'; ctx.fill();
     ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip(); // la esfera es un círculo, no un cuadrado
-    const N = 72, texW = TEX.width, texH = TEX.height;
-    for (let k = 0; k < N; k++) {
-      const l1 = -Math.PI / 2 + (k / N) * Math.PI, l2 = l1 + Math.PI / N;
-      const lam = (l1 + l2) / 2;
-      let sx = (((rotLon + lam + Math.PI) / (2 * Math.PI)) % 1) * texW - texW / (4 * N);
-      if (sx < 0) sx += texW;
-      const sw = texW / (2 * N);
-      const dx = cx + Math.sin(l1) * R, dw = (Math.sin(l2) - Math.sin(l1)) * R;
-      if (dw <= 0.1) continue;
-      if (sx + sw <= texW) {
-        ctx.drawImage(TEX, sx, 0, sw, texH, dx, cy - R, dw, 2 * R);
-      } else { // la franja cruza el borde del mundo: se dibuja en dos trozos
-        const sw1 = texW - sx, sw2 = sw - sw1;
-        ctx.drawImage(TEX, sx, 0, sw1, texH, dx, cy - R, dw * (sw1 / sw), 2 * R);
-        ctx.drawImage(TEX, 0, 0, sw2, texH, dx + dw * (sw1 / sw), cy - R, dw * (sw2 / sw), 2 * R);
-      }
-    }
-    ctx.restore(); // fin del recorte circular
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
+    ctx.drawImage(esferaCache, cx - R, cy - R, 2 * R, 2 * R);
+    ctx.restore();
     // sombreado esférico: luz arriba-izquierda, limbo oscuro
     const som = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
-    som.addColorStop(0, 'rgba(255,255,255,0.10)');
+    som.addColorStop(0, 'rgba(255,255,255,0.12)');
     som.addColorStop(0.55, 'rgba(0,0,0,0)');
-    som.addColorStop(0.82, 'rgba(4,8,20,0.22)');
-    som.addColorStop(1, 'rgba(3,6,16,0.6)');
+    som.addColorStop(0.82, 'rgba(4,8,20,0.26)');
+    som.addColorStop(1, 'rgba(3,6,16,0.66)');
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7);
     ctx.fillStyle = som; ctx.fill();
     ctx.strokeStyle = 'rgba(140,190,255,0.35)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+
+    // ── capa viva proyectada: islas con nombre, barcos y avisos del mundo ──
+    const proyecta = (wx, wy) => {
+      let lam = (wx / D.W) * 2 * Math.PI - rotLon;
+      lam = ((lam + Math.PI * 3) % (2 * Math.PI)) - Math.PI;
+      if (Math.abs(lam) > 1.45) return null;
+      const phi = (wy / D.H) * Math.PI - Math.PI / 2;
+      const frente = Math.cos(lam) * Math.cos(phi);
+      if (frente < 0.15) return null; // de perfil o al otro lado
+      return { x: cx + Math.sin(lam) * Math.cos(phi) * R, y: cy + Math.sin(phi) * R, k: frente };
+    };
+    const posBarco = (s) => {
+      if (s.plan) {
+        const kk = clamp(((t - s.plan.t0) / Math.max(1, s.plan.dur)), 0, 1);
+        return { x: s.plan.x0 + (s.plan.x1 - s.plan.x0) * kk, y: s.plan.y0 + (s.plan.y1 - s.plan.y0) * kk };
+      }
+      const isl = D.ISLA[s.isl];
+      return isl ? { x: isl.x, y: isl.y } : null;
+    };
+    // avisos: crisis o tormenta sobre una isla (pulso dorado)
+    for (const id of eventoIsl) {
+      const i = D.ISLA[id]; if (!i) continue;
+      const p = proyecta(i.x, i.y); if (!p) continue;
+      ctx.strokeStyle = 'rgba(246,224,94,' + (0.45 + 0.35 * Math.sin(t / 320)).toFixed(3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 8 + Math.sin(t / 320) * 2.5, 0, 7); ctx.stroke();
+    }
+    // barcos navegando: velitas doradas que cuentan que el mundo se mueve
+    if (MAPA._sim) for (const s of MAPA._sim.ships || []) {
+      const pos = posBarco(s); if (!pos) continue;
+      const p = proyecta(pos.x, pos.y); if (!p) continue;
+      ctx.fillStyle = 'rgba(255,232,150,' + (0.55 + 0.35 * p.k).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - 4); ctx.lineTo(p.x + 3.4, p.y + 2); ctx.lineTo(p.x - 3.4, p.y + 2);
+      ctx.closePath(); ctx.fill();
+    }
+    // etiquetas de las islas mayores (las chiquitas se leen al bajar al mar)
+    ctx.textAlign = 'center';
+    for (const i of D.ISLAS) {
+      if (i.oculta || i.r < 20) continue;
+      const p = proyecta(i.x, i.y); if (!p || p.k < 0.3) continue;
+      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.lineWidth = 2.6;
+      ctx.strokeStyle = 'rgba(6,12,26,0.78)';
+      ctx.strokeText(i.n, p.x, p.y + 15);
+      ctx.fillStyle = 'rgba(255,255,255,0.94)';
+      ctx.fillText(i.n, p.x, p.y + 15);
+      if (selIsl === i) {
+        ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 7); ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
