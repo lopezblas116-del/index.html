@@ -5,6 +5,7 @@
   const MAPA = (G.MAPA = {});
 
   let cv = null, ctx = null, cam = { x: 800, y: 400, z: 1 }, ancho = 0, alto = 0;
+  let vuelo = null;
   let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   const nubes = [];
   for (let i = 0; i < 26; i++) {
@@ -27,7 +28,7 @@
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(cv.parentElement);
     // interacción
     let drag = null;
-    cv.addEventListener('mousedown', e => { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false }; });
+    cv.addEventListener('mousedown', e => { vuelo = null; drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false }; });
     window.addEventListener('mousemove', e => {
       if (!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -41,6 +42,7 @@
       cam.z = nz;
     }, { passive: false });
     cv.addEventListener('touchstart', e => {
+      vuelo = null;
       if (e.touches.length === 1) drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, cx: cam.x, cy: cam.y, movio: false };
     }, { passive: true });
     cv.addEventListener('touchmove', e => {
@@ -72,6 +74,21 @@
   };
 
   MAPA.centra = function (x, y) { cam.x = x; cam.y = y; };
+  // Vuelo suave: interpola la cámara hacia el destino con easing cúbico (sensación fluida).
+  MAPA.volar = function (x, y, z, dur = 650) {
+    vuelo = { t0: performance.now(), dur: Math.max(1, dur), fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(x, 0, D.W), ty: clamp(y, 0, D.H), tz: clamp(z, 0.55, 3.2) };
+  };
+  MAPA.volando = function () { return Boolean(vuelo); };
+  MAPA.avanzaVuelo = function (t) { avanzaVuelo(t); };
+  function avanzaVuelo(t) {
+    if (!vuelo) return;
+    const k = clamp((t - vuelo.t0) / vuelo.dur, 0, 1);
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    cam.x = vuelo.fx + (vuelo.tx - vuelo.fx) * e;
+    cam.y = vuelo.fy + (vuelo.ty - vuelo.fy) * e;
+    cam.z = vuelo.fz + (vuelo.tz - vuelo.fz) * e;
+    if (k >= 1) vuelo = null;
+  }
   MAPA.zoom = function (direction) { cam.z = clamp(cam.z * (direction > 0 ? 1.15 : 0.87), 0.55, 3.2); };
   // Exposiciones para la capa de gráficos mejorados (GFX)
   MAPA.cam = cam;
@@ -263,6 +280,50 @@
     c.fillRect(x0 - 11, 0, 6, D.H); c.fillRect(x0 + 5, 0, 6, D.H);
     c.font = '700 12px Georgia, serif'; c.fillStyle = 'rgba(255,240,230,0.9)';
     c.save(); c.translate(x0 + 4, D.H - 60); c.rotate(-Math.PI / 2); c.fillText('M U R A L L A   R O J A', 0, 0); c.restore();
+    // ── Estilo carta náutica: ruta dorada de la Gran Ruta ──
+    const rutaIds = ['dawn', 'shells', 'baratie', 'arlong', 'loguetown', 'sabaody', 'ohara', 'wano'];
+    const ruta = rutaIds.map(id => D.ISLAS.find(i => i.juegoId === id)).filter(Boolean);
+    if (ruta.length > 1) {
+      c.save();
+      c.strokeStyle = 'rgba(244,193,26,0.42)'; c.lineWidth = 2.5; c.setLineDash([14, 10]);
+      c.beginPath();
+      ruta.forEach((p, k) => {
+        if (!k) { c.moveTo(p.x, p.y); return; }
+        const prev = ruta[k - 1], mx = (prev.x + p.x) / 2, my = (prev.y + p.y) / 2 - 26;
+        c.quadraticCurveTo(mx, my, p.x, p.y);
+      });
+      c.stroke();
+      c.restore();
+    }
+    // ── Rosa de los vientos ──
+    const rx = 150, ry = D.H - 118, rr = 46;
+    c.save();
+    c.strokeStyle = 'rgba(255,240,210,0.5)'; c.lineWidth = 1.4;
+    c.beginPath(); c.arc(rx, ry, rr, 0, 7); c.stroke();
+    c.beginPath(); c.arc(rx, ry, rr * 0.66, 0, 7); c.stroke();
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4 - Math.PI / 2;
+      const largo = k % 2 ? rr * 0.62 : rr * 0.98;
+      c.beginPath();
+      c.moveTo(rx + Math.cos(a) * largo, ry + Math.sin(a) * largo);
+      c.lineTo(rx + Math.cos(a + 0.26) * largo * 0.26, ry + Math.sin(a + 0.26) * largo * 0.26);
+      c.lineTo(rx + Math.cos(a - 0.26) * largo * 0.26, ry + Math.sin(a - 0.26) * largo * 0.26);
+      c.closePath();
+      c.fillStyle = k % 2 ? 'rgba(255,240,210,0.32)' : 'rgba(255,240,210,0.6)';
+      c.fill();
+    }
+    c.fillStyle = 'rgba(255,240,210,0.75)'; c.font = '700 13px Georgia, serif'; c.textAlign = 'center';
+    c.fillText('N', rx, ry - rr - 7);
+    c.restore();
+    // ── Marco de carta náutica con marcas de coordenadas ──
+    c.save();
+    c.strokeStyle = 'rgba(255,240,210,0.25)'; c.lineWidth = 1.2;
+    c.strokeRect(10, 10, D.W - 20, D.H - 20);
+    c.beginPath();
+    for (let x = 60; x < D.W - 20; x += 120) { c.moveTo(x, 10); c.lineTo(x, 20); c.moveTo(x, D.H - 10); c.lineTo(x, D.H - 20); }
+    for (let y = 60; y < D.H - 20; y += 120) { c.moveTo(10, y); c.lineTo(20, y); c.moveTo(D.W - 10, y); c.lineTo(D.W - 20, y); }
+    c.stroke();
+    c.restore();
     return cb;
   }
 

@@ -47,10 +47,143 @@ function renderLocalIsland() {
   drawIslandSceneContext(localCanvas.getContext("2d"), localIsland, present ? lastCharacter : null, performance.now());
 }
 
-function closeLocalIsland() {
+// Apariencia pixel determinista para almas del sim sin retrato definido.
+function aparicionDe(agente) {
+  let h = 0;
+  for (const ch of String(agente.id)) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  return {
+    name: agente.name,
+    skin: ["Clara", "Bronceada", "Oscura"][h % 3],
+    hair: ["Negro", "Moreno", "Rubio", "Rojo"][(h >>> 3) % 4],
+    outfit: ["Rojo", "Azul", "Verde", "Negro", "Marrón"][(h >>> 6) % 5]
+  };
+}
+
+function almasDeIsla(simIslId) {
+  const sim = window.JUEGO?.sim;
+  if (!sim?.popOf) return [];
+  return sim.popOf(simIslId)
+    .filter((a) => a.state !== "muerto" && a.state !== "retirado")
+    .slice(0, 6)
+    .map(aparicionDe);
+}
+
+function juegoDe(mapIsl) {
+  if (!mapIsl?.juegoId) return null;
+  return getMapIslands(lastCharacter || { id: "viajero" }).find((entry) => entry.id === mapIsl.juegoId) || null;
+}
+
+function mapDe(juegoIsl) {
+  const D = window.D;
+  if (!juegoIsl || !D?.ISLAS) return null;
+  return D.ISLAS.find((entry) => entry.juegoId === juegoIsl.id) || null;
+}
+
+let escenaRAF = 0;
+function loopEscena() {
+  if (!localIsland || !localCanvas || localCanvas.hidden) { escenaRAF = 0; return; }
+  renderLocalIsland();
+  escenaRAF = requestAnimationFrame(loopEscena);
+}
+
+let escenaMapIsl = null;
+let zoomAntes = 1;
+let irToken = 0;
+
+function abrirEscenaIsla(mapIsl) {
+  const juego = juegoDe(mapIsl);
+  if (!juego || !localCanvas) { window.UI?.abrirIsla(mapIsl); return; }
+  escenaMapIsl = mapIsl;
+  localIsland = juego;
+  juego.npcs = [...(juego.npcs || []), ...almasDeIsla(mapIsl.id)].slice(0, 10);
+  const overlay = byId("mil-escena");
+  if (overlay) overlay.classList.remove("oculto");
+  localCanvas.hidden = false;
+  document.body.classList.add("mil-escena-abierta");
+  // Nota: no emitimos 'onepiece:camera-state' ISLAND_VIEW — la escena nueva es el único visor,
+  // y el evento viejo abriría la vista previa antigua encima.
+  const titulo = byId("mil-escena-titulo");
+  if (titulo) {
+    const region = window.D?.REGIONS?.[mapIsl.reg]?.name || "";
+    titulo.textContent = region ? `${juego.name} · ${region}` : juego.name;
+  }
+  armaAcciones(juego, mapIsl);
+  if (!escenaRAF) escenaRAF = requestAnimationFrame(loopEscena);
+}
+
+function closeLocalIsland(volarAtras = true) {
+  const mapa = escenaMapIsl;
+  if (escenaRAF) { cancelAnimationFrame(escenaRAF); escenaRAF = 0; }
   localIsland = null;
+  escenaMapIsl = null;
   localCanvas.hidden = true;
+  byId("mil-escena")?.classList.add("oculto");
+  document.body.classList.remove("mil-escena-abierta");
   document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: "GLOBAL_MAP" } }));
+  if (volarAtras && mapa) window.MAPA?.volar?.(mapa.x, mapa.y, zoomAntes, 620);
+}
+
+// Clic en una isla del mapa: vuelo suave de cámara y luego escena 16-bit de la isla.
+function irAIsland(mapIsl) {
+  if (!mapIsl) return;
+  if (!juegoDe(mapIsl)) { window.UI?.abrirIsla(mapIsl); return; }
+  zoomAntes = window.MAPA?.cam?.z ?? 1;
+  const token = ++irToken;
+  window.MAPA?.volar?.(mapIsl.x, mapIsl.y, 2.4, 620);
+  setTimeout(() => { if (token === irToken) abrirEscenaIsla(mapIsl); }, 640);
+}
+
+function armaAcciones(juego, mapIsl) {
+  const caja = byId("mil-escena-acciones");
+  if (!caja) return;
+  const tipos = new Set((juego.pois || []).map((p) => p.type));
+  const opciones = juego.localScene?.options || [];
+  const botones = [];
+  if (tipos.has("tavern") || tipos.has("restaurant") || opciones.includes("tavern")) botones.push(["rumores", "🍺 Rumores"]);
+  if (tipos.has("market") || opciones.includes("market")) botones.push(["mercado", "🛒 Mercado"]);
+  if (opciones.includes("poneglyph")) botones.push(["poneglyph", "📜 Poneglyph"]);
+  botones.push(["detalles", "🗺 Detalles"]);
+  botones.push(["salir", "✕ Volver al mar"]);
+  caja.innerHTML = "";
+  for (const [accion, etiqueta] of botones) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mil-escena-btn";
+    b.dataset.accion = accion;
+    b.textContent = etiqueta;
+    if (accion === "poneglyph") {
+      const puede = Boolean(lastCharacter) && (/arqueolog/i.test(lastCharacter.profession || "") || lastCharacter.race === "threeeye");
+      b.disabled = !puede;
+      b.title = puede ? "Descifrar el fragmento" : "Solo arqueólogas o gente de tres ojos pueden leerlo";
+    }
+    caja.append(b);
+  }
+}
+
+function accionEscena(accion, mapIsl) {
+  const sim = window.JUEGO?.sim;
+  const user = sim?.user;
+  if (accion === "salir") { closeLocalIsland(); return; }
+  if (accion === "detalles") { window.UI?.abrirIsla(mapIsl); return; }
+  if (!user) { window.UI?.toast("Crea tu alma para actuar en el mundo."); return; }
+  if (accion === "rumores") {
+    sim.ev("rumor", { isla: mapIsl.n, esJugador: true }, { ids: [user.id] });
+    const ultima = sim.feed.filter((e) => e.txt.includes(mapIsl.n)).slice(-2, -1)[0];
+    window.UI?.toast(ultima ? "Escuchaste en la taberna: " + ultima.txt.slice(0, 70) : "Rumores nuevos corren por la taberna.");
+    window.JUEGO?.guardar(true);
+  } else if (accion === "mercado") {
+    if (user.berries < 80) { window.UI?.toast("No te alcanza: necesitas 80 Belis."); return; }
+    user.berries -= 80;
+    user.necesitas = user.necesitas || { comer: 0, dormir: 0 };
+    user.necesitas.comer = Math.max(0, (user.necesitas.comer || 0) - 30);
+    sim.ev("compra", { a: sim.nm(user), isla: mapIsl.n, esJugador: true }, { ids: [user.id] });
+    window.UI?.toast("Compraste provisiones (−80 Belis).");
+    window.JUEGO?.guardar(true);
+  } else if (accion === "poneglyph") {
+    sim.ev("poneglyph", { a: sim.nm(user), isla: mapIsl.n, esJugador: true }, { ids: [user.id] });
+    window.UI?.toast("Descifras un fragmento de Poneglyph. La historia oculta habla.");
+    window.JUEGO?.guardar(true);
+  }
 }
 
 function installWorldUi() {
@@ -67,12 +200,31 @@ function installWorldUi() {
   chip.id = "mil-chip";
   chip.textContent = "Sin zarpar";
   canvasContainer.append(chip);
+  // Escena de isla 16-bit: overlay propio sobre el mapa (título, lienzo y acciones).
   localCanvas = document.createElement("canvas");
   localCanvas.width = ISLAND_SCENE_WIDTH;
   localCanvas.height = ISLAND_SCENE_HEIGHT;
-  localCanvas.className = "mil-island-scene";
+  localCanvas.className = "mil-escena-canvas";
   localCanvas.hidden = true;
-  document.querySelector(".island-scene").prepend(localCanvas);
+  const escena = document.createElement("div");
+  escena.id = "mil-escena";
+  escena.className = "mil-escena oculto";
+  const escenaTitulo = document.createElement("div");
+  escenaTitulo.id = "mil-escena-titulo";
+  escenaTitulo.className = "mil-escena-titulo";
+  const escenaAcciones = document.createElement("div");
+  escenaAcciones.id = "mil-escena-acciones";
+  escenaAcciones.className = "mil-escena-acciones";
+  escenaAcciones.addEventListener("click", (event) => {
+    const boton = event.target.closest("[data-accion]");
+    if (boton && escenaMapIsl) accionEscena(boton.dataset.accion, escenaMapIsl);
+  });
+  escena.append(escenaTitulo, localCanvas, escenaAcciones);
+  // En el body, no dentro del panel: así su z-index compite globalmente con el HUD y gana.
+  document.body.append(escena);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && escenaMapIsl) closeLocalIsland();
+  });
 
   const ui = document.createElement("div");
   ui.id = "mil-almas-ui";
@@ -158,10 +310,8 @@ function installWorldUi() {
       }
       if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
       window.UI?.abrirIsla(null);
-      localIsland = island;
-      localCanvas.hidden = false;
-      document.dispatchEvent(new CustomEvent("onepiece:camera-state", { detail: { state: "ISLAND_VIEW", island } }));
-      renderLocalIsland();
+      zoomAntes = window.MAPA?.cam?.z ?? 1;
+      abrirEscenaIsla(island);
     } else if (zoom) {
       event.stopPropagation();
       window.MAPA?.zoom?.(zoom.dataset.mapZoom === "in" ? 1 : -1);
@@ -357,7 +507,9 @@ window.MIL = {
   importEvents,
   retirarUser: retireUser,
   susurrar: sendWhisper,
-  setMapView
+  setMapView,
+  irAIsland,
+  renderEscena: renderLocalIsland
 };
 
 export { importEvents, registerCharacter, retireUser as retirarUser, sendWhisper as susurrar, syncCharacter };

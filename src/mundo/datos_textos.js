@@ -33,6 +33,8 @@
     reymar: { t: 'Un Rey Marino asoma cerca de {isla}. El mar se queda quieto.', imp: 5 },
     festival: { t: 'Festival en {isla}: la taberna llena hasta la mañana.', imp: 2 },
     rumor: { t: 'Corre un rumor en {isla}: se dice que hay un cofre escondido durante dos días.', imp: 2 },
+    compra: { t: '{a} compra provisiones en el mercado de {isla}.', imp: 1 },
+    poneglyph: { t: '{a} descifra un fragmento de Poneglyph en {isla}. La historia oculta habla.', imp: 6 },
     flota: { t: 'Una flota Marine persigue al {crew} por el mar de {isla}.', imp: 4 },
     cartel: { t: 'Nuevo cartel en {isla}: {a} ahora vale {recompensa}.', imp: 5 },
     sube: { t: 'El cartel de {a} sube a {recompensa}.', imp: 4 },
