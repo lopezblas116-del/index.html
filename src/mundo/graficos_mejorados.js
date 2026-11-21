@@ -164,8 +164,10 @@
         ctx.drawImage(nub, (n.x + D.W) % D.W - n.r, n.y - n.r * 0.5, n.r * 2.2, n.r * 1.1);
         ctx.globalAlpha = 1;
       } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.16)';
-        ctx.beginPath(); ctx.ellipse(n.x, n.y, n.r, n.r * 0.42, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.11)';
+        ctx.beginPath(); ctx.ellipse(n.x, n.y, n.r, n.r * 0.36, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(n.x + n.r * 0.55, n.y + n.r * 0.1, n.r * 0.6, n.r * 0.28, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(n.x - n.r * 0.5, n.y + n.r * 0.08, n.r * 0.48, n.r * 0.24, 0, 0, 7); ctx.fill();
       }
     }
   };
@@ -220,10 +222,11 @@
       M.actualizaEventos(sim, t);
       GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
       for (const s of sim.storms) {
-        ctx.fillStyle = 'rgba(30,40,60,0.55)';
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
-        ctx.strokeStyle = 'rgba(180,200,255,0.5)';
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
+        if (M.pintaTormenta) M.pintaTormenta(s, t);
+        else {
+          ctx.fillStyle = 'rgba(30,40,60,0.55)';
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+        }
       }
       // islas en PASADAS: reservas de diorama → blobs no tapados → dioramas encima.
       const visibles = [];
@@ -303,7 +306,7 @@
         }
         if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
         if (M.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) continue; // no cruzan por encima de una escena
-        GFX.pintaBarco(ctx, s, sim, t, x, y, ang);
+        GFX.pintaBarco(ctx, s, sim, t, x, y + Math.sin(t / 700 + s.id * 1.7) * 0.9, ang);
       }
       // etiquetas al final: ningún barco las tapa y ninguna cae bajo un diorama
       for (const [i, off] of dibujadas) {
