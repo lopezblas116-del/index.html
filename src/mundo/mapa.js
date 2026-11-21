@@ -1014,12 +1014,19 @@
       ctx.moveTo(p.x, p.y - 4); ctx.lineTo(p.x + 3.4, p.y + 2); ctx.lineTo(p.x - 3.4, p.y + 2);
       ctx.closePath(); ctx.fill();
     }
-    // etiquetas de las islas mayores (las chiquitas se leen al bajar al mar)
+    // etiquetas de las islas mayores, sin amontonarse: se prioriza por tamaño
+    // y una etiqueta que chocaría con otra ya dibujada se deja para el acercamiento
     ctx.textAlign = 'center';
-    for (const i of D.ISLAS) {
-      if (i.oculta || i.r < 20) continue;
+    const puestas = [];
+    const grandes = D.ISLAS.filter(i => !i.oculta && i.r >= 20).sort((a, b) => b.r - a.r);
+    for (const i of grandes) {
       const p = proyecta(i.x, i.y); if (!p || p.k < 0.3) continue;
       ctx.font = '600 10px system-ui, sans-serif';
+      const wT = ctx.measureText(i.n).width;
+      const caja = { x0: p.x - wT / 2 - 3, x1: p.x + wT / 2 + 3, y0: p.y + 4, y1: p.y + 18 };
+      if (puestas.some(q => caja.x0 < q.x1 && caja.x1 > q.x0 && caja.y0 < q.y1 && caja.y1 > q.y0)) continue;
+      if (puestas.length >= 9) break;
+      puestas.push(caja);
       ctx.lineWidth = 2.6;
       ctx.strokeStyle = 'rgba(6,12,26,0.78)';
       ctx.strokeText(i.n, p.x, p.y + 15);
