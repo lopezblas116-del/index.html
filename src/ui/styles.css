@@ -391,17 +391,6 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .one-hud-branch[hidden]{display:none}
 .one-hud-branch p{margin:0 0 8px}.one-hud-branch button{margin:4px}
 
-#game-container .main-column > #island-view:not([hidden]){display:grid!important}
-#island-view{position:absolute;inset:0;z-index:5;display:block;overflow-x:hidden;overflow-y:auto;padding:88px 16px calc(88px + env(safe-area-inset-bottom));background:transparent;pointer-events:auto}
-.island-view-content{position:relative;width:min(850px,100%,calc((100dvh - 270px) * 1.6));margin:auto;min-width:0}
-#island-view.approaching .island-view-content{visibility:hidden}
-.island-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:8px;color:#fff}
-.island-heading p{margin:0;color:#d4e4e6;line-height:1.15}
-.island-heading h2{margin:3px 0;color:#f4b41a;font:700 clamp(12px,2vw,18px) 'Press Start 2P',monospace;line-height:1.4}
-.island-heading button,.island-hotspot{min-width:48px;min-height:48px;padding:7px 10px;border:2px solid #f4b41a;border-radius:8px;background:#162238;color:#fff;font:700 18px VT323,monospace;cursor:pointer;box-shadow:0 4px 12px #0008;pointer-events:auto}
-.island-heading button:hover,.island-hotspot:hover,.island-hotspot:focus-visible{background:#f4b41a;color:#0b1329}
-.island-scene{position:relative;width:100%;aspect-ratio:8/5;overflow:hidden;background:transparent}
-
 .one-hud-chat-message{display:grid;grid-template-columns:32px minmax(0,1fr);align-items:start;gap:8px;min-height:48px;padding:8px 70px 8px 9px;border-left:0;border-radius:12px;background:rgba(22,34,56,.9)}
 .one-hud-chat-avatar{width:32px;height:32px;border:1px dotted #f4b41a;border-radius:50%;image-rendering:pixelated}
 .one-hud-chat-body{min-width:0}
@@ -437,10 +426,6 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 .news-card-icon{display:inline-grid;place-items:center;min-width:28px;height:28px;margin-right:6px;border:1px solid rgba(244,180,26,.42);border-radius:6px;background:#0b1329;vertical-align:middle}
 .news-card summary{display:flex;align-items:center;gap:9px;min-height:38px}
 .one-hud-contract,.one-hud-slot,.one-hud-stats div{border-color:rgba(244,180,26,.25);box-shadow:none}
-.island-hotspot{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(244,180,26,.55);background:#0f1c36;text-shadow:none}
-.island-hotspot .nautical-icon{width:19px;height:19px;flex-basis:19px;color:#e5bd69}
-.island-hotspot:hover .nautical-icon,.island-hotspot:focus-visible .nautical-icon{color:#302416}
-.island-heading .nautical-icon{width:20px;height:20px;flex:0 0 20px}
 
 /* Illustrated sprites remain pixelated; the surrounding controls stay modern. */
 .wizard-actions{background:linear-gradient(180deg,transparent,#0f1c36 20%)}

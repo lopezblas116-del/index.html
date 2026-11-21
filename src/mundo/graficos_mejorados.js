@@ -217,10 +217,11 @@
         ctx.strokeStyle = 'rgba(180,200,255,0.5)';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
       }
-      // islas mejoradas
+      // islas mejoradas (con zoom cerca, cada isla es su diorama 16-bit completo)
       for (const i of D.ISLAS) {
         if (i.oculta) continue;
         for (const off of [0, -D.W, D.W]) {
+          if (cam.z >= (M.LOD_ZOOM || 1.5) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, off)) continue;
           M.sombraIsla(i, off);
           GFX.pintaIslaMejorada(ctx, i, t, off);
           M.edificiosIsla(i, off);
@@ -228,8 +229,10 @@
           M.etiquetaIsla(i, off);
         }
       }
-      // barcos con sprite (recalcula posición como el mapa base)
+      // barcos con sprite (recalcula posición como el mapa base);
+      // con zoom cerca, los anclados se omiten: el diorama ya dibuja los suyos en el muelle
       for (const s of sim.ships) {
+        if (cam.z >= (M.LOD_ZOOM || 1.5) && s.state !== 'navegando') continue;
         let x, y, ang;
         if (s.state === 'navegando' && s.plan) {
           const k = clamp((sim.t - s.plan.t0) / Math.max(1, s.plan.dur), 0, 1);
@@ -247,9 +250,9 @@
         GFX.pintaBarco(ctx, s, sim, t, x, y, ang);
       }
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
-      // tu avatar
+      // tu avatar (el cubo solo con zoom lejos; cerca, el diorama ya muestra su sprite 16-bit)
       const u = sim.user;
-      if (u && u.isl && !sim._fusionAtSea) {
+      if (u && u.isl && !sim._fusionAtSea && cam.z < (M.LOD_ZOOM || 1.5)) {
         const isl = D.ISLA[u.isl];
         if (isl && !u.plan) {
           const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;

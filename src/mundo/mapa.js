@@ -38,7 +38,7 @@
     window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
-      const nz = clamp(cam.z * (e.deltaY < 0 ? 1.15 : 0.87), 0.55, 3.2);
+      const nz = clamp(cam.z * (e.deltaY < 0 ? 1.15 : 0.87), 0.55, 6.0);
       cam.z = nz;
     }, { passive: false });
     cv.addEventListener('touchstart', e => {
@@ -76,7 +76,7 @@
   MAPA.centra = function (x, y) { cam.x = x; cam.y = y; };
   // Vuelo suave: interpola la cámara hacia el destino con easing cúbico (sensación fluida).
   MAPA.volar = function (x, y, z, dur = 650) {
-    vuelo = { t0: performance.now(), dur: Math.max(1, dur), fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(x, 0, D.W), ty: clamp(y, 0, D.H), tz: clamp(z, 0.55, 3.2) };
+    vuelo = { t0: performance.now(), dur: Math.max(1, dur), fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(x, 0, D.W), ty: clamp(y, 0, D.H), tz: clamp(z, 0.55, 6.0) };
   };
   MAPA.volando = function () { return Boolean(vuelo); };
   MAPA.avanzaVuelo = function (t) { avanzaVuelo(t); };
@@ -89,7 +89,76 @@
     cam.z = vuelo.fz + (vuelo.tz - vuelo.fz) * e;
     if (k >= 1) vuelo = null;
   }
-  MAPA.zoom = function (direction) { cam.z = clamp(cam.z * (direction > 0 ? 1.15 : 0.87), 0.55, 3.2); };
+  MAPA.zoom = function (direction) { cam.z = clamp(cam.z * (direction > 0 ? 1.15 : 0.87), 0.55, 6.0); };
+
+  // ── Dioramas 16-bit EN el mapa: al acercar el zoom, cada isla se convierte en su escena completa ──
+  MAPA.LOD_ZOOM = 1.5;
+  let apiEscenas = null;
+  // fusion inyecta: { juegoDe, npcsDe, personajeDe, pinta } — el mundo no depende de la app.
+  MAPA.configuraEscenas = function (api) { apiEscenas = api; };
+
+  function rectDiorama(i, off) {
+    const w = Math.max(i.r * 30, 300);
+    const h = w * 400 / 640;
+    return { x: i.x - w / 2 + off, y: i.y - h / 2, w, h };
+  }
+  MAPA.rectDiorama = rectDiorama;
+
+  MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
+    if (!apiEscenas?.juegoDe || !apiEscenas?.pinta) return false;
+    const juego = apiEscenas.juegoDe(i);
+    if (!juego) return false;
+    const r = rectDiorama(i, off);
+    // culling: solo se dibuja si el diorama cruza la vista actual
+    const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
+    if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return true;
+    const s = r.w / 640;
+    // NPCs: temáticos de la isla + almas presentes del sim (copia nueva, sin mutar la isla).
+    const escena = { ...juego, npcs: [...(juego.npcs || []), ...(apiEscenas.npcsDe ? apiEscenas.npcsDe(i) : [])].slice(0, 10) };
+    const pers = apiEscenas.personajeDe ? apiEscenas.personajeDe(juego) : null;
+    c2.save();
+    c2.translate(r.x, r.y);
+    c2.scale(s, s);
+    c2.beginPath();
+    c2.moveTo(26, 0);
+    c2.arcTo(640, 0, 640, 400, 26);
+    c2.arcTo(640, 400, 0, 400, 26);
+    c2.arcTo(0, 400, 0, 0, 26);
+    c2.arcTo(0, 0, 640, 0, 26);
+    c2.closePath();
+    c2.clip();
+    apiEscenas.pinta(c2, escena, pers, t);
+    c2.restore();
+    // marco dorado y nombre, fuera del recorte
+    c2.save();
+    c2.translate(r.x, r.y);
+    c2.scale(s, s);
+    c2.strokeStyle = 'rgba(244,193,26,0.75)';
+    c2.lineWidth = 5 / cam.z;
+    c2.beginPath();
+    c2.moveTo(26, 0);
+    c2.arcTo(640, 0, 640, 400, 26);
+    c2.arcTo(640, 400, 0, 400, 26);
+    c2.arcTo(0, 400, 0, 0, 26);
+    c2.arcTo(0, 0, 640, 0, 26);
+    c2.closePath();
+    c2.stroke();
+    c2.restore();
+    // rótulo con tamaño constante en pantalla (unidades de mundo = px_pantalla / zoom)
+    const fs = Math.max(7, 16 / cam.z);
+    const lw = Math.max(130 / cam.z, i.n.length * fs * 0.62 + 18 / cam.z);
+    const bh = 24 / cam.z;
+    c2.fillStyle = 'rgba(12,22,38,0.72)';
+    c2.fillRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
+    c2.strokeStyle = 'rgba(244,193,26,0.6)';
+    c2.lineWidth = 1.2 / cam.z;
+    c2.strokeRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
+    c2.font = '700 ' + fs + 'px system-ui, sans-serif';
+    c2.fillStyle = '#f4d97a';
+    c2.textAlign = 'center';
+    c2.fillText(i.n, i.x + off, r.y - 11 / cam.z);
+    return true;
+  };
   // Exposiciones para la capa de gráficos mejorados (GFX)
   MAPA.cam = cam;
   MAPA.nubes = nubes;
@@ -146,6 +215,8 @@
   }
 
   function dibujaIsla(i, ox, t) {
+    // Con el zoom acercado, la isla ES su diorama 16-bit (NPCs caminando incluidos).
+    if (cam.z >= MAPA.LOD_ZOOM && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const pts = formaIsla(i);
     sombraIsla(i, ox);
@@ -396,9 +467,9 @@
       ctx.fillStyle = 'rgba(255,255,255,0.09)';
       ctx.beginPath(); ctx.ellipse(n.x, n.y, n.r, n.r * 0.42, 0, 0, 7); ctx.fill();
     }
-    // tu avatar
+    // tu avatar (el cubo solo con zoom lejos; cerca, el diorama muestra el sprite 16-bit)
     const u = sim.user;
-    if (u && u.isl && !sim._fusionAtSea) {
+    if (u && u.isl && !sim._fusionAtSea && cam.z < MAPA.LOD_ZOOM) {
       const isl = D.ISLA[u.isl];
       if (isl && !u.plan) {
         const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;

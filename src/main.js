@@ -3,10 +3,9 @@ import {
   loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
-  closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
-  renderGame, renderIslandView, resetWizard, showSetup
+  closeLegacyModal, closePantheon, initWizard, openPantheon,
+  renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
-import { focusMap, returnToGlobalMap } from "./world3d.js";
 import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
 import { generateRandomOrigin, isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
@@ -51,7 +50,6 @@ function paint() {
   if (syncCodex(character)) saveGame(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
-  renderIslandView(character);
   renderHud(character);
   trackVisualChanges(character);
   if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
@@ -171,7 +169,6 @@ function persistRender(reschedule = false) {
 
 initWizard();
 initHud();
-initIslandView();
 listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
 listen(document, "onepiece:local-suggestion", (event) => {
   if (!character || character.status === "dead" || character.location?.atSea) return;
@@ -277,7 +274,7 @@ listen(document.querySelector("[data-open-heir]"), "click", () => { const modal 
 function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
-  returnToGlobalMap(true);
+  window.MAPA?.volar?.((window.D?.W || 1600) / 2, (window.D?.H || 800) / 2, 1, 600);
   retirarUser("nueva partida");
   removeStorage(SAVE_KEY);
   character = null;
@@ -325,7 +322,7 @@ listen(document, "onepiece:hud-investigate-news", (event) => {
   if (!character || character.status === "dead" || !Number.isFinite(location?.x) || !Number.isFinite(location?.y)) return;
   character.navigationTarget = { ...location, type: "news" };
   persistRender();
-  focusMap(location);
+  window.MAPA?.volar?.(location.x, location.y, 1.8, 700);
 });
 listen(document, "onepiece:hud-redirect", (event) => {
   const location = event.detail?.location;
@@ -333,7 +330,7 @@ listen(document, "onepiece:hud-redirect", (event) => {
   const result = suggestNavigation(character, location);
   if (result.accepted) character.navigationTarget = { ...location, type: "news" };
   persistRender();
-  if (result.accepted) focusMap(location);
+  if (result.accepted) window.MAPA?.volar?.(location.x, location.y, 1.8, 700);
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
 listen(document, "onepiece:hud-trade", (event) => {

@@ -1,13 +1,10 @@
 import { newsLocation } from "../map.js";
-import { ISLAND_VIEW, renderMap, returnToGlobalMap } from "../world3d.js";
 import { ensureAdvancedSystems } from "../systems.js";
 import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_renderer.js";
-import { canReadAncient } from "../archaeology_system.js";
 import { aggregateSmartFeed, formatMaritimeTimestamp, maritimeHeadline } from "../event_dispatcher.js";
 import { animateCount } from "../vfx_engine.js";
 import { isBiographyValid } from "../character_creation.js";
 import { getLoreByKey } from "../world_lore.js";
-import { islandEncountersFor } from "../island_encounters.js";
 
 const byId = (id) => document.getElementById(id);
 const number = (value) => new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -47,153 +44,6 @@ function iconNode(name) {
   path.setAttribute("d", UI_ICONS[name] || UI_ICONS.ship);
   svg.append(path);
   return svg;
-}
-
-let islandView = null;
-let islandCharacter = null;
-let islandViewInitialized = false;
-let islandRenderKey = "";
-const isAtIsland = (character, island) => Boolean(character && character.status !== "dead" && !character.captured && !character.location?.atSea && character.location?.island === island.name);
-
-export function initIslandView() {
-  if (islandViewInitialized) return;
-  islandViewInitialized = true;
-  listen(document, "onepiece:island-approach", (event) => {
-    islandView = event.detail.island;
-    islandRenderKey = "";
-    const view = byId("island-view");
-    view.hidden = false;
-    view.classList.add("approaching");
-    renderIslandView(islandCharacter);
-  });
-  listen(document, "onepiece:camera-state", (event) => {
-    islandView = event.detail.state === ISLAND_VIEW ? event.detail.island : null;
-    islandRenderKey = "";
-    document.body.dataset.cameraState = event.detail.state;
-    const view = byId("island-view");
-    if (view) {
-      view.hidden = !islandView;
-      view.classList.remove("approaching");
-    }
-    if (islandView) {
-      byId("island-message").textContent = "";
-      renderIslandView(islandCharacter);
-      byId("island-back")?.focus();
-    }
-  });
-  listen(byId("island-back"), "click", () => returnToGlobalMap());
-}
-
-function renderIslandEncounters(island, character, present) {
-  const section = byId("island-encounters");
-  if (!section) return;
-  section.replaceChildren();
-  const encounters = present ? islandEncountersFor(island, character) : [];
-  if (!encounters.length) {
-    section.hidden = true;
-    return;
-  }
-  const heading = document.createElement("h3");
-  heading.textContent = "Encuentros del puerto";
-  section.append(heading);
-  for (const encounter of encounters) {
-    const card = document.createElement("article");
-    card.className = "island-encounter-card";
-    const title = document.createElement("h4");
-    title.textContent = encounter.title;
-    const description = document.createElement("p");
-    description.textContent = encounter.description;
-    card.append(title, description);
-    if (encounter.warning) {
-      const warning = document.createElement("p");
-      warning.className = "island-encounter-warning";
-      warning.textContent = encounter.warning;
-      card.append(warning);
-    }
-    if (Array.isArray(encounter.actions)) {
-      if (!encounter.actions.length) {
-        section.append(card);
-        continue;
-      }
-      const actions = document.createElement("div");
-      actions.className = "island-encounter-actions";
-      for (const option of encounter.actions) {
-        const decide = document.createElement("button");
-        decide.type = "button";
-        decide.textContent = option.label;
-        decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:story-crisis-choice", { detail: { choice: option.choice } })));
-        actions.append(decide);
-      }
-      card.append(actions);
-    } else {
-      const decide = document.createElement("button");
-      decide.type = "button";
-      decide.textContent = encounter.buttonLabel;
-      decide.addEventListener("click", () => document.dispatchEvent(new CustomEvent("onepiece:hud-politics", { detail: { action: encounter.action } })));
-      card.append(decide);
-    }
-    section.append(card);
-  }
-  section.hidden = false;
-}
-
-export function renderIslandView(character) {
-  islandCharacter = character;
-  if (!islandView || !character) return;
-  const present = isAtIsland(character, islandView);
-  const localWorld = character.world?.shared?.world;
-  const islandControl = localWorld?.islands_control?.find((entry) => entry.island_id === islandView.id);
-  const starterAdventure = character.world?.story?.starterAdventure;
-  const key = `${islandView.id}:${character.id}:${present}:${character.appearance?.skin || ""}:${character.ancientLanguage?.knowledge || 0}:${character.location?.localVenue?.id || ""}:${character.localSuggestion || ""}:${character.world?.day || 0}:${character.world?.lastTributeDay ?? ""}:${character.soulCard?.alignment || ""}:${islandControl?.faction || ""}:${character.world?.story?.activeCrisis?.id || ""}:${character.world?.story?.activeCrisis?.status || ""}:${starterAdventure?.status || ""}:${starterAdventure?.visitedPoiIds?.length || 0}:${character.revolutionarySupport?.sabotagedIslands?.includes(islandView.id) || false}:${character.world?.nobleAlert || false}`;
-  if (key === islandRenderKey) return;
-  islandRenderKey = key;
-  byId("island-title").textContent = islandView.landmark || islandView.name;
-  byId("island-sea").textContent = `${islandView.sea} · ${islandView.biome}`;
-  byId("island-presence").textContent = present
-    ? `${character.name} está en el puerto.`
-    : "Vista previa: el avatar no está atracado aquí. Sugiere el rumbo desde el mapa.";
-  const hotspots = byId("island-hotspots");
-  hotspots.replaceChildren();
-  for (const poi of islandView.pois || []) {
-    if (poi.type === "poneglyph" && !canReadAncient(character)) continue;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "island-hotspot";
-    button.setAttribute("aria-label", `${poi.name}; sugerencia opcional, el avatar decide si la sigue`);
-    button.title = poi.name;
-    const icon = poi.type === "tavern" || poi.type === "inn" ? "tavern"
-      : poi.type === "market" || poi.type === "restaurant" || poi.type === "kitchen" ? "market"
-        : poi.type === "dock" || poi.type === "shipyard" ? "ship"
-          : poi.type === "plaza" || poi.type === "landmark" ? "news"
-            : poi.type === "base" || poi.type === "weapon_shop" ? "bounty" : "chest";
-    button.append(iconNode(icon), document.createTextNode(poi.name));
-    button.addEventListener("click", () => {
-      const current = isAtIsland(islandCharacter, islandView);
-      if (!current) {
-        byId("island-message").textContent = "Este lugar solo se puede visitar cuando el avatar esté atracado en esta isla.";
-      } else {
-        document.dispatchEvent(new CustomEvent("onepiece:local-suggestion", { detail: { islandId: islandView.id, poiId: poi.id } }));
-        byId("island-message").textContent = `Sugerencia registrada. ${islandCharacter.name} decidirá según su ánimo y necesidades.`;
-      }
-    });
-    button.disabled = !isAtIsland(islandCharacter, islandView);
-    hotspots.append(button);
-  }
-  renderIslandEncounters(islandView, character, present);
-  const loreNote = byId("island-lore");
-  if (loreNote) {
-    const requestedIsland = islandView.id;
-    loreNote.textContent = "La bitácora consulta las cartas locales…";
-    getLoreByKey(islandView.name).then((lore) => {
-      if (islandView?.id !== requestedIsland || !loreNote.isConnected) return;
-      loreNote.textContent = `${lore.description} Riesgos: ${lore.hazards.join(" · ")}.`;
-      loreNote.dataset.loreSource = lore.procedural ? "procedural" : "indexed";
-    }).catch((error) => {
-      if (islandView?.id !== requestedIsland || !loreNote.isConnected) return;
-      loreNote.textContent = `La carta local no está disponible: ${error.message}`;
-    });
-  }
-  document.dispatchEvent(new CustomEvent("onepiece:island-layout"));
 }
 
 export function renderPsychology(container, character, selection, onSuggest) {
@@ -608,7 +458,6 @@ export function renderGame(character) {
   } else closeDialog("legacy-modal");
   const destination = character.navigationTarget;
   if (byId("map-destination")) byId("map-destination").textContent = destination ? `Zona seleccionada: ${destination.name} · ${destination.sea || "mar abierto"}.` : "Selecciona una zona para sugerir un rumbo.";
-  renderMap(character);
 }
 
 const TRAITS = [

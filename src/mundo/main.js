@@ -87,20 +87,17 @@
     const cargado = J.cargar();
     if (!cargado) { J.nuevo(); }
     UI.setSim(J.sim);
-    MAPA.init($('mapa'), (i) => {
-      if (i && G.MIL?.irAIsland) G.MIL.irAIsland(i);
-      else UI.abrirIsla(i);
-    });
+    MAPA.init($('mapa'), (i) => UI.abrirIsla(i));
     wire();
     UI.renderHeader(); UI.renderFeed(true);
     arrancaTimer();
     let ultimoFrame = 0;
     function animaMapa(t) {
-      // Durante el vuelo de cámara renderizamos a ~60 fps; el resto, 20 fps alcanza.
-      const rapido = typeof MAPA.volando === 'function' && MAPA.volando();
+      // Rápido durante el vuelo y con el zoom cerca (dioramas con NPCs animados a ~60 fps).
+      const rapido = (typeof MAPA.volando === 'function' && MAPA.volando()) || MAPA.cam.z >= (MAPA.LOD_ZOOM || 1.5);
       if (!document.hidden && $('mapa').offsetParent && t - ultimoFrame >= (rapido ? 16 : 50)) {
         // La cámara avanza ANTES de renderizar: funciona igual con el mapa base o con GFX.
-        if (rapido && typeof MAPA.avanzaVuelo === 'function') MAPA.avanzaVuelo(t);
+        if (typeof MAPA.volando === 'function' && MAPA.volando() && typeof MAPA.avanzaVuelo === 'function') MAPA.avanzaVuelo(t);
         MAPA.render(J.sim, t);
         ultimoFrame = t;
       }
