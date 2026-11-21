@@ -438,3 +438,24 @@ listen(document, "onepiece:hud-gm-bounty", (event) => {
   if (result.ok) persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.ok ? "Recompensa local actualizada." : result.message } }));
 });
+
+// Puente con el mundo vivo: el popup de isla dispara 'mil-encuentro' y aquí
+// se ejecuta con las reglas reales de politics.js y narrative_engine.js.
+window.ONE_LATAM = { getCharacter: () => character, getWorld: () => character?.world?.shared?.world || character?.world || null, getIslands: () => getMapIslands(character) };
+listen(document, "mil-encuentro", (event) => {
+  if (!character || character.status === "dead") return;
+  const { action, choice } = event.detail || {};
+  if (action === "story-crisis") {
+    document.dispatchEvent(new CustomEvent("onepiece:story-crisis-choice", { detail: { choice } }));
+    return;
+  }
+  const world = character.world?.shared?.world || character.world;
+  let result = null;
+  if (action === "tribute") result = lootCelestialTribute(character, world);
+  else if (action === "sabotage") result = sabotageTyrantPort(character, world);
+  else if (action === "noble") result = attackWorldNoble(character, world);
+  if (result) {
+    persistRender();
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+  }
+});

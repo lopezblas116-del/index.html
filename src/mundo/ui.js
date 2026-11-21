@@ -1,4 +1,7 @@
 // UI: portada viva, feed, wizard de creación, ficha/Tarjeta del Alma, susurros, ajustes.
+// Los encuentros conectan el mundo vivo con la política del juego raíz (main.js).
+import { islandEncountersFor } from '../island_encounters.js';
+import { getMapIslands } from '../map.js';
 (function (G) {
   const { esc, fmtBelis, hhmm, esNoche } = G.U;
   const D = G.D;
@@ -72,6 +75,45 @@
     }
     $('pi-news').innerHTML = news.length ? news.map(e => '<div class="pn">' + esc(e.txt) + '</div>').join('') : '<div class="pn vacio">Tranquilidad absoluta.</div>';
     $('pi-disc').textContent = disc ? 'Descubierta por ' + esc(sim.nm(sim.byId(disc))) : 'Nadie ha pisado esta isla todavía';
+    // control político: ley / tirano / libre (la cadena raza→opresión→revuelta vive aquí)
+    const ctrl = sim.control && sim.control[i.id];
+    $('pi-control').innerHTML = ctrl ? '<span class="mil-ctrl c-' + ctrl + '">' + (ctrl === 'ley' ? '⚖ Bajo la ley de la Marina' : ctrl === 'tirano' ? '⛓ Gobernador tirano · el tributo sangra' : '🕊 Libre') + '</span>' : '';
+    // encuentros jugables: crisis narrativa, tributo, sabotaje, comitiva noble
+    const pe = $('pi-encuentros');
+    if (pe) {
+      pe.innerHTML = '';
+      const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+      // el puente real es juegoId (datos_mundo lo asigna a toda isla enlazada)
+      const islRaiz = car && getMapIslands(car).find(x => x.id === i.juegoId || x.name === i.n);
+      const tarjetas = islRaiz ? islandEncountersFor(islRaiz, car) : [];
+      if (car && !islRaiz) {
+        pe.innerHTML = '<div class="mil-encuentro vacio"><small>Isla fuera del mapa canónico: la política jugable ocurre en las 28 islas del atlas antiguo.</small></div>';
+      }
+      tarjetas.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'mil-encuentro';
+        card.innerHTML = '<b>' + esc(t.title) + '</b><p>' + esc(t.description) + '</p>' + (t.warning ? '<small>' + esc(t.warning) + '</small>' : '');
+        (t.actions || []).forEach(act => {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.textContent = act.label;
+          btn.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action, choice: act.choice } }));
+            setTimeout(() => UI.abrirIsla(i), 300);
+          });
+          card.appendChild(btn);
+        });
+        if (t.buttonLabel) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.textContent = t.buttonLabel;
+          btn.addEventListener('click', () => {
+            document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action } }));
+            setTimeout(() => UI.abrirIsla(i), 300);
+          });
+          card.appendChild(btn);
+        }
+        pe.appendChild(card);
+      });
+    }
     // chat vivo en la isla
     const activa = (sim.charlasActivas || []).filter(c => c.isl === i.id && sim.t < c.t1);
     $('pi-charlas').innerHTML = activa.map(c => {
@@ -118,6 +160,8 @@
     $('ft-nombre').textContent = a.name;
     $('ft-epi').textContent = a.epi ? '«' + a.epi + '»' : 'sin apodo todavía';
     $('ft-fac').textContent = D.FACCIONES[a.fac].n + ' · ' + D.RANGOS[a.fac][Math.min(a.rank, D.RANGOS[a.fac].length - 1)];
+    const rz = (D.RAZAS_SIM[a.raza] || D.RAZAS_SIM.human).n;
+    $('ft-raza').textContent = rz + (D.OPRIMIDAS.includes(a.raza) ? ' · raza perseguida: la Marina te mira de más' : ' · raza sin tributo de sangre');
     $('ft-sueno').textContent = S ? S.n : '';
     $('ft-frase').textContent = S ? '«' + S.cita + '»' : '';
     $('ft-nivel').textContent = 'Nivel ' + a.level + ' · ' + a.xp + '/' + (Math.round(4.5 * Math.pow(a.level - 1, 2.05)) + 20) + ' XP';
@@ -175,6 +219,18 @@
     $('at-cubos-nota').textContent = sim.cubosFin
       ? 'Los cuatro Cubos Rojos fueron hallados. La isla final abre sus puertas: una era nueva corre el mar.'
       : 'Cuatro Cubos Rojos duermen en el Nuevo Mundo. Las tabernas susurran pistas; quien reúna los cuatro escribe la próxima era.';
+    // Cubos Azules: cada uno leído convierte las pistas poéticas en coordenadas exactas
+    const azules = sim.cubosAzules || {};
+    const nAzules = Object.keys(azules).filter(k => azules[k].hallado).length;
+    $('at-azules').innerHTML = Object.keys(azules).map(id => {
+      const c = azules[id], isl = D.ISLA[id]; if (!isl) return '';
+      const estado = c.hallado ? (c.esMio ? 'revelado por ti' : 'revelado por ' + esc(c.por || 'otros')) : 'sin revelar';
+      return '<div class="at-cubo azul' + (c.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>' + esc(isl.n) + '</b><small>' + estado + '</small></div></div>';
+    }).join('') + '<p class="mil-muted">' + (nAzules >= 1 ? nAzules + '/3 leídos: tus pistas de Cubos Rojos señalan islas exactas.' : 'Revela uno y las tabernas dejarán de hablar en acertijos.') + '</p>';
+    // Cubo Dorado: solo existe tras los cuatro rojos; corona al que lo levanta
+    const dor = sim.cuboDorado || { hallado: false, esMio: false, por: null };
+    $('at-dorado').innerHTML = '<div class="at-cubo dorado' + (dor.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>Isla JAJAJA</b><small>' +
+      (dor.hallado ? (dor.esMio ? 'el Cubo Dorado es TUYO: Rey de los Piratas' : 'levantado por ' + esc(dor.por || 'otro')) : (sim.cubosFin ? 'la ruta final está abierta. Nadie ha coronado aún.' : 'sellado: los cuatro Cubos Rojos guardan su ruta')) + '</small></div></div>';
   };
   UI.cerrarAtlas = function () { $('atlas').classList.add('oculto'); };
 

@@ -136,15 +136,16 @@ function installWorldUi() {
     </section>
     <section id="pop-isla" class="mil-panel mil-island-pop oculto" aria-label="Detalles de isla">
       <button id="pop-cerrar" type="button" class="mil-close" aria-label="Cerrar isla">×</button>
-      <h2 id="pi-titulo"></h2><p id="pi-region"></p>
+      <h2 id="pi-titulo"></h2><p id="pi-region"></p><div id="pi-control"></div>
       <h3>Almas presentes</h3><div id="pi-presentes"></div>
       <div id="pi-charlas"></div><h3>Rumores</h3><div id="pi-news"></div><p id="pi-disc"></p>
+      <h3>Encuentros</h3><div id="pi-encuentros"></div>
       <button id="pi-viajar" type="button" class="oculto">⛵ Viajar aquí</button>
     </section>
     <section id="ficha" class="mil-panel mil-soul-card oculto" aria-label="Tarjeta del Alma">
       <button id="ficha-cerrar" type="button" class="mil-close" aria-label="Cerrar tarjeta">×</button>
       <p class="mil-eyebrow">Tarjeta del Alma · Mundo vivo</p>
-      <h2 id="ft-nombre"></h2><p id="ft-epi"></p><p id="ft-fac"></p>
+      <h2 id="ft-nombre"></h2><p id="ft-epi"></p><p id="ft-fac"></p><p id="ft-raza"></p>
       <p id="ft-sueno"></p><p id="ft-frase"></p><p id="ft-nivel"></p>
       <div id="ft-stats"></div><p id="ft-belis"></p><p id="ft-cartel"></p>
       <p id="ft-animo"></p><p id="ft-fruta"></p><p id="ft-rasgos"></p>
@@ -164,6 +165,10 @@ function installWorldUi() {
       <h3>Los Cuatro Cubos Rojos</h3>
       <div id="at-cubos" class="mil-atlas-cubos"></div>
       <p id="at-cubos-nota" class="mil-muted"></p>
+      <h3>Los Cubos Azules</h3>
+      <div id="at-azules" class="mil-atlas-cubos"></div>
+      <h3>El Cubo Dorado</h3>
+      <div id="at-dorado" class="mil-atlas-cubos"></div>
       <h3>Islas de tu historia</h3>
       <div id="at-islas" class="mil-atlas-islas"></div>
       <h3>Momentos</h3>

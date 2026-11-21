@@ -174,6 +174,15 @@ import { getMapIslands } from '../map.js';
   D.CREW_ADJ = ['de Plata', 'sin Bandera', 'de la Niebla', 'Amarillos', 'del Amanecer', 'Cansados', 'de Segunda Mano', 'Imbéciles', 'Honrados', 'del Mediodía', 'de Agua Dulce', 'Rojos', 'Veloces', 'de Bolsillo', 'de la Ley Seca'];
   D.NPC_CIU = ['Maria', 'Paco', 'Luisa', 'Jorge', 'Carmen', 'Raul', 'Sofia', 'Andres', 'Elena', 'Tomas', 'Paola', 'Diego', 'Rosa', 'Bruno', 'Ivan', 'Camila', 'Tito', 'Nora', 'Gael', 'Julia'];
 
+  D.RAZAS_SIM = {
+    human: { n: 'Humano' }, fishman: { n: 'Pez-Hombre', bono: { fue: 2 } }, mink: { n: 'Mink', bono: { agi: 2 } },
+    threeeye: { n: 'Tres Ojos', bono: { ing: 2 } }, giant: { n: 'Gigante', bono: { fue: 4, agu: 2 } },
+    sky: { n: 'Habitante del Cielo', bono: { agi: 1 } }, longlimb: { n: 'Extremidades Largas', bono: { fue: 1 } },
+    tontatta: { n: 'Tontatta', bono: { agi: 1, ing: 1 } }, buccaneer: { n: 'Bucanero', bono: { fue: 1, agu: 2 } },
+    lunarian: { n: 'Lunarian', bono: { fue: 3, agu: 2 } }
+  };
+  // razas que el Gobierno y la Marina persiguen de más (la opresión tiene Razones)
+  D.OPRIMIDAS = ['fishman', 'longlimb', 'tontatta', 'buccaneer', 'lunarian'];
   D.FACCIONES = {
     pir: { n: 'Pirata', color: '#d33', grupo: 'Tripulación', cap: 'Capitán' },
     mar: { n: 'Marine', color: '#2b6cb0', grupo: 'Escuadra', cap: 'Oficial' },
@@ -304,6 +313,10 @@ import { getMapIslands } from '../map.js';
   D.INSIGNIAS = {
     cuborojo: { n: 'Portador de Cubo Rojo', d: 'Hallaste uno de los cuatro Cubos Rojos.', r: 'raro' },
     explorador: { n: 'Buscador de Secretos', d: 'Cinco secretos de islas descubiertos.', r: 'raro' },
+    cubiazul: { n: 'Lector de Cubos Azules', d: 'Revelaste uno de los tres silencios del Siglo Vacío.', r: 'raro' },
+    historiador: { n: 'Historiador Prohibido', d: 'Leíste los tres Cubos Azules: la historia oculta te pertenece.', r: 'epico' },
+    rey: { n: 'Rey de los Piratas', d: 'Hallaste el Cubo Dorado en la isla final. La era nueva lleva tu nombre.', r: 'epico' },
+    liberador: { n: 'Liberador', d: 'Participaste en la liberación de una isla tirano.', r: 'raro' },
     'primer cartel': { n: 'Primer cartel', r: 'oro', d: 'El Gobierno te tomó por persona de interés.' },
     bandera: { n: 'Bandera propia', r: 'oro', d: 'Fundó su propia tripulación.' },
     veterano: { n: 'Veterano', r: 'oro', d: 'Diez combates ganados.' },

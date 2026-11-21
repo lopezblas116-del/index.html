@@ -104,3 +104,22 @@ body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: non
   #mil-almas-ui .mil-feed-drawer { top: 112px; left: 8px; width: calc(100% - 16px); }
   #mil-almas-ui .mil-panel { max-height: 68vh; }
 }
+
+/* Política jugable: encuentros en el popup de isla, control y cubos azul/dorado */
+#mil-almas-ui .mil-ctrl { display: inline-block; margin: 4px 0 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; }
+#mil-almas-ui .mil-ctrl.c-ley { background: rgba(43,108,176,0.25); border: 1px solid #2b6cb0; }
+#mil-almas-ui .mil-ctrl.c-tirano { background: rgba(192,57,43,0.22); border: 1px solid #c0392b; }
+#mil-almas-ui .mil-ctrl.c-libre { background: rgba(46,204,113,0.18); border: 1px solid #2ecc71; }
+#mil-almas-ui .mil-encuentro { background: rgba(246,196,69,0.08); border: 1px solid rgba(246,196,69,0.35); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+#mil-almas-ui .mil-encuentro b { color: #f6c445; font-size: 0.92rem; }
+#mil-almas-ui .mil-encuentro p { margin: 4px 0; font-size: 0.84rem; }
+#mil-almas-ui .mil-encuentro small { color: rgba(255,255,255,0.55); display: block; margin-bottom: 6px; }
+#mil-almas-ui .mil-encuentro button { background: #f6c445; color: #1a1a2e; border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 700; cursor: pointer; margin-right: 6px; }
+#mil-almas-ui .mil-encuentro button:hover { filter: brightness(1.1); }
+#mil-almas-ui .mil-encuentro.vacio { border-style: dashed; background: transparent; }
+#mil-almas-ui .at-cubo.azul { border-color: #3498db; }
+#mil-almas-ui .at-cubo.azul .cubo-g { background: #2471a3; border-color: #3498db; border-top-color: #5dade2; }
+#mil-almas-ui .at-cubo.azul.hallado .cubo-g { background: #3498db; box-shadow: 0 0 10px rgba(52,152,219,0.8); }
+#mil-almas-ui .at-cubo.dorado { border-color: #d4ac0d; }
+#mil-almas-ui .at-cubo.dorado .cubo-g { background: #9a7d0a; border-color: #d4ac0d; border-top-color: #f1c40f; }
+#mil-almas-ui .at-cubo.dorado.hallado .cubo-g { background: #f1c40f; box-shadow: 0 0 12px rgba(241,196,15,0.9); }

@@ -1,5 +1,6 @@
 // Simulación: personajes autónomos, tripulaciones, barcos, ley y director de sucesos.
 // Unidad de tiempo: 1 minuto de juego por paso. Rutas por vecinos más cercanos + especiales.
+import { rollLineageRace } from '../races.js';
 (function (G) {
   const { rng, clamp, dist, fill, cap, cifraBonita, fmtBelis, hhmm, esNoche } = G.U;
   const D = G.D;
@@ -22,7 +23,11 @@
     this.secretos = {};            // islaId -> {tipo, obj, descubierto, por, t}
     this.cubos = {};               // islaId -> {hallado, esMio, por, pistas, pista}
     this.cubosFin = false;
+    this.cubosAzules = {};         // islaId -> {hallado, esMio, por}
+    this.cuboDorado = { hallado: false, esMio: false, por: null };
+    this.control = {};             // islaId -> 'ley' | 'tirano' | 'libre'
     this.initCubos();
+    this.initCubosAzules();
     this.pozo = { prof: 0, cavadores: {}, fin: false, premio: 0 };
     this.emperadores = [];
     this.user = null;              // el agente del jugador
@@ -97,13 +102,15 @@
         oficio: R.pick(D.OFICIOS).k, birthIsl: null, isl: null, state: 'libre', act: '',
         crew: -1, ship: -1, berries: R.int(200, 3000), bounty: 0, inf: 0, lowUntil: -1,
         pos: { x: 0, y: 0 }, plan: null, nextThink: R.int(1, 40), fruta: null, maestria: 0,
-        opinion: {}, insignias: {}, user: false, habil: [], arrestos: 0, cobros: 0,
+        opinion: {}, insignias: {}, user: false, habil: [], arrestos: 0, cobros: 0, raza: null,
         animo: 'Tranquilo', necesita: { comer: R.int(0, 60), dormir: 0 }, frutasCount: 0
       }, cfg);
       const base = { fue: 6 + Math.round(a.level * 1.2), agi: 6 + Math.round(a.level * 1.1), agu: 6 + Math.round(a.level * 1.15), ing: 6 + Math.round(a.level * 1.0) };
       a.stats = base;
       D.EJES.forEach(e => { a.rasgos[e.k] = R.chance(0.5) ? 0 : 1; });
       D.OCULTOS_KEYS.forEach(k => { a.ocultos[k] = R.int(0, 10); });
+      if (!a.raza) a.raza = this.razaDe();
+      this.aplicarRaza(a);
       return a;
     };
     this.mkAgent = mkAgent;
@@ -159,6 +166,8 @@
     this.agents.forEach(a => this.pushPop(a));
     // el primer día: cartel publicado ya (los que empiezan con inf)
     this.publicarCarteles(true);
+    // política del mundo: células revolucionarias y una isla tiranizada (tras crear a todos)
+    this.semillasPoliticas();
   };
   G.D.OCULTOS_KEYS = ['valor', 'ambicion', 'lealtad', 'intel', 'codicia', 'curios', 'social', 'obed'];
 
@@ -251,7 +260,10 @@
     // XP y fama
     this.ganarXp(win, Math.max(2, Math.round(lose.level * 0.8)));
     // ley
-    const esArresto = (win.fac === 'mar' || win.fac === 'caz') && (lose.fac === 'pir' || lose.fac === 'rev') && lose.bounty >= 2e6;
+    const oprimido = D.OPRIMIDAS.includes(lose.raza);
+    const esArresto = ((win.fac === 'mar' || win.fac === 'caz') && (lose.fac === 'pir' || lose.fac === 'rev') && lose.bounty >= 2e6) ||
+      (win.fac === 'mar' && oprimido && lose.fac !== 'mar' && lose.bounty >= 2e5);
+    if (esArresto && win.fac === 'mar' && oprimido) lose._injusticia = true; // el agravio tiene memoria
     if (esArresto) { this.arrestar(win, lose, por); }
     else if (lose.fac === 'pir' && win.fac !== 'ciu') { this.addInf(lose, lose.bounty ? lose.bounty * 0.06 : 2e6 * (MULT_MAR[this.islReg(lose)] || 1)); }
     this.ev('derrota', { a: this.nm(win), b: this.nm(lose), isla: this.isl(win).n, por }, { ids: [win.id, lose.id], impAdd: (win.user || lose.user) ? 1 : 0 });
@@ -440,7 +452,7 @@
         this.ships.push(ship);
         if (crew) crew.ship = ship.id;
         this.ev('robarco', { a: this.nm(a), isla: orig.n, esJugador: !!a.user }, { ids: [a.id] });
-        this.addInf(a, 8e6 * (MULT_MAR[a.islReg()] || 1));
+        this.addInf(a, 8e6 * (MULT_MAR[this.islReg(a)] || 1));
       } else {
         ship = { id: this.ships.length, crew: crew ? crew.id : -1, isl: a.isl, dest: null, state: 'puerto', t0: 0, dur: 0, hull: 100, x: 0, y: 0, plan: null };
         this.ships.push(ship);
@@ -486,7 +498,12 @@
     if (!libres.length) return;
     const c = this.cubos[this.rng.pick(libres)];
     c.pistas++;
-    c.pista = PISTAS_CUBO[Object.keys(this.cubos).find(k => this.cubos[k] === c)] || 'un lugar que los mapas esquivan';
+    const idCubo = Object.keys(this.cubos).find(k => this.cubos[k] === c);
+    const azules = Object.keys(this.cubosAzules || {}).filter(k => this.cubosAzules[k].hallado).length;
+    // causa-efecto: cada Cubo Azul leído convierte las pistas poéticas en coordenadas exactas
+    c.pista = azules >= 1
+      ? 'El Cubo Azul señala sin vueltas: ' + (D.ISLA[idCubo] ? D.ISLA[idCubo].n : 'un lugar imposible')
+      : (PISTAS_CUBO[idCubo] || 'un lugar que los mapas esquivan');
     if (a.user) {
       this.ev('pistaCubo', { a: this.nm(a), isla: this.isl(a).n, obj: c.pista }, { ids: [a.id] });
       (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Pista de Cubo Rojo: «' + c.pista + '»' });
@@ -510,6 +527,7 @@
     if (Object.keys(this.cubos).every(k => this.cubos[k].hallado)) {
       this.cubosFin = true;
       this.ev('cubosFin', {}, {});
+      this.abrirRutaFinal();
     }
     return true;
   };
@@ -543,6 +561,139 @@
       this.ev('secreto', { a: this.nm(a), isla: D.ISLA[a.isl].n, obj: s.obj }, {});
     }
     return true;
+  };
+
+  // ── Razas: reparto ponderado y bonos. La discriminación no es decorativa:
+  // cambia la ley, los precios y radicaliza al oprimido hacia la revolución ──
+  const TABLA_RAZAS = [['human', 0.70], ['fishman', 0.10], ['mink', 0.06], ['threeeye', 0.04],
+    ['giant', 0.04], ['sky', 0.02], ['longlimb', 0.02], ['tontatta', 0.02],
+    ['buccaneer', 0.008], ['lunarian', 0.002]];
+  Sim.prototype.razaDe = function () {
+    let r = this.rng.rango(0, 1);
+    for (const [k, p] of TABLA_RAZAS) { if ((r -= p) <= 0) return k; }
+    return 'human';
+  };
+  Sim.prototype.aplicarRaza = function (a) {
+    const bono = (D.RAZAS_SIM[a.raza] || {}).bono || {};
+    Object.keys(bono).forEach(k => { a.stats[k] = Math.max(1, (a.stats[k] || 0) + bono[k]); });
+  };
+
+  // ── Política del mundo: control de islas, células revolucionarias y tributo ──
+  Sim.prototype.semillasPoliticas = function () {
+    // bases Marines gobiernan con ley; una isla arranca tiranizada para que la cadena exista desde el día 1
+    D.ISLAS.filter(i => i.base && !i.noNav).forEach(i => { this.control[i.id] = 'ley'; });
+    const candidatas = D.ISLAS.filter(i => !i.noNav && !i.oculta && !i.base && !i.natal && i.reg !== 'RL');
+    if (candidatas.length) this.tiranoNuevo(candidatas);
+    // dos células revolucionarias esperando causa
+    for (let c = 0; c < 2; c++) {
+      const home = this.rng.pick(candidatas.length ? candidatas : D.ISLAS);
+      const crew = { id: this.crews.length, name: 'Célula ' + this.rng.pick(D.CREW_ANIMAL), fac: 'rev', cap: null, mem: [], allies: [], wars: [], ship: -1, base: home.id, born: 0 };
+      this.crews.push(crew);
+      for (let m = 0; m < 3; m++) {
+        const a = this.mkAgent({ fac: 'rev', birthIsl: home.id, isl: home.id, level: this.rng.int(6, 16) });
+        a.crew = crew.id; crew.mem.push(a.id); if (!crew.cap) crew.cap = a.id;
+        this.agents.push(a); this.pushPop(a);
+      }
+    }
+  };
+  Sim.prototype.tiranoNuevo = function (pool) {
+    const libres = (pool || D.ISLAS.filter(i => !i.noNav && !i.oculta && !i.base && !i.natal && i.reg !== 'RL')).filter(i => this.control[i.id] !== 'tirano');
+    if (!libres.length) return;
+    const isl = this.rng.pick(libres);
+    this.control[isl.id] = 'tirano';
+    this.ev('tirano', { isla: isl.n }, {});
+  };
+  Sim.prototype.liberarIsla = function (islId, agentes) {
+    const isl = D.ISLA[islId]; if (!isl || this.control[islId] !== 'tirano') return false;
+    this.control[islId] = 'libre';
+    const crew = agentes && agentes.length && this.crewOf(agentes[0]);
+    this.ev('liberada', { crew: crew ? crew.name : 'la resistencia', isla: isl.n }, {});
+    agentes.forEach(a => {
+      this.addInf(a, 3e6);
+      a.bounty += 5e6; a.level += 1;
+      a.insignias['liberador'] = 'liberador';
+    });
+    return true;
+  };
+  // la opresión radicaliza: arresto injusto o tiranía cercana empuja a la célula
+  Sim.prototype.radicalizar = function () {
+    const candidatos = this.agents.filter(a => !a.user && a.state === 'libre' && a.fac !== 'rev' && a.fac !== 'mar' &&
+      D.OPRIMIDAS.includes(a.raza) && (a._injusticia || this.control[a.isl] === 'tirano'));
+    if (!candidatos.length) return;
+    const a = this.rng.pick(candidatos);
+    if (!this.rng.chance(a._injusticia ? 0.6 : 0.2)) return;
+    let crew = this.crews.find(c => c.fac === 'rev' && c.mem.length < 6);
+    if (!crew) {
+      crew = { id: this.crews.length, name: 'Célula ' + this.rng.pick(D.CREW_ANIMAL), fac: 'rev', cap: null, mem: [], allies: [], wars: [], ship: -1, base: a.isl, born: this.t };
+      this.crews.push(crew);
+    }
+    this.leaveIsland(a);
+    a.fac = 'rev'; a.crew = crew.id; crew.mem.push(a.id); if (!crew.cap) crew.cap = a.id;
+    a.bounty += 2e6; a._injusticia = false;
+    this.pushPop(a);
+    this.ev('seRev', { a: this.nm(a), isla: this.isl(a).n, crew: crew.name }, { ids: [a.id] });
+  };
+  // el tributo sangra a los pueblos bajo tirano (causa económica de la revuelta)
+  Sim.prototype.tributoTirano = function () {
+    const tiranos = Object.keys(this.control).filter(id => this.control[id] === 'tirano' && D.ISLA[id]);
+    let pagado = false;
+    tiranos.forEach(id => {
+      this.popOf(id).filter(a => a.fac === 'ciu' && a.berries > 100).forEach(a => {
+        const cuota = Math.max(20, Math.round(a.berries * 0.05));
+        a.berries -= cuota; a.animo = 'Melancólico'; pagado = true;
+        if (D.OPRIMIDAS.includes(a.raza)) a._injusticia = true;
+      });
+    });
+    if (pagado && this.rng.chance(0.5)) {
+      const id = this.rng.pick(tiranos);
+      this.ev('tributo', { isla: D.ISLA[id].n }, {});
+    }
+  };
+
+  // ── Los Cubos Azules: el Siglo Vacío habla; leen la ruta de los rojos ──
+  Sim.prototype.initCubosAzules = function () {
+    ['ohara', 'skypiea', 'fishman'].forEach(id => { if (D.ISLA[id]) this.cubosAzules[id] = { hallado: false, esMio: false, por: null }; });
+  };
+  Sim.prototype.intentarCuboAzul = function (a) {
+    const c = this.cubosAzules[a.isl]; if (!c || c.hallado) return false;
+    const afinidad = a.raza === 'threeeye' ? 1.5 : 1;
+    if (!this.rng.chance(0.22 * afinidad)) return false;
+    c.hallado = true; c.esMio = !!a.user; c.por = a.user ? 'ti' : this.nm(a);
+    if (a.user) {
+      a.berries += 5e6;
+      a.insignias['cubiazul'] = 'cubiazul';
+      (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Revelaste el Cubo Azul de ' + D.ISLA[a.isl].n });
+      this.ev('cuboAzul', { a: this.nm(a), isla: D.ISLA[a.isl].n }, { ids: [a.id] });
+    } else {
+      this.ev('cuboAzul', { a: this.nm(a), isla: D.ISLA[a.isl].n }, {});
+    }
+    const leidos = Object.keys(this.cubosAzules).filter(k => this.cubosAzules[k].hallado).length;
+    if (leidos >= Object.keys(this.cubosAzules).length) this.ev('historiaSecreta', {}, {});
+    return true;
+  };
+  // el Cubo Dorado: solo existe tras los 4 rojos; corona al que lo levanta
+  Sim.prototype.intentarCuboDorado = function (a) {
+    if (!this.cubosFin || a.isl !== 'laugh' || this.cuboDorado.hallado) return false;
+    if (!this.rng.chance(a.user ? 0.5 : 0.08)) return false;
+    this.cuboDorado.hallado = true; this.cuboDorado.esMio = !!a.user; this.cuboDorado.por = a.user ? 'ti' : this.nm(a);
+    if (a.user) {
+      a.berries += 1e9;
+      a.insignias['rey'] = 'rey';
+      (a.momentos = a.momentos || []).push({ t: Math.floor(this.t), txt: 'Levantaste el Cubo Dorado en la isla final: Rey de los Piratas' });
+      this.ev('cuboDorado', { a: this.nm(a) }, { ids: [a.id], impAdd: 1 });
+    } else {
+      this.ev('eraDorada', { a: this.nm(a) }, {});
+    }
+    return true;
+  };
+  // con los 4 rojos leídos, el mar dibuja la ruta final (persistente entre sesiones)
+  Sim.prototype.abrirRutaFinal = function () {
+    if (!this.cubosFin || !D.ISLA['laugh']) return;
+    if (this.rutas.some(r => r.a === 'g5' && r.b === 'laugh')) return;
+    this.rutas.push({ a: 'g5', b: 'laugh', danger: 4 });
+    (this.vecinos['g5'] || (this.vecinos['g5'] = [])).push('laugh');
+    (this.vecinos['laugh'] || (this.vecinos['laugh'] = [])).push('g5');
+    this.ev('rutaFinal', {}, {});
   };
 
   Sim.prototype.llegarIsla = function (a, islId) {
@@ -583,7 +734,7 @@
     const cod = a.ocultos.codicia;
     if (cod >= 7 && this.rng.chance(0.5)) {
       const v = this.rng.pick(otros);
-      const pillado = this.rng.chance(0.25 + (v.stats.ing - a.stats.ing) * 0.05 + Math.max(0, (v.stats.agi - a.stats.agi)) * 0.04);
+      const pillado = this.rng.chance(0.25 + (v.stats.ing - a.stats.ing) * 0.05 + Math.max(0, (v.stats.agi - a.stats.agi)) * 0.04 + (['fishman', 'longlimb'].includes(a.raza) ? 0.10 : 0) - (a.raza === 'tontatta' ? 0.08 : 0));
       if (pillado) {
         this.ev('robo_pilla', { a: this.nm(a), b: this.nm(v), isla: this.isl(a).n, esJugador: a.user || v.user }, { ids: [a.id, v.id] });
         this.pelea(v, a, 'robo');
@@ -607,7 +758,7 @@
   // ── Hallazgos (explorar/tesoro) ──
   Sim.prototype.hallazgo = function (a, conTesoro) {
     const R = this.rng;
-    if (this.intentarSecreto(a) || this.intentarCubo(a, false)) return;
+    if (this.intentarSecreto(a) || this.intentarCubo(a, false) || this.intentarCuboAzul(a) || this.intentarCuboDorado(a)) return;
     const suerte = (a.habil.includes('ojo') ? 1.3 : 1) * (conTesoro ? 1.6 : 1);
     if (R.chance(0.30 * suerte)) {
       const reg = this.islReg(a);
@@ -793,6 +944,20 @@
     }
     // secretos de islas: el mar guarda misterios que esperan ser pisados
     if (R.chance(0.35)) this.secretoNuevo();
+    // política: caída de gobernadores tiranos, revuelta y respuesta de la Marina
+    const tiranos = Object.keys(this.control).filter(id => this.control[id] === 'tirano');
+    if (R.chance(0.05) && tiranos.length < 4) this.tiranoNuevo();
+    tiranos.forEach(id => {
+      const rev = this.popOf(id).filter(x => x.fac === 'rev' && x.state === 'libre');
+      if (rev.length >= 2 && R.chance(0.3)) this.liberarIsla(id, rev.slice(0, 3));
+    });
+    if (R.chance(0.4)) this.radicalizar();
+    // la Marina extiende su caza a revolucionarios con cartel
+    if (R.chance(0.12)) {
+      const topRev = this.agents.filter(a => a.fac === 'rev' && a.bounty >= 5e7).sort((p, q) => q.bounty - p.bounty)[0];
+      const crewRev = topRev && this.crewOf(topRev);
+      if (topRev && crewRev && topRev.state === 'libre') this.ev('flota', { crew: crewRev.name, isla: this.isl(topRev).n }, { ids: [topRev.id] });
+    }
     // rumor con cofre
     if (R.chance(0.2)) {
       const isl = R.pick(D.ISLAS.filter(i => !i.noNav && !i.oculta));
@@ -810,6 +975,7 @@
   // ── Día a día: amanecer, pozo, reposición ──
   Sim.prototype.daily = function () {
     this.publicarCarteles(false);
+    this.tributoTirano();
     // pozo del Oro Rosa: avanza con los que cavaron + minero ausente
     if (!this.pozo.fin) {
       const cavadores = Object.keys(this.pozo.cavadores);
@@ -874,7 +1040,7 @@
     }
     const heredero = this.mkAgent({
       fac: a.fac, level: Math.max(1, Math.round(a.level * 0.35)), birthIsl: a.birthIsl, isl: a.isl,
-      sueno: a.sueno, oficio: a.oficio, name: a.name.split(' ')[0] + ' Jr.'
+      sueno: a.sueno, oficio: a.oficio, name: a.name.split(' ')[0] + ' Jr.', raza: rollLineageRace(a.raza)
     });
     heredero.epi = 'Heredero de ' + a.name.split(' ')[0];
     heredero.bounty = Math.round(a.bounty * 0.25);
