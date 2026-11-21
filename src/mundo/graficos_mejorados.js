@@ -116,7 +116,7 @@
     ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.moveTo(x - Math.cos(ang) * 10, y - Math.sin(ang) * 10);
-    ctx.lineTo(x - Math.cos(ang) * 19, y - Math.sin(ang) * 19);
+    ctx.lineTo(x - Math.cos(ang) * 17, y - Math.sin(ang) * 17);
     ctx.stroke();
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2); // el sprite mira hacia arriba
     if (barcos) {
@@ -225,21 +225,44 @@
         ctx.strokeStyle = 'rgba(180,200,255,0.5)';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 0.7, 0, 7); ctx.stroke();
       }
-      // islas mejoradas (con zoom cerca, cada isla es su diorama 16-bit completo) — con culling
+      // islas con el pintor unificado del mapa (bajío claro, casas, árboles sin chocar)
+      // — con zoom cerca, cada isla es su diorama 16-bit completo; orden por cercanía
+      //   y registro anti-superposición de dioramas (el más cercano gana el rectángulo)
+      const visibles = [];
       for (const i of D.ISLAS) {
         if (i.oculta) continue;
         const mg = Math.max(190, i.r * 16);
+        let entra = false;
+        for (const off of [0, -D.W, D.W]) {
+          const x = i.x + off;
+          if (x + mg >= vx0 && x - mg <= vx1 && i.y + mg >= vy0 && i.y - mg <= vy1) { entra = true; break; }
+        }
+        if (entra) visibles.push(i);
+      }
+      const sel = M.selIslaPublica ? M.selIslaPublica() : null;
+      visibles.sort((a, b) => {
+        if (sel === a) return -1;
+        if (sel === b) return 1;
+        return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
+          - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
+      });
+      const dibujadas = [];
+      for (const i of visibles) {
+        const mg = Math.max(190, i.r * 16);
+        let mejor = null, mejorD = 1e18;
         for (const off of [0, -D.W, D.W]) {
           const x = i.x + off;
           if (x + mg < vx0 || x - mg > vx1 || i.y + mg < vy0 || i.y - mg > vy1) continue;
-          if (M.usaDiorama && M.usaDiorama(i) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, off)) continue;
-          M.sombraIsla(i, off);
-          GFX.pintaIslaMejorada(ctx, i, t, off);
-          M.edificiosIsla(i, off);
-          M.anilloIsla(i, off, t);
-          M.etiquetaIsla(i, off);
-          if (M.marcasIsla) M.marcasIsla(ctx, i, t, off);
+          const d = (x - cam.x) * (x - cam.x) + (i.y - cam.y) * (i.y - cam.y);
+          if (d < mejorD) { mejorD = d; mejor = off; }
         }
+        if (mejor === null) continue;
+        if (M.usaDiorama && M.usaDiorama(i) && M.dibujaEscenaIsla && M.dibujaEscenaIsla(ctx, i, t, mejor)) continue;
+        M.sombraIsla(i, mejor);
+        M.pintaIslaVista(i, mejor, t);
+        M.anilloIsla(i, mejor, t);
+        if (M.marcasIsla) M.marcasIsla(ctx, i, t, mejor);
+        dibujadas.push([i, mejor]);
       }
       // barcos con sprite (recalcula posición como el mapa base);
       // con zoom cerca, los anclados se omiten: el diorama ya dibuja los suyos en el muelle
@@ -257,11 +280,17 @@
           ang = Math.atan2(s.plan.y1 - s.plan.y0, dx + (Math.abs(dx) > D.W / 2 ? (dx > 0 ? -D.W : D.W) : 0));
         } else {
           const isl = D.ISLA[s.isl]; if (!isl) continue;
-          x = isl.x + Math.sin(t / 800 + s.id) * 6; y = isl.y + isl.r + 10; ang = 0;
+          // anclado en el AGUA, fuera del bajío: nunca encima de la arena
+          const lado = (s.id % 2) ? 1 : -1;
+          x = isl.x + lado * (isl.r * 1.45 + 14) + Math.sin(t / 800 + s.id) * 3;
+          y = isl.y + isl.r * 0.55 + 14;
+          ang = lado > 0 ? 0 : Math.PI;
         }
         if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
         GFX.pintaBarco(ctx, s, sim, t, x, y, ang);
       }
+      // etiquetas al final: ningún barco las tapa
+      for (const [i, off] of dibujadas) M.etiquetaIsla(i, off);
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
       // tu avatar (el cubo solo con zoom lejos; cerca, el diorama ya muestra su sprite 16-bit)
       const u = sim.user;

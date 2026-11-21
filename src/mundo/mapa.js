@@ -228,11 +228,28 @@
   }
   MAPA.rectDiorama = rectDiorama;
 
+  // ── Registro por frame: los dioramas SON rectángulos grandes y si dos islas vecinas
+  //    entran a la vez se pintaban uno encima del otro. Ahora el más cercano a la cámara
+  //    gana y el vecino cae a la vista blob (pintaIslaVista) hasta que te acerques a él. ──
+  let dioFrameT = -1e9, dioOcupados = [];
+  function dioramaLibre(r, t) {
+    if (t !== dioFrameT) { dioFrameT = t; dioOcupados = []; }
+    for (const q of dioOcupados) {
+      if (r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y) return false;
+    }
+    dioOcupados.push(r);
+    return true;
+  }
+
   MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
     const r = rectDiorama(i, off);
     // culling: solo se dibuja si el diorama cruza la vista actual
     const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
     if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return true;
+    // el registro decide: si el rectángulo ya lo ocupa otra isla (más prioritaria),
+    // esta cae a la vista blob. El orden de dibujo pone primero a la seleccionada y
+    // luego por cercanía a la cámara.
+    if (!dioramaLibre(r, t)) return false;
     const s = r.w / 640;
     const juego = apiEscenas?.juegoDe ? apiEscenas.juegoDe(i) : null;
     if (juego && apiEscenas?.pinta) {
@@ -304,6 +321,8 @@
   MAPA.cam = cam;
   MAPA.nubes = nubes;
   MAPA.formaIslaPublica = formaIsla;
+  MAPA.pintaIslaVista = pintaIslaVista;
+  MAPA.selIslaPublica = () => selIsl;
 
   function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
 
@@ -434,13 +453,140 @@
     }
   }
 
+  // ── Vista media de la isla: bajío claro, espuma, arena, tierra con parches,
+  //    árboles en anillo exterior y casas interiores — nada apilado ni confeti ──
+  function pintaIslaVista(i, ox, t) {
+    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
+    const pts = formaIsla(i);
+    const cx = i.x + ox, cy = i.y, r = i.r;
+    // bajío: halo de agua MÁS CLARO que el mar (nunca oscuro), con borde suave
+    const baj = ctx.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.62);
+    baj.addColorStop(0, 'rgba(168,216,238,0.55)');
+    baj.addColorStop(0.7, 'rgba(150,205,232,0.30)');
+    baj.addColorStop(1, 'rgba(150,205,232,0)');
+    ctx.fillStyle = baj;
+    ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.62, r * 1.3, 0, 0, 7); ctx.fill();
+    // espuma: aro blanco irregular que respira con las olas
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1.6;
+    const pulso = 1 + Math.sin(t / 1100 + i.x * 0.3) * 0.02;
+    ctx.beginPath();
+    pts.forEach(([dx, dy], k) => {
+      const X = cx + dx * 1.18 * pulso, Y = cy + dy * 1.18 * pulso;
+      if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+    });
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+    // arena
+    const camino = () => {
+      ctx.beginPath();
+      pts.forEach(([dx, dy], k) => {
+        const X = cx + dx, Y = cy + dy;
+        if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+      });
+      ctx.closePath();
+    };
+    camino();
+    ctx.fillStyle = rgb(T.sand); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,96,54,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    // tierra (blob interior) con parches de segundo tono recortados dentro
+    ctx.save();
+    ctx.translate(cx, cy); ctx.scale(0.78, 0.72); ctx.translate(-cx, -cy);
+    camino();
+    ctx.fillStyle = rgb(T.land); ctx.fill();
+    ctx.save(); ctx.clip();
+    for (let q = 0; q < 5; q++) {
+      const a = q * 1.257 + i.r * 0.13, rr = r * (0.18 + ruido(q * 7.7 + i.r) * 0.34);
+      ctx.fillStyle = 'rgba(' + T.land2.join(',') + ',0.8)';
+      ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, r * 0.3, r * 0.24, a, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+    ctx.restore();
+    // ── decoración determinista sin superposiciones: casas al centro, árboles al anillo ──
+    let h = 7;
+    for (const ch of i.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+    const nCasas = 1 + (h % 3) + (i.r > 30 ? 1 : 0);
+    const casas = [];
+    for (let k = 0; k < nCasas; k++) {
+      h = (h * 1103515245 + 12345) >>> 0;
+      const a = (k / nCasas) * 6.2832 + ((h >>> 8) % 100) / 100 * 0.9;
+      const rr = r * 0.3 * (0.5 + ((h >>> 16) % 100) / 100);
+      casas.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr * 0.7, s: 0.8 + ((h >>> 20) % 100) / 250, roof: T.roof[k % T.roof.length] });
+    }
+    for (const c2 of casas) {
+      const s = c2.s;
+      ctx.fillStyle = 'rgba(20,34,52,0.28)';
+      ctx.fillRect(c2.x - 7 * s, c2.y + 2 * s, 16 * s, 3.5 * s);
+      ctx.fillStyle = rgb(T.wall);
+      ctx.fillRect(c2.x - 7 * s, c2.y - 7 * s, 14 * s, 9 * s);
+      ctx.fillStyle = rgb(c2.roof);
+      ctx.fillRect(c2.x - 9 * s, c2.y - 11 * s, 18 * s, 5 * s);
+      ctx.fillRect(c2.x - 5 * s, c2.y - 13 * s, 10 * s, 2.5 * s);
+      ctx.fillStyle = 'rgba(30,20,12,0.55)';
+      ctx.fillRect(c2.x - 2 * s, c2.y - 1 * s, 4 * s, 4 * s);
+      ctx.strokeStyle = 'rgba(35,25,15,0.45)'; ctx.lineWidth = 0.8;
+      ctx.strokeRect(c2.x - 9 * s, c2.y - 13 * s, 18 * s, 14 * s);
+    }
+    const nArboles = Math.round(4 + (T.trees || 0.3) * 9);
+    for (let k = 0; k < nArboles; k++) {
+      const a = (k / nArboles) * 6.2832 + i.r * 0.07 + (ruido(k * 13.3 + i.r) - 0.5) * 0.42;
+      const rr = r * (0.58 + ruido(k * 3.9 + i.x) * 0.22);
+      const px2 = cx + Math.cos(a) * rr, py2 = cy + Math.sin(a) * rr * 0.78;
+      ctx.fillStyle = 'rgba(20,34,52,0.22)';
+      ctx.beginPath(); ctx.ellipse(px2, py2 + 1.5, 4.5, 2, 0, 0, 7); ctx.fill();
+      if (T.palms) { // palmera: trono curvado y penachos
+        ctx.strokeStyle = '#8a5a33'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(px2, py2); ctx.quadraticCurveTo(px2 + 1.5, py2 - 5, px2 + 2.5, py2 - 9); ctx.stroke();
+        ctx.strokeStyle = rgb(T.tree); ctx.lineWidth = 1.7;
+        for (const fr of [-1, 0, 1]) {
+          ctx.beginPath(); ctx.moveTo(px2 + 2.5, py2 - 9);
+          ctx.quadraticCurveTo(px2 + 2.5 + fr * 5, py2 - 12, px2 + 2.5 + fr * 7, py2 - 8); ctx.stroke();
+        }
+      } else { // pinito: copa en dos pisos con luz
+        ctx.fillStyle = '#5b3f28';
+        ctx.fillRect(px2 - 1, py2 - 4, 2, 5);
+        ctx.fillStyle = rgb(T.tree);
+        ctx.beginPath(); ctx.moveTo(px2 - 4.5, py2 - 3); ctx.lineTo(px2, py2 - 12); ctx.lineTo(px2 + 4.5, py2 - 3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.beginPath(); ctx.moveTo(px2 - 2.4, py2 - 5); ctx.lineTo(px2, py2 - 11); ctx.lineTo(px2 + 1.6, py2 - 5); ctx.closePath(); ctx.fill();
+      }
+    }
+    // muelle en islas grandes: tablones hacia el mar con un bote
+    if (i.r > 26) {
+      const mx = cx, my = cy + r * 0.72, saliente = r * 0.62;
+      ctx.fillStyle = '#8a5a33';
+      ctx.fillRect(mx - 4, my, 8, saliente);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let q = 1; q < 4; q++) ctx.fillRect(mx - 4, my + q * saliente / 4, 8, 1.4);
+      ctx.fillStyle = '#614536';
+      ctx.fillRect(mx + r * 0.18, my + saliente + 2, 14, 6);
+      ctx.fillStyle = '#e6dec4';
+      ctx.fillRect(mx + r * 0.18 + 5, my + saliente - 6, 1.6, 7);
+    }
+    // banderines institucionales (base, tribunal, cruce) — sobre la casa central
+    if (i.base) {
+      ctx.fillStyle = '#5b3f28'; ctx.fillRect(cx + 4, cy - r * 0.5 - 12, 2, 12);
+      ctx.fillStyle = '#2b6cb0'; ctx.fillRect(cx + 6, cy - r * 0.5 - 12, 9, 6);
+    }
+    if (i.tribunal) {
+      ctx.fillStyle = '#5b3f28'; ctx.fillRect(cx - 9, cy - r * 0.5 - 12, 2, 12);
+      ctx.fillStyle = '#d69e2e'; ctx.beginPath(); ctx.arc(cx - 8, cy - r * 0.5 - 13, 4.5, 0, 7); ctx.fill();
+    }
+    if (i.cruce || i.entrada) {
+      ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(cx, cy - r * 0.5 - 10, 4.5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#b03a3a'; ctx.fillRect(cx - 1.2, cy - r * 0.5 - 14, 2.4, 8);
+    }
+  }
+
   function sombraIsla(i, ox) {
     ctx.beginPath();
     ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
     ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
   }
 
-  // 2 a 5 puntitos blancos (edificios) sobre la tierra, deterministas por isla
+  // Las casas ahora las pinta pintaIslaVista (con techo y contorno, sin puntos blancos).
+  // La función queda por compatibilidad: expone las posiciones deterministas sin dibujar.
   function edificiosIsla(i, ox) {
     if (!i.edif) {
       let h = 7;
@@ -453,8 +599,7 @@
         i.edif.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.7 });
       }
     }
-    ctx.fillStyle = '#fff';
-    for (const e of i.edif) ctx.fillRect(Math.round(i.x + ox + e.x), Math.round(i.y + e.y), 2, 2);
+    return i.edif;
   }
 
   // anillo blanco punteado girando en islas con evento activo
@@ -519,60 +664,13 @@
   function dibujaIsla(i, ox, t) {
     // Con el zoom acercado, la isla ES su diorama 16-bit (NPCs caminando incluidos).
     if (MAPA.usaDiorama(i) && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
-    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
-    const pts = formaIsla(i);
     sombraIsla(i, ox);
-    // agua clara alrededor (bajío)
-    ctx.beginPath();
-    ctx.ellipse(i.x + ox, i.y, i.r * 1.5, i.r * 1.22, 0, 0, 7);
-    ctx.fillStyle = 'rgba(120,190,220,0.35)'; ctx.fill();
-    // arena
-    ctx.beginPath();
-    ctx.moveTo(i.x + ox + pts[0][0], i.y + pts[0][1]);
-    for (const p of pts) ctx.lineTo(i.x + ox + p[0], i.y + p[1]);
-    ctx.closePath();
-    ctx.fillStyle = rgb(T.sand); ctx.fill();
-    // tierra
-    ctx.save(); ctx.translate(i.x + ox, i.y); ctx.scale(0.8, 0.8); ctx.translate(-(i.x + ox), -i.y);
-    ctx.beginPath();
-    ctx.moveTo(i.x + ox + pts[0][0], i.y + pts[0][1]);
-    for (const p of pts) ctx.lineTo(i.x + ox + p[0], i.y + p[1]);
-    ctx.closePath();
-    ctx.fillStyle = rgb(T.land); ctx.fill();
-    ctx.restore();
-    // árboles / rasgos
-    if (!i.decoDib) {
-      i.decoDib = [];
-      const T2 = T;
-      const nn = Math.round(6 + T2.trees * 12);
-      for (let k = 0; k < nn; k++) {
-        const a = (k / nn) * Math.PI * 2 + i.r;
-        const rr = i.r * 0.55;
-        i.decoDib.push({ x: Math.cos(a * 3.1) * rr * 0.7, y: Math.sin(a * 2.3) * rr * 0.55, t: (k % 3) });
-      }
-    }
-    for (const d of i.decoDib) {
-      const px = i.x + ox + d.x, py = i.y + d.y;
-      if (d.t === 0) { ctx.fillStyle = rgb(T.tree); ctx.fillRect(px - 1, py - 4, 2, 6); }
-      else if (d.t === 1) { ctx.fillStyle = rgb(T.roof[d.x % T.roof.length | 0] || T.roof[0]); ctx.fillRect(px - 3, py - 2, 6, 4); }
-      else { ctx.fillStyle = rgb(T.land2); ctx.fillRect(px - 2, py - 1, 5, 3); }
-    }
-    edificiosIsla(i, ox);
+    pintaIslaVista(i, ox, t);
     anilloIsla(i, ox, t);
-    // banderín de base de Marina / símbolo especial
-    if (i.base) { ctx.fillStyle = '#f5f0e6'; ctx.fillRect(i.x + ox - 1, i.y - i.r - 9, 2, 9); ctx.fillStyle = '#2b6cb0'; ctx.fillRect(i.x + ox + 1, i.y - i.r - 9, 7, 5); }
-    if (i.tribunal) { ctx.fillStyle = '#d69e2e'; ctx.beginPath(); ctx.arc(i.x + ox, i.y - i.r - 8, 3.5, 0, 7); ctx.fill(); }
-    if (i.cruce || i.entrada) { ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(i.x + ox, i.y - i.r - 8, 3.5, 0, 7); ctx.fill(); }
     // olas
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     const wob = Math.sin(t / 900 + i.x) * 1.6;
     ctx.beginPath(); ctx.moveTo(i.x + ox - i.r * 1.7, i.y + i.r * 1.15 + wob); ctx.lineTo(i.x + ox - i.r * 1.7 + 7, i.y + i.r * 1.15 + wob); ctx.stroke();
-    if (rotulable(i)) {
-      ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.textAlign = 'center';
-      ctx.fillText(i.n, i.x + ox, i.y + i.r + 13);
-    }
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
@@ -601,7 +699,11 @@
       ang = Math.atan2(s.plan.y1 - s.plan.y0, dx + (Math.abs(dx) > D.W / 2 ? (dx > 0 ? -D.W : D.W) : 0));
     } else {
       const isl = D.ISLA[s.isl]; if (!isl) return;
-      x = isl.x + Math.sin(t / 800 + s.id) * 6; y = isl.y + isl.r + 10; ang = 0;
+      // anclado en el AGUA, fuera del bajío: nunca encima de la arena ni del muelle
+      const lado = (s.id % 2) ? 1 : -1;
+      x = isl.x + lado * (isl.r * 1.45 + 14) + Math.sin(t / 800 + s.id) * 3;
+      y = isl.y + isl.r * 0.55 + 14;
+      ang = lado > 0 ? 0 : Math.PI;
     }
     // estela
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4;
@@ -1072,8 +1174,12 @@
   MAPA.etiquetaIsla = function (i, ox) {
     if (!rotulable(i)) return;
     ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.textAlign = 'center';
+    // contorno oscuro: el nombre se lee aunque pase un barco por debajo
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(6,12,26,0.8)';
+    ctx.strokeText(i.n, i.x + ox, i.y + i.r + 13);
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
     ctx.fillText(i.n, i.x + ox, i.y + i.r + 13);
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
@@ -1108,19 +1214,47 @@
     }
     // islas: SOLO las que cruzan la vista (culling con margen por diorama) — antes se pintaban
     // todas ×3 envolturas siempre y eso era el tirón de rendimiento.
+    // Orden por prioridad: la seleccionada primero y luego por cercanía a la cámara,
+    // para que el registro de dioramas le gane el rectángulo a la isla que estás mirando.
     const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
     const vy0 = cam.y - alto / (2 * cam.z), vy1 = cam.y + alto / (2 * cam.z);
+    const visibles = [];
     for (const i of D.ISLAS) {
       if (i.oculta) continue;
       const mg = Math.max(190, i.r * 16);
+      let entra = false;
+      for (const off of [0, -D.W, D.W]) {
+        const x = i.x + off;
+        if (x + mg >= vx0 && x - mg <= vx1 && i.y + mg >= vy0 && i.y - mg <= vy1) { entra = true; break; }
+      }
+      if (entra) visibles.push(i);
+    }
+    visibles.sort((a, b) => {
+      if (selIsl === a) return -1;
+      if (selIsl === b) return 1;
+      return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
+        - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
+    });
+    const enviadas = new Set(); // envoltura ya dibujada por isla (la más cercana a la cámara)
+    const dibujadas = [];
+    for (const i of visibles) {
+      const mg = Math.max(190, i.r * 16);
+      let mejor = null, mejorD = 1e18;
       for (const off of [0, -D.W, D.W]) {
         const x = i.x + off;
         if (x + mg < vx0 || x - mg > vx1 || i.y + mg < vy0 || i.y - mg > vy1) continue;
-        dibujaIsla(i, off, t);
+        const d = (x - cam.x) * (x - cam.x) + (i.y - cam.y) * (i.y - cam.y);
+        if (d < mejorD) { mejorD = d; mejor = off; }
       }
+      if (mejor === null || enviadas.has(i.id)) continue;
+      enviadas.add(i.id);
+      dibujaIsla(i, mejor, t);
+      dibujadas.push([i, mejor]);
     }
     // barcos
     for (const s of sim.ships) dibujaBarco(s, sim, t);
+    // etiquetas al final: ningún barco las tapa (antes se pintaban bajo los barcos y quedaban ilegibles)
+    for (const [i, off] of dibujadas) MAPA.etiquetaIsla(i, off);
     // nubes
     for (const n of nubes) {
       n.x += n.v / 60; if (n.x > D.W + 60) n.x = -60;
