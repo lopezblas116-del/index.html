@@ -4,19 +4,19 @@ import { getMapIslands } from '../map.js';
 (function (G) {
   const D = (G.D = G.D || {});
 
-  // ── Geografía (mapa 1600×800, como la referencia) ──
-  D.W = 1600; D.H = 800;
-  D.RL_X = 800;                 // Muralla Roja (vertical)
-  D.GL_Y0 = 340; D.GL_Y1 = 460; // Gran Ruta (franja central)
-  D.CB_T = 320; D.CB_B = 480;   // Franjas de Calma
+  // ── Geografía (mapa 2600×1400: océano respirable, islas espaciadas) ──
+  D.W = 2600; D.H = 1400;
+  D.RL_X = 1300;                 // Muralla Roja (vertical, continente ancho)
+  D.GL_Y0 = 550; D.GL_Y1 = 900; // Gran Ruta (franja central amplia)
+  D.CB_T = 490; D.CB_B = 960;   // Franjas de Calma
 
   D.REGIONS = {
-    NB: { name: 'North Blue', x0: 30, x1: 750, y0: 12, y1: 312 },
-    WB: { name: 'West Blue', x0: 30, x1: 750, y0: 488, y1: 788 },
-    EB: { name: 'East Blue', x0: 850, x1: 1570, y0: 12, y1: 312 },
-    SB: { name: 'South Blue', x0: 850, x1: 1570, y0: 488, y1: 788 },
-    PAR: { name: 'Paraíso (1.ª mitad de la Gran Ruta)', x0: 850, x1: 1570, y0: 348, y1: 452 },
-    NW: { name: 'Nuevo Mundo (2.ª mitad)', x0: 30, x1: 750, y0: 348, y1: 452 }
+    NB: { name: 'North Blue', x0: 40, x1: 1260, y0: 20, y1: 470 },
+    WB: { name: 'West Blue', x0: 40, x1: 1260, y0: 980, y1: 1380 },
+    EB: { name: 'East Blue', x0: 1340, x1: 2560, y0: 20, y1: 470 },
+    SB: { name: 'South Blue', x0: 1340, x1: 2560, y0: 980, y1: 1380 },
+    PAR: { name: 'Paraíso (1.ª mitad de la Gran Ruta)', x0: 1340, x1: 2560, y0: 565, y1: 885 },
+    NW: { name: 'Nuevo Mundo (2.ª mitad)', x0: 40, x1: 1260, y0: 565, y1: 885 }
   };
 
   // Isla: id, nombre, región, pos, radio, tema, flags: base (Marina), tribunal, cuartel,
@@ -24,70 +24,70 @@ import { getMapIslands } from '../map.js';
   const I = (id, n, reg, x, y, r, tema, f) => Object.assign({ id, n, reg, x, y, r, tema }, f || {});
   D.ISLAS = [
     // East Blue (donde empieza casi todo)
-    I('foosha', 'Villa Foosha', 'EB', 920, 90, 26, 'verde', { natal: 1 }),
-    I('shells', 'Shells Town', 'EB', 1050, 70, 26, 'ciudad', { base: 1 }),
-    I('naranja', 'Isla Naranja', 'EB', 1170, 140, 24, 'tropical'),
-    I('syrup', 'Villa Syrup', 'EB', 1290, 80, 24, 'verde'),
-    I('baratie', 'Baratie', 'EB', 1380, 200, 22, 'mar', { restaurante: 1 }),
-    I('arlong', 'Parque Arlong', 'EB', 1330, 110, 24, 'tropical'),
-    I('logue', 'Loguetown', 'EB', 1480, 160, 30, 'ciudad', { tribunal: 1, tienda: 1 }),
+    I('foosha', 'Villa Foosha', 'EB', 1400, 120, 26, 'verde', { natal: 1 }),
+    I('shells', 'Shells Town', 'EB', 1540, 95, 26, 'ciudad', { base: 1 }),
+    I('naranja', 'Isla Naranja', 'EB', 1690, 180, 24, 'tropical'),
+    I('syrup', 'Villa Syrup', 'EB', 1840, 110, 24, 'verde'),
+    I('baratie', 'Baratie', 'EB', 2000, 230, 22, 'mar', { restaurante: 1 }),
+    I('arlong', 'Parque Arlong', 'EB', 2075, 125, 24, 'tropical'),
+    I('logue', 'Loguetown', 'EB', 2230, 190, 30, 'ciudad', { tribunal: 1, tienda: 1 }),
     // North Blue
-    I('germa', 'Reino Germa', 'NB', 120, 90, 28, 'industrial'),
-    I('lvneel', 'Reino Lvneel', 'NB', 280, 60, 26, 'bosque'),
-    I('downs', 'Downs', 'NB', 430, 160, 24, 'rocosa'),
-    I('flence', 'Flevance', 'NB', 560, 90, 24, 'blanco'),
-    I('basen', 'Base G-6 del Norte', 'NB', 660, 220, 28, 'fortaleza', { base: 1 }),
-    I('minion', 'Isla Minion', 'NB', 180, 220, 22, 'puerto'),
+    I('germa', 'Reino Germa', 'NB', 120, 110, 28, 'industrial'),
+    I('lvneel', 'Reino Lvneel', 'NB', 300, 60, 26, 'bosque'),
+    I('downs', 'Downs', 'NB', 460, 180, 24, 'rocosa'),
+    I('flence', 'Flevance', 'NB', 640, 90, 24, 'blanco'),
+    I('basen', 'Base G-6 del Norte', 'NB', 820, 240, 28, 'fortaleza', { base: 1 }),
+    I('minion', 'Isla Minion', 'NB', 230, 270, 22, 'puerto'),
     // West Blue
-    I('ohara', 'Ohara', 'WB', 120, 600, 24, 'bosque'),
-    I('ilusia', 'Reino Ilusia', 'WB', 280, 700, 26, 'bosque'),
-    I('kano', 'País Kano', 'WB', 430, 560, 26, 'rocosa'),
-    I('godvalley', 'God Valley', 'WB', 600, 660, 26, 'jungla'),
-    I('baseo', 'Base G-2 del Oeste', 'WB', 200, 520, 28, 'fortaleza', { base: 1 }),
+    I('ohara', 'Ohara', 'WB', 150, 1070, 24, 'bosque'),
+    I('ilusia', 'Reino Ilusia', 'WB', 330, 1190, 26, 'bosque'),
+    I('kano', 'País Kano', 'WB', 500, 1030, 26, 'rocosa'),
+    I('godvalley', 'God Valley', 'WB', 670, 1150, 26, 'jungla'),
+    I('baseo', 'Base G-2 del Oeste', 'WB', 260, 1020, 28, 'fortaleza', { base: 1 }),
     // South Blue
-    I('torino', 'Reino Torino', 'SB', 920, 570, 24, 'jungla'),
-    I('baterilla', 'Baterilla', 'SB', 1090, 700, 22, 'tropical'),
-    I('bases', 'Base G-14 del Sur', 'SB', 1300, 600, 28, 'fortaleza', { base: 1 }),
-    I('quebrada', 'Isla Quebrada', 'SB', 1460, 540, 22, 'rocosa'),
+    I('torino', 'Reino Torino', 'SB', 1400, 1030, 24, 'jungla'),
+    I('baterilla', 'Baterilla', 'SB', 1570, 1170, 22, 'tropical'),
+    I('bases', 'Base G-14 del Sur', 'SB', 1760, 1040, 28, 'fortaleza', { base: 1 }),
+    I('quebrada', 'Isla Quebrada', 'SB', 1920, 1210, 22, 'rocosa'),
     // Franja de Calma (no se puede navegar hasta allí)
-    I('lily', 'Amazon Lily', 'CB', 950, 466, 26, 'jungla', { noNav: 1, kuja: 1 }),
-    I('impel', 'Impel Down', 'CB', 1200, 466, 28, 'prision', { noNav: 1, prision: 1 }),
-    I('rusukaina', 'Rusukaina', 'CB', 1450, 466, 24, 'jungla', { noNav: 1 }),
+    I('lily', 'Amazon Lily', 'CB', 1060, 520, 26, 'jungla', { noNav: 1, kuja: 1 }),
+    I('impel', 'Impel Down', 'CB', 1240, 520, 28, 'prision', { noNav: 1, prision: 1 }),
+    I('rusukaina', 'Rusukaina', 'CB', 1580, 520, 24, 'jungla', { noNav: 1 }),
     // Línea Roja
-    I('reverse', 'Monte Contracorriente', 'RL', 780, 398, 30, 'rocosa', { entrada: 1 }),
-    I('redport', 'Puerto Rojo', 'RL', 800, 545, 22, 'ciudad', { ferryl: 1 }),
-    I('geoise', 'Mary Geoise', 'RL', 800, 80, 24, 'ciudad', { noNav: 1, gobierno: 1 }),
+    I('reverse', 'Monte Contracorriente', 'RL', 1300, 610, 30, 'rocosa', { entrada: 1 }),
+    I('redport', 'Puerto Rojo', 'RL', 1300, 935, 22, 'ciudad', { ferryl: 1 }),
+    I('geoise', 'Mary Geoise', 'RL', 1300, 120, 24, 'ciudad', { noNav: 1, gobierno: 1 }),
     // Paraíso (Gran Ruta, mitad este)
-    I('cactus', 'Isla Cactus', 'PAR', 880, 370, 22, 'desierto'),
-    I('karakuri', 'Isla Karakuri', 'PAR', 890, 435, 22, 'industrial'),
-    I('whisky', 'Whisky Peak', 'PAR', 960, 400, 24, 'rocosa'),
-    I('momoiro', 'Isla Momoiro', 'PAR', 1010, 445, 22, 'tropical'),
-    I('boin', 'Archipiélago Boin', 'PAR', 1040, 360, 22, 'tropical'),
-    I('littlegarden', 'Little Garden', 'PAR', 1100, 430, 24, 'jungla', { dinos: 1 }),
-    I('drum', 'Drum', 'PAR', 1130, 360, 24, 'nieve', { medico: 1 }),
-    I('skypiea', 'Isla del Cielo', 'PAR', 1195, 315, 24, 'nubes', { cielo: 1, noNav: 1 }),
-    I('arabasta', 'Reino de Arabasta', 'PAR', 1200, 420, 30, 'desierto', { forja: 1 }),
-    I('jaya', 'Jaya · Mock Town', 'PAR', 1270, 380, 26, 'puerto'),
-    I('longring', 'Long Ring Long Land', 'PAR', 1320, 445, 22, 'verde'),
-    I('kuraigana', 'Kuraigana', 'PAR', 1330, 350, 22, 'oscuro'),
-    I('water7', 'Water 7', 'PAR', 1390, 410, 28, 'agua', { astillero: 1 }),
-    I('enies', 'Enies Lobby', 'PAR', 1420, 360, 24, 'ciudad', { tribunal: 1 }),
-    I('thriller', 'Thriller Bark', 'PAR', 1460, 440, 26, 'oscuro', { fantasma: 1 }),
-    I('sabaody', 'Archipiélago Sabaody', 'PAR', 1510, 395, 28, 'burbujas', { tienda: 1, cruce: 1 }),
-    I('marineford', 'Marineford', 'PAR', 1560, 430, 30, 'fortaleza', { base: 1, cuartel: 1, tribunal: 1 }),
+    I('cactus', 'Isla Cactus', 'PAR', 1400, 630, 22, 'desierto'),
+    I('karakuri', 'Isla Karakuri', 'PAR', 1480, 830, 22, 'industrial'),
+    I('whisky', 'Whisky Peak', 'PAR', 1560, 690, 24, 'rocosa'),
+    I('momoiro', 'Isla Momoiro', 'PAR', 1650, 810, 22, 'tropical'),
+    I('boin', 'Archipiélago Boin', 'PAR', 1700, 600, 22, 'tropical'),
+    I('littlegarden', 'Little Garden', 'PAR', 1780, 840, 24, 'jungla', { dinos: 1 }),
+    I('drum', 'Drum', 'PAR', 1850, 590, 24, 'nieve', { medico: 1 }),
+    I('skypiea', 'Isla del Cielo', 'PAR', 1880, 730, 24, 'nubes', { cielo: 1, noNav: 1 }),
+    I('arabasta', 'Reino de Arabasta', 'PAR', 1970, 640, 30, 'desierto', { forja: 1 }),
+    I('jaya', 'Jaya · Mock Town', 'PAR', 2040, 800, 26, 'puerto'),
+    I('longring', 'Long Ring Long Land', 'PAR', 2120, 600, 22, 'verde'),
+    I('kuraigana', 'Kuraigana', 'PAR', 2190, 830, 22, 'oscuro'),
+    I('water7', 'Water 7', 'PAR', 2260, 660, 28, 'agua', { astillero: 1 }),
+    I('enies', 'Enies Lobby', 'PAR', 2340, 810, 24, 'ciudad', { tribunal: 1 }),
+    I('thriller', 'Thriller Bark', 'PAR', 2410, 620, 26, 'oscuro', { fantasma: 1 }),
+    I('sabaody', 'Archipiélago Sabaody', 'PAR', 2470, 780, 28, 'burbujas', { tienda: 1, cruce: 1 }),
+    I('marineford', 'Marineford', 'PAR', 2520, 650, 30, 'fortaleza', { base: 1, cuartel: 1, tribunal: 1 }),
     // Bajo el Mar
-    I('fishman', 'Isla del Hombre-Pez', 'BM', 800, 730, 26, 'mar', { bajoMar: 1, noNav: 1 }),
+    I('fishman', 'Isla del Hombre-Pez', 'BM', 1420, 925, 26, 'mar', { bajoMar: 1, noNav: 1 }),
     // Nuevo Mundo (mitad oeste)
-    I('g5', 'Base G-5', 'NW', 70, 370, 28, 'fortaleza', { base: 1 }),
-    I('hachinosu', 'Hachinosu', 'NW', 140, 430, 26, 'oscuro', { pirata: 1 }),
-    I('wano', 'País de Wano', 'NW', 240, 380, 30, 'japon', { forja: 1 }),
-    I('tottoland', 'Totto Land', 'NW', 320, 440, 28, 'dulce'),
-    I('punk', 'Punk Hazard', 'NW', 400, 375, 26, 'fuegohielo'),
-    I('dressrosa', 'Dressrosa', 'NW', 470, 430, 28, 'colorido', { arena: 1 }),
-    I('greenbit', 'Green Bit', 'NW', 520, 370, 22, 'jungla'),
-    I('zou', 'Zou', 'NW', 590, 420, 26, 'bosque', { elefante: 1 }),
-    I('egghead', 'Egghead', 'NW', 660, 375, 26, 'futurista', { tienda: 1 }),
-    I('laugh', 'Isla JAJAJA', 'NW', 725, 430, 24, 'calavera', { oculta: 1, final: 1 })
+    I('g5', 'Base G-5', 'NW', 110, 620, 28, 'fortaleza', { base: 1 }),
+    I('hachinosu', 'Hachinosu', 'NW', 260, 760, 26, 'oscuro', { pirata: 1 }),
+    I('wano', 'País de Wano', 'NW', 380, 600, 30, 'japon', { forja: 1 }),
+    I('tottoland', 'Totto Land', 'NW', 500, 790, 28, 'dulce'),
+    I('punk', 'Punk Hazard', 'NW', 630, 620, 26, 'fuegohielo'),
+    I('dressrosa', 'Dressrosa', 'NW', 750, 800, 28, 'colorido', { arena: 1 }),
+    I('greenbit', 'Green Bit', 'NW', 870, 610, 22, 'jungla'),
+    I('zou', 'Zou', 'NW', 980, 790, 26, 'bosque', { elefante: 1 }),
+    I('egghead', 'Egghead', 'NW', 1090, 620, 26, 'futurista', { tienda: 1 }),
+    I('laugh', 'Isla JAJAJA', 'NW', 1180, 810, 24, 'calavera', { oculta: 1, final: 1 })
   ];
   D.ISLA = {};
   D.ISLAS.forEach(i => { D.ISLA[i.id] = i; });
@@ -110,7 +110,7 @@ import { getMapIslands } from '../map.js';
       for (let k = 0; k < 5000; k++) {
         const x = Math.round(R.x0 + r + rnd() * (R.x1 - R.x0 - 2 * r));
         const y = Math.round(R.y0 + r + rnd() * (R.y1 - R.y0 - 2 * r));
-        if (D.ISLAS.every(o => Math.hypot(o.x - x, o.y - y) >= Math.max(26, o.r + r + 2))) return { x, y, r };
+        if (D.ISLAS.every(o => Math.hypot(o.x - x, o.y - y) >= Math.max(80, o.r + r + 30))) return { x, y, r };
       }
     }
     throw new Error(`No hay espacio para ${id} en ${reg}`);

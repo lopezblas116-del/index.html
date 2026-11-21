@@ -204,6 +204,8 @@
       const ancho = cv.clientWidth, alto = cv.clientHeight;
       const cam = G.MAPA.cam || { x: D.W / 2, y: D.H / 2, z: 1 };
       const M = G.MAPA;
+      // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
+      if (M.enGlobo && M.enGlobo()) return original(sim, t);
       ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
       ctx.save();
       ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
