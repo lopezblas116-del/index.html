@@ -535,9 +535,15 @@
   }
 
   const cacheSprites = new Map();
+  // día/noche: la atmósfera la escribe el HUD en <body> cada tick; al cambiar,
+  // la caché de sprites se invalida para que el pueblo se encienda o apague.
+  const esNoche = () => document.body?.dataset.atmosphere === 'night';
+  let nocheCache = null;
   function spriteDetalle(i) {
     const hit = cacheSprites.get(i.id);
     if (hit) { cacheSprites.delete(i.id); cacheSprites.set(i.id, hit); return hit; }
+    const noche = esNoche();
+    if (nocheCache !== noche) { cacheSprites.clear(); nocheCache = noche; }
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const r = i.r, tema = i.tema || 'verde';
     const R = Math.ceil(r * 1.9 + 54);
@@ -634,10 +640,23 @@
       rc(x - 7.4 * s, y - 9 * s, 14.8 * s, 1.1 * s, 'rgba(255,255,255,0.25)'); // cumbrera iluminada
       rc(x - 7.4 * s, y - 5.8 * s, 14.8 * s, 0.7 * s, 'rgba(0,0,0,0.18)'); // alero en sombra
       rc(x - 1.7 * s, y - 2.4 * s, 3.4 * s, 4.6 * s, 'rgba(60,42,26,0.85)'); // puerta
-      rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,214,120,0.92)'); // ventana cálida
-      g.strokeStyle = 'rgba(30,22,12,0.55)'; g.lineWidth = 0.4;
-      g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
-      rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(120,150,180,0.6)'); // ventana al mar
+      // ventanas: de día vidrio neutro; de noche se encienden — halo cálido,
+      // la del fondo del mar también, y un charco de luz en el suelo
+      if (noche) {
+        rc(x - 5.1 * s, y - 4.4 * s, 3.2 * s, 3.2 * s, 'rgba(255,214,120,0.26)');
+        rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,226,140,0.98)');
+        rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,214,120,0.9)');
+        el(x - 3.2 * s, y + 2.8 * s, 7.4 * s, 2.6 * s, 'rgba(255,214,120,0.13)');
+        g.strokeStyle = 'rgba(30,22,12,0.35)'; g.lineWidth = 0.4;
+        g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+        g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      } else {
+        rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(196,218,230,0.72)');
+        rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(120,150,180,0.6)');
+        g.strokeStyle = 'rgba(30,22,12,0.55)'; g.lineWidth = 0.4;
+        g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+        g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      }
       g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
       if (rIsla(i, 700 + Math.round(x * 7 + y * 13)) > 0.62) { // alguna casa echa humo
         rc(x + 4 * s, y - 11.6 * s, 2.2 * s, 3.4 * s, '#8a6d5a');

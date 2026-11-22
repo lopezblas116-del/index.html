@@ -1,12 +1,14 @@
 :root {
   color-scheme: dark;
   --navy: #0b1329;
-  --card: #0f1c36;
+  --card: #121d36; /* panel secundario UMP */
   --card-raised: #1b2b45;
   --gold: #f4b41a;
   --gold-soft: rgba(244, 180, 26, .3);
   --text: #f0f6fc;
-  --muted: #a7b8c8;
+  --muted: #8a8f9e; /* gris secundario UMP */
+  --panel: #121d36;
+  --ump-red: #e63946; /* avisos/badge de notificaciones */
   --sky: #38bdf8;
   --crimson: #ef4444;
   --emerald: #10b981;
@@ -75,14 +77,15 @@ p { line-height: 1.35; }
 .appearance-grid label, .legacy-form label { display: grid; gap: 6px; color: var(--muted); }
 .option-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .option-list.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.option-card { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: #111d33; cursor: pointer; }
+.option-card { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); cursor: pointer; transition: all .2s ease; }
 .option-card:hover, .option-card.selected { border-color: var(--gold); background: var(--card-raised); }
 .option-card input { width: auto; min-height: 0; accent-color: var(--gold); }
 .option-card strong { color: var(--gold); }
 .option-card small { display: block; color: var(--muted); }
 .option-icon { color: var(--gold); font-size: 1.35rem; }
 .trait-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.trait-card { display: grid; gap: 4px; min-height: 62px; padding: 10px; text-align: left; border: 1px solid var(--line); border-radius: 7px; background: #111d33; }
+.trait-card { display: grid; gap: 4px; min-height: 62px; padding: 10px; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); transition: all .2s ease; }
+.trait-card:disabled, .trait-card.opuesto-bloqueado { color: var(--muted); background: #101828; border-color: rgba(255,255,255,.06); pointer-events: none; filter: grayscale(.7); }
 .trait-card strong { color: var(--gold); }
 .trait-card span { color: var(--muted); font-size: .9rem; }
 .trait-card.selected { border-color: var(--gold); background: var(--card-raised); }
@@ -240,7 +243,11 @@ button.one-hud-slot{color:#fff;font:inherit;cursor:pointer}
 body.wizard-active .masthead{display:none}
 #wizard-container{position:fixed;inset:0;z-index:80;display:grid;place-items:center;width:100vw;height:100vh;height:100dvh;margin:0;padding:16px;overflow-y:auto;background-color:rgba(11,19,41,.94);background-image:linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px),radial-gradient(ellipse at 50% 0,rgba(35,86,145,.24),transparent 58%);background-size:24px 24px,24px 24px,auto;overscroll-behavior:contain}
 #wizard-container[hidden]{display:none!important}
-#wizard-container>.wizard-card{width:min(480px,100%);max-width:480px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);margin:0;padding:clamp(16px,4vw,25px);overflow-y:auto;border:2px solid #f4b41a;border-radius:16px;background:#162238;box-shadow:0 10px 30px rgba(0,0,0,.8)}
+#wizard-container>.wizard-card{width:min(480px,100%);max-width:480px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);margin:0;padding:clamp(16px,4vw,25px);overflow-y:auto;border:2px solid #f4b41a;border-radius:16px;background:#162238;box-shadow:0 10px 30px rgba(0,0,0,.8);position:relative}
+/* Esquinas doradas del marco (detalle premium: dos soles en TL y BR) */
+#wizard-container>.wizard-card::before,#wizard-container>.wizard-card::after{content:"";position:absolute;width:22px;height:22px;pointer-events:none}
+#wizard-container>.wizard-card::before{top:-2px;left:-2px;background:linear-gradient(#f4b41a,#f4b41a) 0 0/22px 4px no-repeat,linear-gradient(#f4b41a,#f4b41a) 0 0/4px 22px no-repeat}
+#wizard-container>.wizard-card::after{bottom:-2px;right:-2px;background:linear-gradient(#f4b41a,#f4b41a) 100% 100%/22px 4px no-repeat,linear-gradient(#f4b41a,#f4b41a) 100% 100%/4px 22px no-repeat}
 #wizard-title{color:#f4b41a;font-family:var(--font-display);font-weight:400;letter-spacing:.05em;text-transform:uppercase;font-size:clamp(.8rem,2.4vw,1.05rem);line-height:1.6}
 .progress-step{min-width:0;padding:6px 3px;border:1px solid rgba(244,180,26,.38);border-radius:8px;background:#0b1329;transition:background .16s,border-color .16s,box-shadow .16s}
 .progress-step:hover,.progress-step.active{border-color:#f4b41a;background:#22334e;box-shadow:0 0 10px rgba(244,180,26,.2)}

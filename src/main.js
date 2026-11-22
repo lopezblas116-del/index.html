@@ -24,6 +24,7 @@ import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, t
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
 import { beginStarterIslandAdventure, resolveIslandCrisis } from "./narrative_engine.js";
+import { anunciarLlegada, initUIBinding } from "../js/ui.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
@@ -33,6 +34,7 @@ import "./mundo/index.js";
 
 let character = loadGame();
 initVfx();
+initUIBinding(); // conecta gameState → pantalla (js/state.js + js/ui.js)
 const network = createNetwork();
 let sharedState = network.snapshot();
 if (character?.world) Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
@@ -52,6 +54,13 @@ function paint() {
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
   renderHud(character);
+  // banner de llegada: anuncia cada isla nueva que pisa el avatar (con su bioma)
+  const islaActual = character.location?.atSea ? null : (character.location?.island || null);
+  if (islaActual && islaActual !== (window.__islaAnunciada || null)) {
+    window.__islaAnunciada = islaActual;
+    const datos = getMapIslands(character).find((island) => island.name === islaActual);
+    anunciarLlegada(datos || { name: islaActual });
+  }
   trackVisualChanges(character);
   if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
   clearTimeout(branchTimer);

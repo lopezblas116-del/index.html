@@ -29,6 +29,10 @@ import { getMapIslands } from '../map.js';
     // Un solo reloj: el HUD superior refleja el mismo tiempo del mundo vivo.
     const hudDia = document.querySelector('[data-hud-day]');
     if (hudDia) hudDia.textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + ' · 1:4';
+    // Una sola luz: la atmósfera (noche/día) sigue al MISMO reloj que se pinta.
+    // El HUD solo puede añadir "mist" (Franja de Calma); nunca un reloj distinto.
+    const luz = esNoche(sim.minOfDay()) ? 'night' : 'day';
+    if (document.body.dataset.atmosphere !== 'mist') document.body.dataset.atmosphere = luz;
   };
 
   // ── Feed ──

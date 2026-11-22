@@ -18,7 +18,7 @@
 #map-panel.mil-vivo #canvas-container .mil-chip {
   position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 104px); left: 16px; z-index: 3; display: block;
   max-width: min(44vw, 320px); padding: 7px 12px; color: #f0f6fc; font: inherit; font-size: .82rem; font-weight: 600; pointer-events: none;
-  border: 1px solid var(--ump-border); border-radius: 9px; background: var(--ump-panel); backdrop-filter: blur(8px);
+  border: 1px solid var(--ump-border); border-radius: 12px; background: var(--ump-panel); backdrop-filter: blur(8px);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #map-panel.mil-vivo #canvas-container #mapa {
@@ -28,7 +28,7 @@
 
 #mil-almas-ui { position: fixed; inset: 0; z-index: 110; display: none; pointer-events: none; }
 body.game-active #mil-almas-ui { display: block; }
-#mil-almas-ui button { min-height: 40px; padding: 7px 11px; color: #f0f6fc; border: 1px solid var(--ma-border); border-radius: 8px; background: #10233a; cursor: pointer; }
+#mil-almas-ui button { min-height: 40px; padding: 7px 11px; color: #f0f6fc; border: 1px solid var(--ma-border); border-radius: 12px; background: #10233a; cursor: pointer; }
 #mil-almas-ui button:hover, #mil-almas-ui button:focus-visible { border-color: var(--ma-gold); background: #1b2b45; }
 #mil-almas-ui .mil-world-bar,
 #mil-almas-ui .mil-feed-drawer,
@@ -51,7 +51,7 @@ body.mil-cine #canvas-container .mil-chip { display: none; }
 #mil-almas-ui .mil-world-bar b { color: #fff; }
 #mil-almas-ui .mil-world-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 /* Botones cuadrados de esquinas suaves, fondo panel oscuro (estilo UMP) */
-#mil-almas-ui .mil-world-actions button { position: relative; min-height: 36px; padding: 6px 12px; border: 1px solid var(--ump-border); border-radius: 9px; background: #121d36; color: #e8e6e3; font-size: .8rem; font-weight: 700; letter-spacing: .03em; }
+#mil-almas-ui .mil-world-actions button { position: relative; min-height: 36px; padding: 6px 12px; border: 1px solid var(--ump-border); border-radius: 12px; background: #121d36; color: #e8e6e3; font-size: .8rem; font-weight: 700; letter-spacing: .03em; }
 #mil-almas-ui .mil-world-actions button:hover, #mil-almas-ui .mil-world-actions button:focus-visible { border-color: var(--ma-gold); background: #1a2a4a; color: #fff; }
 #mil-almas-ui .mil-world-actions #btn-ajustes, #mil-almas-ui .mil-world-actions #btn-sonido { width: 36px; padding: 6px 0; text-align: center; }
 /* Aviso rojo de notificaciones (Bitácora viva y Diario del nav inferior) */
@@ -84,10 +84,10 @@ body.mil-cine #canvas-container .mil-chip { display: none; }
 #mil-almas-ui .mil-atlas-barra { height: 8px; border-radius: 6px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 6px 0 4px; }
 #mil-almas-ui .mil-atlas-barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f6c445, #e8912d); transition: width 0.6s ease; }
 #mil-almas-ui .mil-atlas-islas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-#mil-almas-ui .at-isla { background: rgba(255,255,255,0.06); border: 1px solid rgba(246,196,69,0.25); border-radius: 8px; padding: 6px 8px; }
+#mil-almas-ui .at-isla { background: rgba(255,255,255,0.06); border: 1px solid rgba(246,196,69,0.25); border-radius: 12px; padding: 6px 8px; }
 #mil-almas-ui .at-isla b { display: block; font-size: 0.85rem; }
 #mil-almas-ui .at-isla small { color: rgba(255,255,255,0.6); }
-#mil-almas-ui .at-cubo { display: flex; gap: 10px; align-items: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(192,57,43,0.4); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+#mil-almas-ui .at-cubo { display: flex; gap: 10px; align-items: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(192,57,43,0.4); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
 #mil-almas-ui .at-cubo.hallado { border-color: #c0392b; background: rgba(192,57,43,0.18); }
 #mil-almas-ui .at-cubo .cubo-g { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 3px; background: #8a2b22; border: 2px solid #c0392b; border-top-color: #e74c3c; }
 #mil-almas-ui .at-cubo.hallado .cubo-g { background: #c0392b; box-shadow: 0 0 10px rgba(231,76,60,0.8); }
@@ -104,7 +104,7 @@ body.mil-cine #canvas-container .mil-chip { display: none; }
 #mil-almas-ui #ft-stats { display: flex; flex-wrap: wrap; gap: 8px; }
 #mil-almas-ui #ft-stats span { padding: 5px 8px; border: 1px solid var(--ma-border); border-radius: 7px; }
 #mil-almas-ui .mil-settings-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
-#mil-almas-ui .mil-toast { position: absolute; bottom: 20px; left: 50%; z-index: 8; padding: 10px 14px; border: 1px solid var(--ma-gold); border-radius: 8px; background: var(--ma-panel); transform: translateX(-50%); }
+#mil-almas-ui .mil-toast { position: absolute; bottom: 20px; left: 50%; z-index: 8; padding: 10px 14px; border: 1px solid var(--ma-gold); border-radius: 12px; background: var(--ma-panel); transform: translateX(-50%); }
 #mil-almas-ui #wizard, #mil-almas-ui #ov-wizard { display: none !important; }
 .mil-island-scene { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 #mil-almas-ui button:disabled { opacity: .55; cursor: not-allowed; }
@@ -127,7 +127,7 @@ body.mil-cine #canvas-container .mil-chip { display: none; }
 #mil-almas-ui .mil-encuentro b { color: #f6c445; font-size: 0.92rem; }
 #mil-almas-ui .mil-encuentro p { margin: 4px 0; font-size: 0.84rem; }
 #mil-almas-ui .mil-encuentro small { color: rgba(255,255,255,0.55); display: block; margin-bottom: 6px; }
-#mil-almas-ui .mil-encuentro button { background: #f6c445; color: #1a1a2e; border: 0; border-radius: 8px; padding: 6px 12px; font-weight: 700; cursor: pointer; margin-right: 6px; }
+#mil-almas-ui .mil-encuentro button { background: #f6c445; color: #1a1a2e; border: 0; border-radius: 12px; padding: 6px 12px; font-weight: 700; cursor: pointer; margin-right: 6px; }
 #mil-almas-ui .mil-encuentro button:hover { filter: brightness(1.1); }
 #mil-almas-ui .mil-encuentro.vacio { border-style: dashed; background: transparent; }
 #mil-almas-ui .at-cubo.azul { border-color: #3498db; }
@@ -167,3 +167,28 @@ body.mil-cine .mil-chip,
 body.mil-cine .pista-globo { opacity: 0 !important; pointer-events: none !important; }
 /* el popover de isla sigue siendo parte del mapa: nunca se esconde en inmersión */
 body.mil-cine #pop-isla { opacity: 1; }
+
+/* ---------- Scrollbars premium (antes en la capa pixel) ---------- */
+*::-webkit-scrollbar { width: 12px; height: 12px; }
+*::-webkit-scrollbar-track { background: #0b1329; }
+*::-webkit-scrollbar-thumb {
+  background: #1b2b45;
+  border: 2px solid #0b1329;
+  box-shadow: inset 1px 1px 0 rgba(244, 180, 26, .45);
+}
+* { scrollbar-width: thin; scrollbar-color: #1b2b45 #0b1329; }
+
+/* ---------- Banner de llegada a una isla (flujo del juego) ---------- */
+#arrival-banner {
+  position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 152px); left: 50%; z-index: 6;
+  transform: translateX(-50%) translateY(-12px); width: min(420px, calc(100% - 28px));
+  padding: 14px 18px 12px; text-align: center; pointer-events: none;
+  border: 1px solid rgba(244, 180, 26, .5); border-radius: 12px;
+  background: rgba(18, 29, 54, .94); box-shadow: 0 12px 30px rgba(0, 0, 0, .5); backdrop-filter: blur(10px);
+  opacity: 0; transition: opacity .35s ease, transform .35s ease;
+}
+#arrival-banner.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+#arrival-banner .arrival-eyebrow { margin: 0; color: #8a8f9e; font: 600 .72rem/1.2 var(--font-body); letter-spacing: .18em; text-transform: uppercase; }
+#arrival-banner .arrival-name { display: block; margin: 3px 0 7px; color: #f4b41a; font: 400 clamp(1.25rem, 4vw, 1.6rem)/1.1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+#arrival-banner .arrival-chip { display: inline-block; padding: 3px 12px; color: #f0f6fc; font: 600 .78rem/1.4 var(--font-body); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; background: rgba(255, 255, 255, .06); }
+@media (prefers-reduced-motion: reduce) { #arrival-banner { transition: none; } }

@@ -6,6 +6,7 @@ import { getMapIslands } from "../map.js";
 import { RACES } from "../race_system.js";
 import { getGlobalChat, getWhisperHistory, postGlobalChat } from "../chat_engine.js";
 import { readJSON, writeJSON } from "../storage_adapter.js";
+import { sincronizarEstado } from "../../js/state.js";
 import { PALETTE, STORAGE_KEYS } from "../config.js";
 import { avatarAction, avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_renderer.js";
 import { renderCodex } from "../codex_engine.js";
@@ -273,22 +274,19 @@ export function renderHud(character){
   activeCharacter=character;
   if(currentPanel==="adminGM"&&!isLocalGMAvailable(character))closePanel();
   document.body.classList.toggle("reduced-motion",Boolean(readJSON(STORAGE_KEYS.settings,{}).reducedMotion));
-  const day=Number(character?.world?.day)||0,minute=Number(character?.world?.minuteOfDay)||0;
-  root.querySelector("[data-hud-day]").textContent=`Día ${day+1} · ${String(Math.floor(minute/60)).padStart(2,"0")}:${String(minute%60).padStart(2,"0")} · 1:4`;
-  root.querySelector("[data-hud-berries]").textContent=`฿ ${fmt(character?.berries)}`;
-  root.querySelector("[data-hud-faction]").textContent=character?.faction||"Pirata";
+  const minute=Number(character?.world?.minuteOfDay)||0;
+  // binding estado→pantalla: js/state.js copia el core y js/ui.js repinta los contenedores por data-atributo
+  sincronizarEstado(character);
   const wantedReward=root.querySelector(".one-hud-wanted-reward");
   if(wantedReward){if(Number(character?.bounty)>0)animateCount(wantedReward,character.bounty,(value)=>`฿ ${fmt(value)} BERRIES`);else{wantedReward.dataset.countTarget="0";wantedReward.textContent="SIN RECOMPENSA"}}
   root.hidden=!character;
   root.querySelector("#bottom-nav").hidden=!character;
   if(character){
-    const health=root.querySelector('[data-vital="health"]');
-    const experience=root.querySelector('[data-vital="experience"]');
-    if(health){health.max=Math.max(1,Number(character.stats?.maxHealth)||100);health.value=Math.max(0,Number(character.stats?.health)||0)}
-    if(experience){experience.max=Math.max(100,(Number(character.level)||1)*100);experience.value=Math.max(0,Number(character.experience)||0)}
     animateHudPortraits();
   }
-  const hour=Math.floor(minute/60);root.dataset.atmosphere=character?.travel?.climate==="calm-belt"?"mist":hour>=19||hour<6?"night":"day";document.body.dataset.atmosphere=root.dataset.atmosphere;
+  const hour=Math.floor(minute/60);root.dataset.atmosphere=character?.travel?.climate==="calm-belt"?"mist":hour>=19||hour<6?"night":"day";
+  // la luz del body la gobierna el mundo vivo (mundo/ui.js); el HUD solo aporta el mist de la Franja de Calma
+  if(character?.travel?.climate==="calm-belt")document.body.dataset.atmosphere="mist";
   renderBranch(character);
   // re-render del panel abierto SOLO cuando su contenido cambió de verdad:
   // antes se reconstruía todo el modal en cada paint (perdía scroll, detalles abiertos y foco)
