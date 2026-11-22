@@ -7,7 +7,7 @@
 
   // Zoom: 0.5 = globo completo (esfera), 0.62 = aterrizando en el mar, 6.0 = dioramas.
   // La rueda y los botones mueven un OBJETIVO (zT) y la cámara lo persigue: zoom lupa, no salto.
-  const Z_MIN = 0.5, Z_MAX = 6.0, UMBRAL_GLOBO = 0.62;
+  const Z_MIN = 0.5, Z_MAX = 8.0, UMBRAL_GLOBO = 0.62; // Z_MAX 8 = 1:1 con el sprite (8 px/unidad): la isla LLENA la pantalla, píxel perfecto
   MAPA.LOD_ZOOM = 1.5;          // entrar al diorama
   MAPA.LOD_SALIDA = 1.12;       // salir del diorama (histéresis: alejarse un poco no te expulsa)
   let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: Z_MIN }, ancho = 0, alto = 0;
@@ -199,7 +199,8 @@
   MAPA.enfocarIsla = function (i) {
     if (!i || !ancho) return;
     MAPA._enfocada = i; // la isla encuadrada: el banner del modo inmersión la nombra
-    const z = clamp(Math.min(ancho / (i.r * 5.4), alto / (i.r * 4.6)), 1.35, 4.2);
+    // ENTRAR de verdad: la isla ocupa buena parte de la pantalla (tope 7, casi 1:1 con el sprite)
+    const z = clamp(Math.min(ancho / (i.r * 4.4), alto / (i.r * 2.6)), 1.35, 7);
     vuelo = creaVuelo(i.x, i.y + 22, z, 750);
     zT = vuelo.tz;
   };
@@ -711,7 +712,42 @@
     return (h ^ (h >>> 13)) >>> 0;
   }
   const rIsla = (i, k) => (hIsla(i, k) % 1000) / 1000;
-  const SPR_S = 6; // píxeles del sprite por unidad de mundo
+  const SPR_S = 8; // píxeles del sprite por unidad de mundo (más resolución al adentrarse)
+
+  // ── EL LAYOUT canónico de cada isla: UNA lista determinista de casas, árboles
+  //    y adornos compartida por TODO el arte. El zoom ya no cambia de artista:
+  //    la misma aldea gana resolución. La noche enciende ESTAS ventanas. ──
+  function layoutIsla(i) {
+    if (i._lay) return i._lay;
+    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
+    const tema = i.tema || 'verde';
+    const r = i.r;
+    const nCasas = { ciudad: 6, puerto: 4, fortaleza: 3, prision: 0, japon: 5, dulce: 4, gobierno: 5 }[tema] ?? (3 + Math.floor(rIsla(i, 7) * 4));
+    const casas = [];
+    for (let q = 0; q < nCasas; q++) {
+      const a = rIsla(i, 100 + q * 3) * 6.2832;
+      const rr = r * (0.14 + rIsla(i, 130 + q) * 0.36);
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr * 0.7 + 2, s = 0.9 + rIsla(i, 160 + q) * 0.5;
+      casas.push({ x, y, wy: y - 4.4 * s, s, roof: T.roof[q % T.roof.length] });
+    }
+    const nArb = Math.round(7 + (T.trees || 0.3) * 10);
+    const arboles = [];
+    for (let q = 0; q < nArb; q++) {
+      const a = (q / nArb) * 6.2832 + (rIsla(i, 200 + q) - 0.5) * 0.5;
+      const rr = r * (0.5 + rIsla(i, 230 + q) * 0.3);
+      arboles.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.76, s: 0.8 + rIsla(i, 260 + q) * 0.5 });
+    }
+    // adornos de interior: arbustos, matas, rocas y flores (la vida de cerca)
+    const adornos = [];
+    const nAd = 6 + Math.floor(rIsla(i, 9) * 5);
+    for (let q = 0; q < nAd; q++) {
+      const a = rIsla(i, 400 + q) * 6.2832;
+      const rr = r * (0.2 + rIsla(i, 430 + q) * 0.52);
+      adornos.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.66, t: rIsla(i, 460 + q) });
+    }
+    i._lay = { casas, arboles, adornos };
+    return i._lay;
+  }
 
   // Chaikin ×2: la MISMA silueta de formaIsla con costa orgánica (continuidad al hacer zoom)
   function suaviza(pts, iter) {
@@ -756,6 +792,7 @@
 
     // ── sombra, bajío y arena ──
     el(2, 5, r * 1.62, r * 1.3, 'rgba(6,26,48,0.30)');
+    el(0, 0, r * 1.95, r * 1.56, 'rgba(16,58,110,0.12)'); // aguas profundas: borde cartográfico
     el(0, 0, r * 1.68, r * 1.36, 'rgba(150,205,232,0.30)');
     el(0, 0, r * 1.38, r * 1.12, 'rgba(168,216,238,0.42)');
     poly(1.04, rgb2(T.sand), 'rgba(255,255,255,0.5)', 1.2);
@@ -773,6 +810,19 @@
     for (let q = 0; q < 4; q++) {
       const a = rIsla(i, 40 + q) * 6.2832, rr = r * (0.16 + rIsla(i, 60 + q) * 0.3);
       el(Math.cos(a) * rr, Math.sin(a) * rr * 0.72, r * 0.3, r * 0.22, 'rgba(' + T.land2.join(',') + ',0.75)');
+    }
+    // luz solar del noroeste: el terreno brilla hacia el sol, se apaga al sureste
+    const sol = g.createRadialGradient(-r * 0.45, -r * 0.5, r * 0.15, 0, 0, r * 1.35);
+    sol.addColorStop(0, 'rgba(255,246,214,0.12)');
+    sol.addColorStop(0.55, 'rgba(255,255,255,0)');
+    sol.addColorStop(1, 'rgba(8,20,40,0.16)');
+    g.fillStyle = sol; g.fillRect(-r * 1.1, -r * 1.1, r * 2.2, r * 2.2);
+    // hallazgos de playa: conchas y madera a la deriva en el anillo de arena
+    for (let q = 0; q < 4; q++) {
+      const a = rIsla(i, 500 + q) * 6.2832, rr = r * (0.9 + rIsla(i, 530 + q) * 0.1);
+      const px = Math.cos(a) * rr, py = Math.sin(a) * rr * 0.8;
+      if (q % 2) { el(px, py, 1.4, 1.1, 'rgba(255,252,240,0.85)'); el(px + 0.5, py - 0.4, 0.5, 0.4, '#e8a0c0'); }
+      else { g.strokeStyle = 'rgba(122,82,54,0.75)'; g.lineWidth = 1; g.beginPath(); g.moveTo(px - 2.4, py + 0.8); g.lineTo(px + 2.2, py - 0.6); g.stroke(); }
     }
     g.restore();
 
@@ -803,16 +853,27 @@
       rc(x - 3.4 * s, y - 6 * s, 2.4 * s, 1.6 * s, '#3f8f4f'); rc(x - 3.4 * s, y - 8 * s, 1.4 * s, 3 * s, '#3f8f4f');
       rc(x + 1.6 * s, y - 5 * s, 2.4 * s, 1.6 * s, '#3f8f4f'); rc(x + 3 * s, y - 7.4 * s, 1.4 * s, 3.4 * s, '#3f8f4f');
     };
+    const chimeneas = [];
     const casaP = (x, y, s, roof) => {
-      rc(x - 6 * s, y + 1.6 * s, 13 * s, 2.6 * s, 'rgba(6,26,48,0.28)');
+      rc(x - 6.6 * s, y + 1.8 * s, 14 * s, 2.6 * s, 'rgba(6,26,48,0.28)');
       rc(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 7 * s, rgb2(T.wall));
+      rc(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 1.1 * s, 'rgba(255,255,255,0.2)'); // luz del norte en la fachada
+      rc(x + 3.4 * s, y - 4.6 * s, 2.2 * s, 6 * s, 'rgba(0,0,0,0.1)'); // sombra del este
       g.strokeStyle = 'rgba(30,22,12,0.5)'; g.lineWidth = 0.5; g.strokeRect(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 7 * s);
       rc(x - 7.4 * s, y - 9 * s, 14.8 * s, 3.6 * s, rgb2(roof));
-      rc(x - 4.4 * s, y - 10.8 * s, 8.8 * s, 2 * s, 'rgba(255,255,255,0.22)');
-      rc(x - 1.4 * s, y - 2.6 * s, 2.8 * s, 4 * s, 'rgba(30,20,12,0.6)');
-      rc(x + 2 * s, y - 4.4 * s, 2 * s, 2 * s, 'rgba(255,214,120,0.85)');
+      rc(x - 7.4 * s, y - 9 * s, 14.8 * s, 1.1 * s, 'rgba(255,255,255,0.25)'); // cumbrera iluminada
+      rc(x - 7.4 * s, y - 5.8 * s, 14.8 * s, 0.7 * s, 'rgba(0,0,0,0.18)'); // alero en sombra
+      rc(x - 1.7 * s, y - 2.4 * s, 3.4 * s, 4.6 * s, 'rgba(60,42,26,0.85)'); // puerta
+      rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,214,120,0.92)'); // ventana cálida
+      g.strokeStyle = 'rgba(30,22,12,0.55)'; g.lineWidth = 0.4;
+      g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(120,150,180,0.6)'); // ventana al mar
+      g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      if (rIsla(i, 700 + Math.round(x * 7 + y * 13)) > 0.62) { // alguna casa echa humo
+        rc(x + 4 * s, y - 11.6 * s, 2.2 * s, 3.4 * s, '#8a6d5a');
+        rc(x + 4.4 * s, y - 12.2 * s, 1.4 * s, 0.8 * s, 'rgba(255,255,255,0.2)');
+      }
     };
-    const chimeneas = [];
     // ── relieve: montañas con cara en luz y en sombra (por tema) ──
     const tri = (x0, y0, w0, h0, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x0 - w0, y0); g.lineTo(x0, y0 - h0); g.lineTo(x0 + w0, y0); g.closePath(); g.fill(); };
     const nieveTema = tema === 'nieve' || tema === 'blanco';
@@ -820,8 +881,8 @@
     for (let q = 0; q < nMont; q++) {
       const mx = (rIsla(i, 70 + q) - 0.5) * r * 0.9, my = (rIsla(i, 80 + q) - 0.3) * r * 0.5;
       const mw = r * (0.5 + rIsla(i, 90 + q) * 0.3), mh = mw * (0.72 + rIsla(i, 95 + q) * 0.4);
+      el(mx + mw * 0.15, my + 1.6, mw * 0.85, mw * 0.2, 'rgba(6,26,48,0.18)'); // asiento en el terreno
       tri(mx, my, mw, mh, '#5d6a76');
-      tri(mx, my, mw, mh, 'rgba(0,0,0,0)'); // base
       tri(mx + mw * 0.42, my, mw * 0.58, mh * 0.86, 'rgba(255,255,255,0.14)');
       if (nieveTema) tri(mx, my - mh * 0.78, mw * 0.3, mh * 0.3, 'rgba(240,248,255,0.92)');
     }
@@ -830,13 +891,23 @@
       el(r * 0.3, r * 0.42, r * 0.44, r * 0.12, '#dfbe7e');
     }
 
-    // ── aldea temática ──
-    const nCasas = { ciudad: 6, puerto: 4, fortaleza: 3, prision: 0, japon: 5, dulce: 4, gobierno: 5 }[tema] ?? (2 + Math.floor(rIsla(i, 7) * 3));
-    for (let q = 0; q < nCasas; q++) {
-      const a = rIsla(i, 100 + q * 3) * 6.2832;
-      const rr = r * (0.12 + rIsla(i, 130 + q) * 0.4);
-      casaP(Math.cos(a) * rr, Math.sin(a) * rr * 0.7 + 2, 0.9 + rIsla(i, 160 + q) * 0.5, T.roof[q % T.roof.length]);
-    }
+    // ── aldea temática: el LAYOUT compartido — las mismas casas a todo zoom ──
+    const lay = layoutIsla(i);
+    // caminos de tierra: del muelle a la plaza y de la plaza a cada casa
+    clipLand();
+    const camino = (x0, y0, x1, y1, w) => {
+      g.strokeStyle = 'rgba(146,112,66,0.55)'; g.lineWidth = w; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x0, y0);
+      g.quadraticCurveTo((x0 + x1) / 2 + (y1 - y0) * 0.18, (y0 + y1) / 2 - (x1 - x0) * 0.18, x1, y1);
+      g.stroke();
+    };
+    camino(0, r * 0.78, 0, r * 0.1, 2.6);
+    for (const c of lay.casas) camino(0, r * 0.1, c.x, c.y, 1.7);
+    g.restore();
+    // plaza central: pozo de piedra donde todo converge
+    el(0, r * 0.06 + 1, 3.6, 2.7, 'rgba(6,26,48,0.22)');
+    el(0, r * 0.04, 3.2, 2.4, '#9aa8b4'); el(0, r * 0.04, 1.5, 1.1, '#5d6a76');
+    for (const c of lay.casas) casaP(c.x, c.y, c.s, c.roof);
     if (i.base || tema === 'fortaleza') { // bastión de la Marina: muralla + torres + asta
       rc(-r * 0.62, r * 0.1, r * 1.24, r * 0.5, '#9aa8b4');
       rc(-r * 0.62, r * 0.1, r * 1.24, r * 0.1, 'rgba(255,255,255,0.25)');
@@ -905,17 +976,24 @@
       rc(-2.2, -r * 1.1, 4.4, r * 1.3, 'rgba(150,205,238,0.75)');
       for (let q = 0; q < 5; q++) el(-1.6 + q, -r * 1.1 - q * 4, 1.6, 1, 'rgba(200,230,250,0.6)');
     }
-    // árboles por tema en el anillo
-    const nArb = Math.round(4 + (T.trees || 0.3) * 8);
-    for (let q = 0; q < nArb; q++) {
-      const a = (q / nArb) * 6.2832 + (rIsla(i, 200 + q) - 0.5) * 0.5;
-      const rr = r * (0.5 + rIsla(i, 230 + q) * 0.3);
-      const px = Math.cos(a) * rr, py = Math.sin(a) * rr * 0.76;
-      const s = 0.8 + rIsla(i, 260 + q) * 0.5;
+    // árboles por tema en el anillo — el LAYOUT compartido (los mismos a todo zoom)
+    for (const a2 of lay.arboles) {
+      const px = a2.x, py = a2.y, s = a2.s;
       if (T.palms || tema === 'jungla') palmeraP(px, py, tema === 'jungla' ? s * 1.3 : s);
       else if (tema === 'desierto') cactusP(px, py, s);
       else if (tema === 'oscuro') { rc(px - 0.7, py - 5 * s, 1.4, 5 * s, '#3c3440'); rc(px - 3 * s, py - 7 * s, 2.6 * s, 1.2, '#3c3440'); rc(px + 0.6, py - 9 * s, 1.2, 2.8 * s, '#3c3440'); }
       else pinoP(px, py, s, nieveTema);
+    }
+    // adornos de interior: arbustos, matas de hierba, rocas y flores
+    for (const ad of lay.adornos) {
+      const px = ad.x, py = ad.y;
+      if (ad.t < 0.38) { el(px, py + 0.8, 2.6, 1.7, 'rgba(' + T.land2.join(',') + ',0.95)'); el(px - 0.8, py - 0.4, 1.6, 1.2, 'rgba(255,255,255,0.14)'); }
+      else if (ad.t < 0.62) {
+        g.strokeStyle = rgb2(T.tree); g.lineWidth = 0.8; g.lineCap = 'round';
+        for (const dx of [-1, 0, 1]) { g.beginPath(); g.moveTo(px + dx * 1.1, py + 1); g.lineTo(px + dx * 1.6, py - 2.4); g.stroke(); }
+      }
+      else if (ad.t < 0.82) { el(px, py, 2.2, 1.7, '#8a95a1'); el(px - 0.7, py - 0.7, 1.1, 0.8, 'rgba(255,255,255,0.22)'); }
+      else { el(px, py, 0.9, 0.9, tema === 'dulce' ? '#fff0f5' : '#e8a0c0'); el(px + 1.8, py + 0.6, 0.7, 0.7, '#f6e05e'); }
     }
     if (tema === 'industrial') { // fábrica + chimeneas (humo vivo encima)
       rc(-r * 0.4, r * 0.06, r * 0.56, r * 0.3, '#9aa5b1');
@@ -934,17 +1012,42 @@
       rc(-r * 0.62, my - 6, 2.4, 6, '#e8e2d2'); rc(-r * 0.62 + 0.4, my - 8.4, 1.6, 2.6, '#d33');
     }
     i._chimeneas = chimeneas;
-    if (cacheSprites.size > 20) cacheSprites.delete(cacheSprites.keys().next().value);
+    if (cacheSprites.size > 16) cacheSprites.delete(cacheSprites.keys().next().value);
     const entry = { c, R };
     cacheSprites.set(i.id, entry);
     return entry;
   }
 
+  // ── el mismo arte, en MINIATURA: a lo lejos se dibuja esta copia reducida
+  //    (suavizada) para que el mapa general se vea denso y estable, sin vibrar.
+  //    De cerca el sprite grande toma el relevo: ES el mismo arte, solo más cerca. ──
+  const cacheLejos = new Map();
+  function spriteLejos(i) {
+    const hit = cacheLejos.get(i.id);
+    if (hit) { cacheLejos.delete(i.id); cacheLejos.set(i.id, hit); return hit; }
+    const big = spriteDetalle(i);
+    const F = 2; // píxeles del mini-sprite por unidad de mundo
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.max(4, Math.round(big.R * 2 * F));
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(big.c, 0, 0, c.width, c.height);
+    const entry = { c, R: big.R };
+    if (cacheLejos.size > 40) cacheLejos.delete(cacheLejos.keys().next().value);
+    cacheLejos.set(i.id, entry);
+    return entry;
+  }
+
   // ── la isla detallada EN el mapa: sprite + espuma viva + bandera de facción ──
   function pintaIslaDetalle(i, ox, t) {
-    const { c, R } = spriteDetalle(i);
+    const lejos = cam.z < 0.85; // vista general: el mismo arte en miniatura suavizada
+    const sp = lejos ? spriteLejos(i) : spriteDetalle(i);
     const cx = i.x + ox, cy = i.y, r = i.r;
-    ctx.drawImage(c, cx - R, cy - R, R * 2, R * 2);
+    ctx.save();
+    // de cerca, píxel nítido; a lo lejos, suavizado para que el mini no vibre
+    ctx.imageSmoothingEnabled = lejos;
+    ctx.drawImage(sp.c, cx - sp.R, cy - sp.R, sp.R * 2, sp.R * 2);
+    ctx.restore();
     // espuma que respira alrededor de la costa
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
@@ -957,18 +1060,20 @@
       if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
     });
     ctx.closePath(); ctx.stroke();
-    // crestas de ola alrededor (deterministas, derivan con el tiempo)
-    ctx.lineWidth = 1;
-    for (let q = 0; q < 5; q++) {
-      const a = rIsla(i, 300 + q) * 6.2832;
-      const rr = r * (1.32 + rIsla(i, 330 + q) * 0.4);
-      const wx = cx + Math.cos(a) * rr, wy = cy + Math.sin(a) * rr * 0.8;
-      const fase = Math.sin(t / 950 + q * 2.1 + i.x * 0.2) * 3;
-      ctx.beginPath(); ctx.moveTo(wx - 4 + fase, wy); ctx.lineTo(wx + 3 + fase, wy); ctx.stroke();
+    // crestas de ola alrededor (deterministas, derivan con el tiempo): solo al acercar
+    if (cam.z >= 0.85) {
+      ctx.lineWidth = 1;
+      for (let q = 0; q < 5; q++) {
+        const a = rIsla(i, 300 + q) * 6.2832;
+        const rr = r * (1.32 + rIsla(i, 330 + q) * 0.4);
+        const wx = cx + Math.cos(a) * rr, wy = cy + Math.sin(a) * rr * 0.8;
+        const fase = Math.sin(t / 950 + q * 2.1 + i.x * 0.2) * 3;
+        ctx.beginPath(); ctx.moveTo(wx - 4 + fase, wy); ctx.lineTo(wx + 3 + fase, wy); ctx.stroke();
+      }
     }
     ctx.restore();
-    // humo vivo de chimeneas industriales
-    if (i._chimeneas) for (const [sx, sy] of i._chimeneas) {
+    // humo vivo de chimeneas industriales (solo tiene sentido de cerca)
+    if (i._chimeneas && cam.z >= 0.8) for (const [sx, sy] of i._chimeneas) {
       for (let q = 0; q < 3; q++) {
         const k = ((t / 1400 + q * 0.33) % 1);
         elVivo(cx + sx + Math.sin(t / 800 + q * 3) * 2.4, cy + sy - 4 - k * 14, (1.6 + k * 2.6), 'rgba(226,232,238,' + (0.4 * (1 - k)).toFixed(2) + ')');
@@ -1003,7 +1108,8 @@
     ctx.save();
     if (cam.z >= DETALLE_Z) {
       // sombra + mini capitán: sombrero de paja, chaleco rojo, botas
-      const s = 1.4; // escala del capitán en unidades de mundo (se ve a la vez con las aldeas)
+      // gana presencia al adentrarse el zoom (mundo compensado en pantalla)
+      const s = 1.4 * clamp(cam.z / 2.6, 1, 2.1);
       elVivo(px + 0.2 * s, py + 0.5 * s, 1.9 * s, 'rgba(6,26,48,0.3)');
       ctx.fillStyle = '#3d2f23'; ctx.fillRect(px - 1 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s); ctx.fillRect(px + 0.2 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s);
       ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.6 * s + bob, 2.2 * s, 2 * s);
@@ -1022,7 +1128,8 @@
     ctx.restore();
   }
   MAPA.avatarMundo = avatarMundo;
-  MAPA.edificiosIsla = edificiosIsla; // posiciones deterministas de las casas (la noche enciende sus ventanas)
+  MAPA.edificiosIsla = edificiosIsla; // las casas del layout (la noche enciende sus ventanas)
+  MAPA.layoutIsla = layoutIsla;       // el layout canónico compartido por todo el arte
 
   function sombraIsla(i, ox) {
     ctx.beginPath();
@@ -1030,21 +1137,10 @@
     ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
   }
 
-  // Las casas ahora las pinta pintaIslaVista (con techo y contorno, sin puntos blancos).
-  // La función queda por compatibilidad: expone las posiciones deterministas sin dibujar.
-  function edificiosIsla(i, ox) {
-    if (!i.edif) {
-      let h = 7;
-      for (const ch of i.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
-      i.edif = [];
-      const n = 2 + (h % 4);
-      for (let k = 0; k < n; k++) {
-        h = (h * 1103515245 + 12345) >>> 0;
-        const a = ((h >>> 8) % 628) / 100, rr = i.r * 0.45 * (((h >>> 16) % 100) / 100);
-        i.edif.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.7 });
-      }
-    }
-    return i.edif;
+  // Las VENTANAS que enciende la noche son las de las casas reales del LAYOUT:
+  // la misma lista que pinta el sprite, casa por casa, con la altura de su ventana.
+  function edificiosIsla(i) {
+    return layoutIsla(i).casas;
   }
 
   // anillo blanco punteado girando en islas con evento activo;
@@ -1142,18 +1238,10 @@
   };
 
   function dibujaIsla(i, ox, t) {
-    sombraIsla(i, ox);
-    // UN SOLO MAPA: cerca, la isla revela su arte pixel detallado dentro del mapa;
-    // lejos, la vista media clásica. Sin escenas-rectángulo nunca más.
-    if (MAPA.usaDetalle()) {
-      pintaIslaDetalle(i, ox, t);
-    } else {
-      pintaIslaVista(i, ox, t);
-      // olas
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      const wob = Math.sin(t / 900 + i.x) * 1.6;
-      ctx.beginPath(); ctx.moveTo(i.x + ox - i.r * 1.7, i.y + i.r * 1.15 + wob); ctx.lineTo(i.x + ox - i.r * 1.7 + 7, i.y + i.r * 1.15 + wob); ctx.stroke();
-    }
+    // UN SOLO ARTISTA a todo zoom: la MISMA isla pixel-art (sprite) de lejos a cerca.
+    // El acercamiento no cambia de dibujo: el arte escala y gana nitidez —
+    // así la entrada a la isla es un adentrarse real, sin salto ni cambio de artista.
+    pintaIslaDetalle(i, ox, t);
     anilloIsla(i, ox, t);
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
@@ -1252,6 +1340,19 @@
     for (let k = 0; k < 22; k++) {
       c.beginPath();
       c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 110 + ruido(k + 99) * 170, 50 + ruido(k + 7) * 80, ruido(k + 3) * 3, 0, 7);
+      c.fill();
+    }
+    // cartografía de profundidad: bancos abisales oscuros y aguas someras claras
+    c.fillStyle = 'rgba(9,34,72,0.16)';
+    for (let k = 0; k < 14; k++) {
+      c.beginPath();
+      c.ellipse(ruido(k + 300) * D.W, ruido(k + 340) * D.H, 180 + ruido(k + 380) * 240, 80 + ruido(k + 420) * 110, ruido(k + 460) * 3, 0, 7);
+      c.fill();
+    }
+    c.fillStyle = 'rgba(140,205,235,0.10)';
+    for (let k = 0; k < 12; k++) {
+      c.beginPath();
+      c.ellipse(ruido(k + 500) * D.W, ruido(k + 540) * D.H, 140 + ruido(k + 580) * 180, 60 + ruido(k + 620) * 90, ruido(k + 660) * 3, 0, 7);
       c.fill();
     }
     // textura de olas en dos tonos: swell largo oscuro + destello claro corto

@@ -103,6 +103,52 @@
     }
     // 3) pantalla: minimapa (siempre, también en modo inmersión: es el sustituto del HUD)
     pintaMini(sim, t, cam, D);
+    pintaRosa(ctx, cam, ancho, alto);
+  }
+
+  // ── rosa de los vientos: solo en la vista general, el mapa se comporta como mapa ──
+  //    Esquina inferior derecha, compacta: no pisa los botones de zoom ni el minimapa.
+  function pintaRosa(ctx, cam, ancho, alto) {
+    const alfa = Math.min(1, Math.max(0, (0.92 - cam.z) / 0.25));
+    if (alfa <= 0.02) return;
+    const cx = ancho - 52, cy = alto - 44, R = 30;
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    ctx.strokeStyle = 'rgba(244,208,120,0.8)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+    ctx.strokeStyle = 'rgba(244,208,120,0.45)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.72, 0, 7); ctx.stroke();
+    // rumbos: cardinales largos, intermedios cortos
+    ctx.strokeStyle = 'rgba(244,208,120,0.6)'; ctx.lineWidth = 1;
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4, rr = k % 2 ? R * 0.72 : R;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * R * 0.14, cy + Math.sin(a) * R * 0.14);
+      ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+      ctx.stroke();
+    }
+    // aguja norte: rombo en dos tonos
+    ctx.fillStyle = 'rgba(246,224,94,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - R * 0.86); ctx.lineTo(cx + 4, cy); ctx.lineTo(cx - 4, cy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(120,96,30,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + R * 0.55); ctx.lineTo(cx + 4, cy); ctx.lineTo(cx - 4, cy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(246,224,94,0.95)';
+    ctx.beginPath(); ctx.arc(cx, cy, 2, 0, 7); ctx.fill();
+    // letras cardinales
+    ctx.font = '700 11px Georgia, serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(246,224,94,0.95)';
+    ctx.fillText('N', cx, cy - R - 7);
+    ctx.font = '600 8px Georgia, serif';
+    ctx.fillStyle = 'rgba(244,208,120,0.6)';
+    ctx.fillText('E', cx + R + 7, cy);
+    ctx.fillText('S', cx, cy + R + 8);
+    ctx.fillText('O', cx - R - 7, cy);
+    ctx.restore();
   }
 
   // ── rutas de viaje ────────────────────────────────────────────────────────
@@ -220,7 +266,7 @@
           for (let k = 0; k < G.MAPA.edificiosIsla(i, 0).length; k++) {
             const e = G.MAPA.edificiosIsla(i, 0)[k];
             const titila = 0.72 + 0.28 * Math.sin(t / 130 + k * 2.4 + i.x);
-            const px = cx + e.x, py = i.y + e.y;
+            const px = cx + e.x, py = i.y + (e.wy != null ? e.wy : e.y);
             const r = 3.4 / cam.z + 1.4;
             ctx.fillStyle = 'rgba(255,196,92,' + (0.16 * noche * titila).toFixed(3) + ')';
             ctx.beginPath(); ctx.arc(px, py, r * 2.6, 0, 7); ctx.fill();
