@@ -226,6 +226,7 @@
       }
       M.actualizaEventos(sim, t);
       GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
+      if (M.pintaReyesMar) M.pintaReyesMar(t); // los Reyes del Mar patrullan las Franjas de Calma
       for (const s of sim.storms) {
         if (M.pintaTormenta) M.pintaTormenta(s, t);
         else {

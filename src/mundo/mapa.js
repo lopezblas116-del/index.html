@@ -1331,25 +1331,33 @@
     cb.width = Math.round(D.W * esc); cb.height = Math.round(D.H * esc);
     const c = cb.getContext('2d');
     c.scale(esc, esc);
-    // océano con profundidad: gradiente vertical suave
+    // océano CON LA MISMA PALETA del globo: profundo en los polos, vivo en el ecuador
     const grad = c.createLinearGradient(0, 0, 0, D.H);
-    grad.addColorStop(0, '#1d5a99'); grad.addColorStop(0.5, '#2265ab'); grad.addColorStop(1, '#1d5a99');
+    grad.addColorStop(0, '#164278'); grad.addColorStop(0.24, '#2866ad');
+    grad.addColorStop(0.5, '#2e74bd'); grad.addColorStop(0.76, '#2866ad'); grad.addColorStop(1, '#164278');
     c.fillStyle = grad; c.fillRect(0, 0, D.W, D.H);
-    // manchas amplias de tono sutil
-    c.fillStyle = '#2365ad';
-    for (let k = 0; k < 22; k++) {
+    // los cuatro BLUE: cada océano del mundo tiene su temperatura de color (los cuadrantes de la cruz)
+    for (const bl of [
+      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],    // NORTH BLUE (noroeste)
+      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],  // EAST BLUE (noreste)
+      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],    // WEST BLUE (suroeste)
+      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']  // SOUTH BLUE (sureste)
+    ]) { c.fillStyle = bl[4]; c.fillRect(bl[0], bl[1], bl[2] - bl[0], bl[3] - bl[1]); }
+    // manchas de dos tonos: el mar nunca es un color plano (las mismas del globo)
+    for (let k = 0; k < 26; k++) {
+      c.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
       c.beginPath();
-      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 110 + ruido(k + 99) * 170, 50 + ruido(k + 7) * 80, ruido(k + 3) * 3, 0, 7);
+      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 130 + ruido(k + 99) * 190, 60 + ruido(k + 7) * 90, ruido(k + 3) * 3, 0, 7);
       c.fill();
     }
     // cartografía de profundidad: bancos abisales oscuros y aguas someras claras
-    c.fillStyle = 'rgba(9,34,72,0.16)';
-    for (let k = 0; k < 14; k++) {
+    c.fillStyle = 'rgba(9,34,72,0.13)';
+    for (let k = 0; k < 12; k++) {
       c.beginPath();
-      c.ellipse(ruido(k + 300) * D.W, ruido(k + 340) * D.H, 180 + ruido(k + 380) * 240, 80 + ruido(k + 420) * 110, ruido(k + 460) * 3, 0, 7);
+      c.ellipse(ruido(k + 300) * D.W, ruido(k + 340) * D.H, 170 + ruido(k + 380) * 230, 75 + ruido(k + 420) * 100, ruido(k + 460) * 3, 0, 7);
       c.fill();
     }
-    c.fillStyle = 'rgba(140,205,235,0.10)';
+    c.fillStyle = 'rgba(140,205,235,0.09)';
     for (let k = 0; k < 12; k++) {
       c.beginPath();
       c.ellipse(ruido(k + 500) * D.W, ruido(k + 540) * D.H, 140 + ruido(k + 580) * 180, 60 + ruido(k + 620) * 90, ruido(k + 660) * 3, 0, 7);
@@ -1379,13 +1387,13 @@
     c.fillRect(0, D.GL_Y0, D.W, D.GL_Y1 - D.GL_Y0);
     c.strokeStyle = 'rgba(255,255,255,0.05)'; c.lineWidth = 1;
     for (let x = 130; x < D.W; x += 260) { c.beginPath(); c.moveTo(x, D.GL_Y0); c.lineTo(x, D.GL_Y1); c.stroke(); }
-    // ── rótulos: una vez por zona, sin spam ──
+    // ── rótulos: sellos de los océanos — LOS MISMOS del globo (canon One Piece) ──
     c.textAlign = 'center';
-    c.font = '700 30px Georgia, serif'; c.fillStyle = 'rgba(255,255,255,0.26)';
-    c.fillText('M A R   D E L   N O R T E', 650, 250);
-    c.fillText('M A R   D E L   E S T E', 1950, 250);
-    c.fillText('M A R   D E L   O E S T E', 650, 1190);
-    c.fillText('M A R   D E L   S U R', 1950, 1190);
+    c.font = '600 34px system-ui, sans-serif'; c.fillStyle = 'rgba(220,240,255,0.34)';
+    c.fillText('N O R T H  B L U E', 650, 250);
+    c.fillText('E A S T  B L U E', 1950, 250);
+    c.fillText('W E S T  B L U E', 650, 1190);
+    c.fillText('S O U T H  B L U E', 1950, 1190);
     c.font = '700 26px Georgia, serif'; c.fillStyle = 'rgba(255,244,214,0.34)';
     c.fillText('N U E V O   M U N D O', 650, D.GL_Y0 + 105);
     c.fillText('P A R A Í S O', 1950, D.GL_Y0 + 105);
@@ -1394,26 +1402,53 @@
       c.fillText('F R A N J A   D E   C A L M A', x, (D.CB_T + D.GL_Y0) / 2 + 4);
       c.fillText('F R A N J A   D E   C A L M A', x, (D.GL_Y1 + D.CB_B) / 2 + 4);
     }
-    // ── Muralla Roja: continente ancho (~64px) rugoso con relieve ──
-    const x0 = D.RL_X, hw = 32, paso = 10;
+    // ── Muralla Roja: cordillera rugosa de polo a polo — EL MISMO relieve que el globo ──
+    const x0 = D.RL_X, paso = 12;
+    const muroGrad = c.createLinearGradient(0, 0, 0, D.H);
+    muroGrad.addColorStop(0, '#a8503a'); muroGrad.addColorStop(0.5, '#93402c'); muroGrad.addColorStop(1, '#a8503a');
+    const bordeMuro = (dir) => {
+      const pts = [];
+      for (let y = -paso; y <= D.H + paso; y += paso) {
+        const w = (26 + ruido(y * 0.07 + (dir > 0 ? 5 : 9)) * 30) * (1 + 0.22 * Math.sin((y / D.H) * 6));
+        pts.push([x0 + dir * w + Math.sin((y / D.H) * 9 + 1.7) * 14 + (ruido(y * 0.11) - 0.5) * 16, y]);
+      }
+      return pts;
+    };
+    const izqM = bordeMuro(-1), derM = bordeMuro(1);
     c.beginPath();
-    for (let y = 0; y <= D.H; y += paso) c.lineTo(x0 - hw + (ruido(y / paso) - 0.5) * 10, y);
-    for (let y = D.H; y >= 0; y -= paso) c.lineTo(x0 + hw + (ruido(y / paso + 500) - 0.5) * 10, y);
-    c.closePath(); c.fillStyle = '#a8553f'; c.fill();
-    for (let k = 0; k < 80; k++) {
-      const y = ruido(k * 13.7) * D.H, dy = (ruido(k * 3.3) - 0.5) * hw * 1.15, rr3 = 6 + ruido(k * 9.1) * 16;
-      c.fillStyle = k % 2 ? 'rgba(201,122,90,0.5)' : 'rgba(120,56,40,0.45)';
-      c.beginPath(); c.ellipse(x0 + dy, y, rr3, rr3 * 0.6, 0, 0, 7); c.fill();
+    izqM.forEach(([X, y], k) => { if (k) c.lineTo(X, y); else c.moveTo(X, y); });
+    derM.reverse().forEach(([X, y]) => c.lineTo(X, y));
+    c.closePath();
+    c.fillStyle = muroGrad; c.fill();
+    // vetas rocosas y cumbres iluminadas: trazos curvos orgánicos (los mismos del globo)
+    for (let q = 0; q < 110; q++) {
+      const y = ruido(q * 3.3) * D.H;
+      const X = x0 + (ruido(q * 7.7) - 0.5) * 70 + Math.sin((y / D.H) * 9 + 1.7) * 14;
+      const an = 3 + ruido(q * 9.1) * 8;
+      c.strokeStyle = q % 3 ? 'rgba(70,26,18,0.5)' : 'rgba(230,150,120,0.4)';
+      c.lineWidth = 1.5 + ruido(q) * 1.8;
+      c.beginPath();
+      c.moveTo(X - an, y - 4 + ruido(q * 2) * 7);
+      c.quadraticCurveTo(X + (ruido(q * 5.5) - 0.5) * 9, y + (ruido(q * 6.1) - 0.5) * 7, X + an * 0.8, y + 3 + ruido(q * 4.4) * 5);
+      c.stroke();
     }
-    // sombra de altura en el agua: la muralla "proyecta" borde a sus costados
-    const sombIzq = c.createLinearGradient(x0 - hw - 30, 0, x0 - hw, 0);
-    sombIzq.addColorStop(0, 'rgba(6,20,40,0)'); sombIzq.addColorStop(1, 'rgba(6,20,40,0.24)');
-    c.fillStyle = sombIzq; c.fillRect(x0 - hw - 30, 0, 30, D.H);
-    const sombDer = c.createLinearGradient(x0 + hw + 30, 0, x0 + hw, 0);
-    sombDer.addColorStop(0, 'rgba(6,20,40,0)'); sombDer.addColorStop(1, 'rgba(6,20,40,0.24)');
-    c.fillStyle = sombDer; c.fillRect(x0 + hw, 0, 30, D.H);
-    c.fillStyle = 'rgba(212,150,118,0.45)';
-    c.fillRect(x0 - 12, 0, 5, D.H); c.fillRect(x0 + 7, 0, 5, D.H);
+    // pliegues secundarios: dos crestas oscuras paralelas dan volumen de cordillera
+    for (const desp of [-14, 11]) {
+      c.strokeStyle = 'rgba(58,20,14,0.32)'; c.lineWidth = 2.6;
+      c.beginPath();
+      for (let y = 0; y <= D.H; y += 22) {
+        const X = x0 + desp + Math.sin((y / D.H) * 9 + 1.7) * 12 + (ruido(y * 0.13 + desp) - 0.5) * 12;
+        if (y) c.lineTo(X, y); else c.moveTo(X, y);
+      }
+      c.stroke();
+    }
+    // sombra de altura en el agua: la cordillera proyecta borde a sus costados
+    const sombIzq = c.createLinearGradient(x0 - 115, 0, x0 - 45, 0);
+    sombIzq.addColorStop(0, 'rgba(6,20,40,0)'); sombIzq.addColorStop(1, 'rgba(6,20,40,0.26)');
+    c.fillStyle = sombIzq; c.fillRect(x0 - 115, 0, 70, D.H);
+    const sombDer = c.createLinearGradient(x0 + 115, 0, x0 + 45, 0);
+    sombDer.addColorStop(0, 'rgba(6,20,40,0)'); sombDer.addColorStop(1, 'rgba(6,20,40,0.26)');
+    c.fillStyle = sombDer; c.fillRect(x0 + 45, 0, 70, D.H);
     c.font = '700 13px Georgia, serif'; c.fillStyle = 'rgba(255,238,226,0.85)';
     c.save(); c.translate(x0 - 8, D.H - 130); c.rotate(-Math.PI / 2); c.fillText('M U R A L L A   R O J A', 0, 0); c.restore();
     // ── El anillo continúa: SEGUNDA franja de la Muralla Roja en el costurero del mapa ──
@@ -1503,6 +1538,13 @@
     oc.addColorStop(0, '#164278'); oc.addColorStop(0.24, '#2866ad');
     oc.addColorStop(0.5, '#2e74bd'); oc.addColorStop(0.76, '#2866ad'); oc.addColorStop(1, '#164278');
     g2.fillStyle = oc; g2.fillRect(0, 0, tw, th);
+    // los cuatro BLUE: la misma temperatura de color que el mapa plano (coherencia total)
+    for (const bl of [
+      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],
+      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],
+      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],
+      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']
+    ]) { g2.fillStyle = bl[4]; g2.fillRect(bl[0] * escX, bl[1] * escY, (bl[2] - bl[0]) * escX, (bl[3] - bl[1]) * escY); }
     // manchas amplias de tono: el mar nunca es un color plano
     for (let k = 0; k < 26; k++) {
       g2.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
@@ -1861,6 +1903,71 @@
     ctx.restore();
   };
 
+  // ── Reyes del Mar: las serpientes que patrullan las Franjas de Calma ──
+  //    Deterministas desde t (sin estado por frame): ondulan, avanzan despacio,
+  //    se envuelven por el borde del mundo y solo viven en las aguas sin viento.
+  let reyesMar = null;
+  function initReyes() {
+    reyesMar = [];
+    for (const banda of [[D.CB_T, D.GL_Y0, 1], [D.GL_Y1, D.CB_B, -1]]) {
+      for (let k = 0; k < 3; k++) {
+        reyesMar.push({
+          x: ruido(k * 7.3 + banda[0]) * D.W,
+          y: banda[0] + (banda[1] - banda[0]) * (0.28 + ruido(k * 3.1 + banda[0] * 0.7) * 0.44),
+          v: (9 + ruido(k * 9.7) * 10) * banda[2],
+          f: 0.8 + ruido(k * 5.3) * 0.6,
+          L: 78 + ruido(k * 11.3) * 54
+        });
+      }
+    }
+  }
+  MAPA.pintaReyesMar = function (t) {
+    if (!reyesMar) initReyes();
+    const vx0 = cam.x - ancho / (2 * cam.z) - 160, vx1 = cam.x + ancho / (2 * cam.z) + 160;
+    ctx.save();
+    for (const r of reyesMar) {
+      const x = ((r.x + (t / 1000) * r.v) % D.W + D.W) % D.W;
+      if (x < vx0 || x > vx1) continue;
+      const y = r.y + Math.sin(t / 2600 + r.x * 0.01) * 5;
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(r.v > 0 ? 1 : -1, 1);
+      const fase = (t / 900) * r.f;
+      // estela suave que deja a flote
+      ctx.strokeStyle = 'rgba(230,244,252,0.14)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-r.L * 0.5 - 6, 6); ctx.lineTo(-r.L * 0.5 + 12, 6); ctx.stroke();
+      // cuerpo serpenteante que se afina hacia la cola, con lomo iluminado
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let s = 0; s <= 12; s++) {
+        const u = s / 12, px = r.L * 0.5 - u * r.L;
+        const py = Math.sin(fase + u * 4.4) * (4 + u * 9);
+        if (s) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.strokeStyle = 'rgba(13,33,58,0.46)'; ctx.lineWidth = 7.5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(26,56,92,0.5)'; ctx.lineWidth = 3; ctx.stroke();
+      // crestas dorsales siguiendo la onda
+      ctx.fillStyle = 'rgba(13,33,58,0.5)';
+      for (let s = 2; s <= 10; s += 2) {
+        const u = s / 12, px = r.L * 0.5 - u * r.L;
+        const py = Math.sin(fase + u * 4.4) * (4 + u * 9);
+        const sgn = Math.cos(fase + u * 4.4) > 0 ? -1 : 1;
+        ctx.beginPath();
+        ctx.moveTo(px - 2, py - 3 * sgn);
+        ctx.lineTo(px, py - (7 + u * 4) * sgn);
+        ctx.lineTo(px + 2, py - 3 * sgn);
+        ctx.closePath(); ctx.fill();
+      }
+      // cabeza y ojo
+      const hy = Math.sin(fase) * 4;
+      ctx.fillStyle = 'rgba(13,33,58,0.55)';
+      ctx.beginPath(); ctx.ellipse(r.L * 0.5 + 5, hy, 7, 4.6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(210,235,250,0.55)';
+      ctx.beginPath(); ctx.arc(r.L * 0.5 + 8, hy - 1.4, 1.3, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  };
+
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
@@ -1881,6 +1988,8 @@
     ctx.save();
     ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
     for (const off of [-D.W, 0, D.W]) ctx.drawImage(base, off, 0, D.W, D.H);
+    // los Reyes del Mar patrullan las Franjas de Calma: el mapa cuenta la historia
+    MAPA.pintaReyesMar(t);
     // tormentas: espiral de viento girando + destello eléctrico ocasional
     for (const s of sim.storms) pintaTormenta(s, t);
     // estela del vuelo: la ruta dorada se dibuja sola hacia el destino (bajo las islas)

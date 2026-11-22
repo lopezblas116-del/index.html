@@ -101,9 +101,23 @@
         ctx.fillRect(0, 0, ancho, alto);
       }
     }
-    // 3) pantalla: minimapa (siempre, también en modo inmersión: es el sustituto del HUD)
+    // 3) pantalla: luz de escena (como la del globo) + minimapa + rosa de los vientos
+    pintaLuzEscena(ctx, cam, ancho, alto);
     pintaMini(sim, t, cam, D);
     pintaRosa(ctx, cam, ancho, alto);
+  }
+
+  // ── luz de escena: el mapa plano respira como el globo — brillo suave al
+  //    noroeste y borde que se hunde, solo en la vista general ──
+  function pintaLuzEscena(ctx, cam, ancho, alto) {
+    const alfa = Math.min(1, Math.max(0, (0.95 - cam.z) / 0.35));
+    if (alfa <= 0.02) return;
+    const luz = ctx.createRadialGradient(ancho * 0.38, alto * 0.32, Math.min(ancho, alto) * 0.18, ancho / 2, alto / 2, Math.max(ancho, alto) * 0.78);
+    luz.addColorStop(0, 'rgba(255,246,220,' + (0.06 * alfa).toFixed(3) + ')');
+    luz.addColorStop(0.55, 'rgba(255,255,255,0)');
+    luz.addColorStop(1, 'rgba(4,10,24,' + (0.13 * alfa).toFixed(3) + ')');
+    ctx.fillStyle = luz;
+    ctx.fillRect(0, 0, ancho, alto);
   }
 
   // ── rosa de los vientos: solo en la vista general, el mapa se comporta como mapa ──
@@ -371,9 +385,19 @@
     mctx.stroke();
     mctx.fillStyle = '#2565ad';
     mctx.fillRect(ex, ex, iw, ih);
-    // muralla (costura del mundo): línea vertical tenue
-    mctx.fillStyle = 'rgba(255,255,255,0.18)';
-    mctx.fillRect(ex + (D.W / 2) * sx, ex, 1, ih);
+    // los cuatro BLUE: el mismo mapa que el grande, de un vistazo
+    for (const bl of [
+      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.14)'],
+      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.11)'],
+      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.16)'],
+      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.14)']
+    ]) {
+      mctx.fillStyle = bl[4];
+      mctx.fillRect(ex + bl[0] * sx, ex + bl[1] * sy, (bl[2] - bl[0]) * sx, (bl[3] - bl[1]) * sy);
+    }
+    // la Muralla Roja (costura del mundo): cordillera roja canónica
+    mctx.fillStyle = 'rgba(255,118,88,0.55)';
+    mctx.fillRect(ex + (D.RL_X * sx) - 1, ex, 2.5, ih);
     // tormentas: puntos rojos vivos
     if (sim.storms) {
       for (const s of sim.storms) {
