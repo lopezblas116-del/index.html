@@ -521,7 +521,9 @@
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const tema = i.tema || 'verde';
     const r = i.r;
-    const nCasas = { ciudad: 6, puerto: 4, fortaleza: 3, prision: 0, japon: 5, dulce: 4, gobierno: 5 }[tema] ?? (3 + Math.floor(rIsla(i, 7) * 4));
+    const baseCasas = { ciudad: 6, puerto: 4, fortaleza: 3, prision: 0, japon: 5, dulce: 4, gobierno: 5 }[tema] ?? (3 + Math.floor(rIsla(i, 7) * 4));
+    const dens = Math.max(1, Math.min(1.6, r / 27)); // islas más grandes: más pueblo, misma proporción
+    const nCasas = Math.round(baseCasas * dens);
     const casas = [];
     for (let q = 0; q < nCasas; q++) {
       const a = rIsla(i, 100 + q * 3) * 6.2832;
@@ -529,7 +531,7 @@
       const x = Math.cos(a) * rr, y = Math.sin(a) * rr * 0.7 + 2, s = 0.9 + rIsla(i, 160 + q) * 0.5;
       casas.push({ x, y, wy: y - 4.4 * s, s, roof: T.roof[q % T.roof.length] });
     }
-    const nArb = Math.round(7 + (T.trees || 0.3) * 10);
+    const nArb = Math.round((7 + (T.trees || 0.3) * 10) * Math.max(1, Math.min(1.5, r / 27)));
     const arboles = [];
     for (let q = 0; q < nArb; q++) {
       const a = (q / nArb) * 6.2832 + (rIsla(i, 200 + q) - 0.5) * 0.5;
@@ -738,7 +740,7 @@
       i._flag = [0, r * 0.1 - r * 0.62 - 6];
       rc(-0.7, r * 0.1 - r * 0.62 - 8, 1.4, 8, '#5b3f28');
     }
-    if (i.tribunal) { rc(-r * 0.4, -r * 0.62, r * 0.8, r * 0.4, '#e8e2d2'); rc(-r * 0.44, -r * 0.68, r * 0.88, r * 0.1, '#d69e2e'); el(0, -r * 0.48, r * 0.12, r * 0.12, '#d69e2e'); }
+    if (i.tribunal && i.id !== 'enies') { rc(-r * 0.4, -r * 0.62, r * 0.8, r * 0.4, '#e8e2d2'); rc(-r * 0.44, -r * 0.68, r * 0.88, r * 0.1, '#d69e2e'); el(0, -r * 0.48, r * 0.12, r * 0.12, '#d69e2e'); }
     if (tema === 'prision') {
       rc(-r * 0.66, -r * 0.5, r * 1.32, r * 0.8, '#3a4658');
       for (let m = 0; m < 8; m++) rc(-r * 0.6 + m * r * 0.16, -r * 0.7, r * 0.05, r * 1.1, '#4a5568');
@@ -793,6 +795,117 @@
       tri(r * 0.4, r * 0.4, r * 0.7, r * 1.3, 'rgba(255,255,255,0.14)');
       rc(-2.2, -r * 1.1, 4.4, r * 1.3, 'rgba(150,205,238,0.75)');
       for (let q = 0; q < 5; q++) el(-1.6 + q, -r * 1.1 - q * 4, 1.6, 1, 'rgba(200,230,250,0.6)');
+    }
+    // ── LANDMARKS CANÓNICOS: cada isla icónica con su hito propio de One Piece ──
+    // (misma mano que el resto del arte: bloques planos, luz del norte, sombra del este)
+    if (i.id === 'arabasta') { // el palacio de Alubarna: cúpula dorada sobre el desierto
+      el(0, r * 0.3 + 2, r * 0.4, r * 0.12, 'rgba(6,26,48,0.22)');
+      rc(-r * 0.34, -r * 0.16, r * 0.68, r * 0.42, '#e8d9b8');
+      rc(-r * 0.34, -r * 0.16, r * 0.68, r * 0.09, 'rgba(255,255,255,0.22)');
+      rc(-r * 0.34, r * 0.18, r * 0.68, r * 0.09, 'rgba(0,0,0,0.12)');
+      for (const tx of [-r * 0.34, r * 0.16]) { rc(tx, -r * 0.5, r * 0.18, r * 0.38, '#dccdaa'); el(tx + r * 0.09, -r * 0.5, r * 0.09, r * 0.09, '#c9a227'); }
+      rc(-r * 0.12, -r * 0.66, r * 0.24, r * 0.5, '#e8d9b8');
+      g.fillStyle = '#d4af37'; g.beginPath(); g.arc(0, -r * 0.66, r * 0.16, Math.PI, 0); g.closePath(); g.fill();
+      el(-r * 0.05, -r * 0.72, r * 0.06, r * 0.05, 'rgba(255,246,214,0.55)');
+      el(0, r * 0.3, r * 0.06, r * 0.05, '#4a90c2'); // el oasis bajo el palacio
+      palmeraP(-r * 0.42, r * 0.34, 1); palmeraP(r * 0.44, r * 0.3, 1);
+    }
+    if (i.id === 'drum') { // castillo Drum: la fortaleza en la cima de la montaña nevada
+      tri(0, r * 0.62, r * 1.05, r * 1.15, '#7f8ea0');
+      tri(r * 0.4, r * 0.62, r * 0.62, r * 0.98, 'rgba(255,255,255,0.16)');
+      tri(0, r * 0.62 - r * 0.86, r * 0.3, r * 0.32, 'rgba(240,248,255,0.92)');
+      const dy = r * 0.62 - r * 0.9;
+      el(0, dy + 2, r * 0.16, r * 0.06, 'rgba(6,26,48,0.25)');
+      rc(-r * 0.11, dy - r * 0.22, r * 0.22, r * 0.24, '#e8e4d4');
+      for (const tx of [-r * 0.13, r * 0.04]) { rc(tx, dy - r * 0.34, r * 0.09, r * 0.36, '#e8e4d4'); tri(tx + r * 0.045, dy - r * 0.34, r * 0.07, r * 0.12, '#4a6fa5'); }
+      tri(0, dy - r * 0.34, r * 0.12, r * 0.14, '#4a6fa5');
+      rc(0, dy - r * 0.58, 1.2, r * 0.14, '#5b3f28'); el(0.6, dy - r * 0.6, 2.2, 1.6, '#e8a0c0'); // la bandera del cerezo rosa
+    }
+    if (i.id === 'skypiea') { // el arca con la campana dorada de Shandora
+      rc(-r * 0.44, -r * 0.06, r * 0.88, r * 0.12, '#d8cfa8');
+      rc(-r * 0.36, -r * 0.12, r * 0.72, r * 0.07, '#c9bd92');
+      for (const tx of [-r * 0.32, r * 0.2]) rc(tx, -r * 0.4, 2, r * 0.34, '#b8a878');
+      rc(-r * 0.4, -r * 0.44, r * 0.8, r * 0.08, '#d8cfa8');
+      rc(0 - 0.8, -r * 0.36, 1.6, r * 0.22, '#8a6d3b');
+      const cy2 = -r * 0.14 + r * 0.22;
+      g.fillStyle = '#d4af37'; g.beginPath(); g.arc(0, cy2, r * 0.13, Math.PI, 0); g.closePath(); g.fill();
+      rc(-r * 0.13, cy2, r * 0.26, r * 0.12, '#d4af37');
+      el(-r * 0.04, cy2 + r * 0.1, r * 0.05, r * 0.04, 'rgba(255,246,214,0.6)');
+      el(0, cy2 + r * 0.16, 2, 1.6, '#8a6d3b');
+      el(-r * 0.34, r * 0.66, r * 0.3, r * 0.1, 'rgba(255,255,255,0.8)'); el(r * 0.3, r * 0.74, r * 0.22, r * 0.09, 'rgba(255,255,255,0.6)');
+    }
+    if (i.id === 'enies') { // la Torre de la Justicia sobre la corriente del vacío
+      el(0, r * 0.36, r * 0.5, r * 0.16, '#cfc4a0');
+      rc(-r * 0.42, r * 0.22, r * 0.84, r * 0.18, '#e8e2d2');
+      rc(-r * 0.24, -r * 0.42, r * 0.48, r * 0.68, '#f2eee2');
+      rc(-r * 0.24, -r * 0.42, r * 0.48, r * 0.1, 'rgba(255,255,255,0.3)');
+      for (let m = 0; m < 3; m++) rc(-r * 0.16 + m * r * 0.16, -r * 0.24, r * 0.08, r * 0.12, 'rgba(120,150,180,0.7)');
+      tri(-r * 0.3, -r * 0.42, r * 0.3, r * 0.14, '#d9d2bc'); tri(r * 0.3, -r * 0.42, r * 0.3, r * 0.14, '#d9d2bc');
+      tri(0, -r * 0.42, r * 0.3, r * 0.2, '#c9a227');
+      rc(0 - 0.7, -r * 0.62 - 8, 1.4, 8, '#5b3f28'); i._flag = [0, -r * 0.62 - 6];
+      rc(-r * 0.6, r * 0.4, r * 0.24, r * 0.34, 'rgba(150,205,238,0.6)'); // la cascada que cae al vacío
+      for (let q = 0; q < 3; q++) el(-r * 0.48 + q * 2, r * 0.76 + q * 2, 3, 1.2, 'rgba(150,205,238,0.4)');
+    }
+    if (i.id === 'zou') { // ¡el gigante elefante Zunesha! la isla es su espalda
+      const ey = r * 0.62;
+      g.strokeStyle = '#6f7d8c'; g.lineWidth = r * 0.1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(r * 0.72, ey - r * 0.3); g.quadraticCurveTo(r * 1.05, ey - r * 0.1, r * 1.0, ey + r * 0.5); g.stroke();
+      g.strokeStyle = '#5d6a78'; g.lineWidth = r * 0.055;
+      g.beginPath(); g.moveTo(r * 0.78, ey - r * 0.24); g.quadraticCurveTo(r * 1.02, ey - r * 0.05, r * 0.98, ey + r * 0.44); g.stroke();
+      el(r * 0.62, ey - r * 0.38, r * 0.34, r * 0.3, '#7f8ea0');
+      el(r * 0.44, ey - r * 0.44, r * 0.16, r * 0.24, '#5d6a78');
+      el(r * 0.72, ey - r * 0.42, r * 0.05, r * 0.05, '#f2eee2'); el(r * 0.72, ey - r * 0.42, r * 0.022, r * 0.022, '#1a202c');
+      el(r * 0.62, ey - r * 0.34, r * 0.1, r * 0.05, 'rgba(255,255,255,0.15)');
+      for (const lx of [-r * 0.52, -r * 0.2, r * 0.18]) { rc(lx, ey + r * 0.2, r * 0.14, r * 0.5, '#6f7d8c'); rc(lx + 1, ey + r * 0.2, r * 0.05, r * 0.5, 'rgba(255,255,255,0.12)'); }
+    }
+    if (i.id === 'dressrosa') { // el Coliseo Corrida: anillo de piedra con arcos
+      el(0, -r * 0.12, r * 0.44, r * 0.3, '#c8b48a');
+      el(0, -r * 0.14, r * 0.34, r * 0.21, '#e0cba0');
+      el(0, -r * 0.16, r * 0.22, r * 0.12, '#d69e5e');
+      g.strokeStyle = '#a8906a'; g.lineWidth = 2;
+      g.beginPath(); g.ellipse(0, -r * 0.12, r * 0.44, r * 0.3, 0, 0, 7); g.stroke();
+      for (let m = 0; m < 8; m++) { const a = m / 8 * 6.2832; el(Math.cos(a) * r * 0.39, -r * 0.12 + Math.sin(a) * r * 0.26, r * 0.045, r * 0.03, 'rgba(60,48,34,0.6)'); }
+      for (const fx of [-r * 0.5, r * 0.5]) { rc(fx, -r * 0.34, 1.2, r * 0.14, '#5b3f28'); el(fx + 0.6, -r * 0.36, 2, 1.5, '#d33'); }
+    }
+    if (i.id === 'logue') { // la plataforma de ejecución: donde todo empezó
+      el(0, r * 0.28 + 2, r * 0.3, r * 0.1, 'rgba(6,26,48,0.2)');
+      rc(-r * 0.22, r * 0.06, r * 0.44, r * 0.16, '#d9c9a8');
+      rc(-r * 0.16, r * 0.22, r * 0.32, r * 0.08, '#c9b894');
+      rc(-r * 0.14, -r * 0.34, 2, r * 0.4, '#8a7a5c'); rc(r * 0.14 - 2, -r * 0.34, 2, r * 0.4, '#8a7a5c');
+      rc(-r * 0.16, -r * 0.36, r * 0.32, 2.2, '#8a7a5c');
+      i._flag = [0, -r * 0.36]; rc(-0.7, -r * 0.36 - 7, 1.4, 7, '#5b3f28');
+    }
+    if (i.id === 'ohara') { // el Árbol del Conocimiento: la biblioteca vive en la copa
+      el(r * 0.3, r * 0.3 + 1, r * 0.2, r * 0.07, 'rgba(6,26,48,0.18)');
+      rc(r * 0.26, -r * 0.3, r * 0.09, r * 0.58, '#6b4a2f');
+      el(r * 0.3, -r * 0.42, r * 0.3, r * 0.24, '#3e7c48');
+      el(r * 0.3, -r * 0.5, r * 0.2, r * 0.16, '#4a9060');
+      rc(r * 0.24, -r * 0.48, r * 0.14, r * 0.1, '#e8d9b8');
+      rc(r * 0.26, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5'); rc(r * 0.3, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5'); rc(r * 0.34, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5');
+      el(r * 0.3, -r * 0.42, r * 0.22, r * 0.12, 'rgba(255,255,255,0.12)');
+    }
+    if (i.id === 'lily') { // los arcos de la tribuna Kuja: serpientes de piedra
+      for (const [ax, ay, w] of [[-r * 0.34, r * 0.3, r * 0.34], [r * 0.3, r * 0.16, r * 0.3]]) {
+        g.strokeStyle = '#5e7d5a'; g.lineWidth = r * 0.07;
+        g.beginPath(); g.arc(ax, ay, w, Math.PI * 0.9, Math.PI * 1.9); g.stroke();
+        el(ax + w * 0.9, ay - w * 0.5, r * 0.05, r * 0.04, '#3e5e42');
+      }
+      el(0, r * 0.1, r * 0.16, r * 0.1, '#8a7a9e');
+      tri(0, r * 0.1, r * 0.14, r * 0.14, '#6e5e84');
+    }
+    if (i.id === 'littlegarden') { // los dinosaurios prehistóricos siguen vivos aquí
+      el(-r * 0.3, r * 0.3 + 1, r * 0.3, r * 0.05, 'rgba(6,26,48,0.15)');
+      el(-r * 0.3, r * 0.3, r * 0.26, r * 0.12, '#5a6e4a');
+      g.strokeStyle = '#5a6e4a'; g.lineWidth = r * 0.06; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-r * 0.12, r * 0.28); g.quadraticCurveTo(0, -r * 0.05, r * 0.14, -r * 0.02); g.stroke();
+      el(r * 0.17, -r * 0.04, r * 0.05, r * 0.04, '#5a6e4a');
+      el(r * 0.34, r * 0.36, r * 0.16, r * 0.1, '#7a5e46');
+      el(r * 0.44, r * 0.3, r * 0.09, r * 0.08, '#7a5e46');
+      tri(r * 0.5, r * 0.3, r * 0.07, r * 0.05, '#7a5e46');
+      el(r * 0.47, r * 0.27, 0.8, 0.8, '#f2eee2'); el(r * 0.47, r * 0.27, 0.35, 0.35, '#1a202c');
+      tri(-r * 0.5, r * 0.1, r * 0.24, r * 0.3, '#6e5a48');
+      el(-r * 0.5, r * 0.1 - r * 0.3 + 1, r * 0.06, r * 0.03, '#d65a3a');
+      el(-r * 0.5, r * 0.1 - r * 0.44, r * 0.1, r * 0.04, 'rgba(200,190,180,0.4)');
     }
     // árboles por tema en el anillo — el LAYOUT compartido (los mismos a todo zoom)
     for (const a2 of lay.arboles) {

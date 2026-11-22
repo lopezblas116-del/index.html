@@ -338,6 +338,38 @@ listen(document, "onepiece:hud-territory-claim", (event) => {
   if (result?.ok) persistRender(true);
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
 });
+listen(document, "onepiece:hud-coliseo-bet", (event) => {
+  if (!character || character.status === "dead" || character.location?.atSea) return;
+  const fighter = String(event.detail?.fighter || "");
+  const rival = String(event.detail?.rival || "el favorito");
+  const amount = Math.floor(Number(event.detail?.amount));
+  if (!fighter || !Number.isFinite(amount) || amount < 10 || amount > 500 || amount > Number(character.berries)) return;
+  character.berries = Number(character.berries) - amount;
+  character.coliseo = { last: character.coliseo?.last, resolving: { fighter, rival, amount, deadline: Date.now() + 9000 + Math.floor(Math.random() * 6000) } };
+  character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo de ${character.location?.island || "puerto"}: apostaste ฿${amount} por ${fighter}. La arena se llena de gritos…` });
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `Apuesta aceptada: ฿${amount} por ${fighter}` } }));
+});
+// La campana del coliseo: resuelve apuestas vencidas — también las que quedaron
+// colgadas si el jugador cerró la página antes del resultado.
+setInterval(() => {
+  const resolving = character?.coliseo?.resolving;
+  if (!resolving || Date.now() < resolving.deadline) return;
+  const { fighter, rival, amount } = resolving;
+  if (Math.random() < 0.42) {
+    const premio = Math.round(amount * 2.6);
+    character.berries = Number(character.berries) + premio;
+    character.coliseo.last = `🥊 ${fighter} ganó la jornada: cobraste ฿${premio}.`;
+    character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo: ¡${fighter} levanta la copa! Cobras ฿${premio}.` });
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `¡Ganaste el Coliseo! +฿${premio}` } }));
+  } else {
+    character.coliseo.last = `🥊 ${rival} noqueó a ${fighter}: perdiste ฿${amount}.`;
+    character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo: ${rival} noqueó a ${fighter}. Perdiste ฿${amount}.` });
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `El Coliseo no perdona: -฿${amount}` } }));
+  }
+  delete character.coliseo.resolving;
+  persistRender();
+}, 4000);
 listen(document, "onepiece:hud-territory-blockade", (event) => {
   if (!character || sharedState.status !== "local") return;
   const berries = character.berries;
