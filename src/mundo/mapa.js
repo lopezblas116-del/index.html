@@ -1022,6 +1022,7 @@
     ctx.restore();
   }
   MAPA.avatarMundo = avatarMundo;
+  MAPA.edificiosIsla = edificiosIsla; // posiciones deterministas de las casas (la noche enciende sus ventanas)
 
   function sombraIsla(i, ox) {
     ctx.beginPath();
@@ -1108,6 +1109,7 @@
   // del modo inmersión para que la capa mejorada los llame en cada frame
   MAPA.actualizaCinePublica = actualizaCine;
   MAPA.pasaZoomPublica = function (t) { pasaZoom(t); };
+  MAPA.cancelaVueloPublica = function () { cancelaVuelo(); }; // el teclado panea sin pelear con un vuelo
 
   // Marcas del mundo sobre cada isla: secretos sin descubrir (?) y Cubos Rojos hallados.
   // Tamaño compensado por zoom: se ven igual de chicos en pantalla a cualquier escala.

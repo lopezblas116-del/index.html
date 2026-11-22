@@ -332,6 +332,7 @@
       }
       ctx.restore();
     };
+    GFX.instalado = true; // la atmósfera espera esta bandera para envolver el render AL FINAL
     return true;
   };
 
