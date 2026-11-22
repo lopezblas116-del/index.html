@@ -182,11 +182,11 @@ function normalize(character) {
 }
 export function loadGame() {
   try { const raw = readStorage(SAVE_KEY); return raw ? normalize(JSON.parse(raw)) : null; }
-  catch { return null; }
+  catch (error) { console.warn("[storage] Guardado ilegible, se empieza de cero:", error?.name || error); return null; }
 }
 export function saveGame(character) {
   try { character.autonomy.lastSavedAt = Date.now(); character.autonomy.lastPulseAt ??= character.autonomy.lastSavedAt; return writeJSON(SAVE_KEY, character); }
-  catch { return false; }
+  catch (error) { console.warn("[storage] No se pudo guardar la partida:", error?.name || error); return false; }
 }
 export function addLog(character, message) {
   character.log.unshift({ time: new Date().toISOString(), message });

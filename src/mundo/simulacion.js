@@ -103,7 +103,7 @@ import { rollLineageRace } from '../races.js';
         crew: -1, ship: -1, berries: R.int(200, 3000), bounty: 0, inf: 0, lowUntil: -1,
         pos: { x: 0, y: 0 }, plan: null, nextThink: R.int(1, 40), fruta: null, maestria: 0,
         opinion: {}, insignias: {}, user: false, habil: [], arrestos: 0, cobros: 0, raza: null,
-        animo: 'Tranquilo', necesita: { comer: R.int(0, 60), dormir: 0 }, frutasCount: 0
+        anim: 'Tranquilo', necesita: { comer: R.int(0, 60), dormir: 0 }, frutasCount: 0
       }, cfg);
       const base = { fue: 6 + Math.round(a.level * 1.2), agi: 6 + Math.round(a.level * 1.1), agu: 6 + Math.round(a.level * 1.15), ing: 6 + Math.round(a.level * 1.0) };
       a.stats = base;
@@ -114,6 +114,12 @@ import { rollLineageRace } from '../races.js';
       return a;
     };
     this.mkAgent = mkAgent;
+    // tras cargar una partida con herederos, los ids nuevos no pueden colisionar con los guardados
+    this.resemillarIds = function () {
+      let mx = 0;
+      for (const a of this.agents) { const n = parseInt(String(a.id).slice(1), 10); if (n > mx) mx = n; }
+      if (mx > idA) idA = mx;
+    };
     const islasNav = D.ISLAS.filter(i => !i.noNav && !i.oculta && i.reg !== 'RL' && i.reg !== 'BM');
     // Marines estructurales en cada base
     for (const isl of islasNav.filter(i => i.base)) {
@@ -424,7 +430,7 @@ import { rollLineageRace } from '../races.js';
       if (A && B && A.state === 'libre' && B.state === 'libre') {
         const bono = c.guion.cat === 'pique' ? this.rng.int(-22, -8) : this.rng.int(8, 18);
         this.setOp(A, B, bono); this.setOp(B, A, bono);
-        if (A.user || B.user) { this.ev('susurroNo' === 'x' ? 'x' : 'amistad', { a: this.nm(A), b: this.nm(B), isla: this.isl(A).n, esJugador: true }, { ids: [A.id, B.id] }); }
+        if ((A.user || B.user) && c.guion.cat !== 'pique') { this.ev('amistad', { a: this.nm(A), b: this.nm(B), isla: this.isl(A).n, esJugador: true }, { ids: [A.id, B.id] }); }
       }
       activas.splice(i, 1);
       if (A) A.act = ''; if (B) B.act = '';
@@ -528,6 +534,7 @@ import { rollLineageRace } from '../races.js';
       this.cubosFin = true;
       this.ev('cubosFin', {}, {});
       this.abrirRutaFinal();
+      if (a.user) a.insignias['descifrador'] = 'descifrador'; // reunió los cuatro rojos
     }
     return true;
   };
@@ -640,7 +647,7 @@ import { rollLineageRace } from '../races.js';
     tiranos.forEach(id => {
       this.popOf(id).filter(a => a.fac === 'ciu' && a.berries > 100).forEach(a => {
         const cuota = Math.max(20, Math.round(a.berries * 0.05));
-        a.berries -= cuota; a.animo = 'Melancólico'; pagado = true;
+        a.berries -= cuota; a.anim = 'Melancólico'; pagado = true;
         if (D.OPRIMIDAS.includes(a.raza)) a._injusticia = true;
       });
     });
@@ -704,21 +711,24 @@ import { rollLineageRace } from '../races.js';
     if (!this.descubiertas[islId] && !isl.oculta) {
       this.descubiertas[islId] = a.id;
       this.ev('primera', { a: this.nm(a), isla: isl.n, esJugador: !!a.user }, { ids: [a.id], impAdd: a.user ? 1 : 0 });
-      if (a.user) {
-        if (isl.reg === 'NW') a.insignias['nuevomundo'] = 'nuevomundo';
-        if (isl.cielo) a.insignias['cielo'] = 'cielo';
-        if (isl.bajoMar) a.insignias['bajomar'] = 'bajomar';
-        a.islasPisadas = (a.islasPisadas || {}); a.islasPisadas[islId] = 1;
-        const n = Object.keys(a.islasPisadas).length;
-        if (n >= 15) a.insignias['coleccionista'] = 'coleccionista';
-        const blues = { EB: 1, NB: 1, WB: 1, SB: 1 }; let b4 = true;
-        for (const b of Object.keys(blues)) if (!Object.keys(a.islasPisadas).some(id => D.ISLA[id] && D.ISLA[id].reg === b)) b4 = false;
-        if (b4) a.insignias['cuatromares'] = 'cuatromares';
-        // Atlas del Alma: cada pisa queda registrada en su propio viaje
-        a.atlas = a.atlas || {};
-        const reg = a.atlas[islId] || (a.atlas[islId] = { n: 0, t0: Math.floor(this.t) });
-        reg.n++;
-      }
+    }
+    // el viaje propio se registra en CADA llegada: el Atlas y las insignias no
+    // dependen de que el jugador haya pisado la isla antes que nadie
+    if (a.user) {
+      if (isl.reg === 'NW') a.insignias['nuevomundo'] = 'nuevomundo';
+      if (isl.cielo) a.insignias['cielo'] = 'cielo';
+      if (isl.bajoMar) a.insignias['bajomar'] = 'bajomar';
+      a.islasPisadas = (a.islasPisadas || {}); a.islasPisadas[islId] = 1;
+      const n = Object.keys(a.islasPisadas).length;
+      if (n >= 15) a.insignias['coleccionista'] = 'coleccionista';
+      const blues = { EB: 1, NB: 1, WB: 1, SB: 1 }; let b4 = true;
+      for (const b of Object.keys(blues)) if (!Object.keys(a.islasPisadas).some(id => D.ISLA[id] && D.ISLA[id].reg === b)) b4 = false;
+      if (b4) a.insignias['cuatromares'] = 'cuatromares';
+      // Atlas del Alma: cada pisa queda registrada en su propio viaje
+      a.atlas = a.atlas || {};
+      const reg = a.atlas[islId] || (a.atlas[islId] = { n: 0, t0: Math.floor(this.t) });
+      reg.n++;
+      if (islId === 'laugh') a.insignias['final'] = 'final'; // llegar a la isla final merece su insignia
     }
     this.ev('atraca', { a: this.nm(a), isla: isl.n, esJugador: !!a.user }, { ids: [a.id] });
     // un capitán legendario puede hacerse con un Cubo Rojo aunque no seas tú
@@ -768,14 +778,14 @@ import { rollLineageRace } from '../races.js';
       return;
     }
     if (R.chance(0.10 * suerte)) {
-      const o = R.pick(D.OBJETOS); o._n = o.n;
+      const o = R.pick(D.OBJETOS);
       a.cofre = a.cofre || [];
       if (!a.cofre.some(x => x.k === o.k)) {
         a.cofre.push({ k: o.k, n: o.n, r: o.r, d: o.d });
         this.ev('reliquia', { a: this.nm(a), obj: o.n, isla: this.isl(a).n, esJugador: !!a.user }, { ids: [a.id], impAdd: o.r === 'legendaria' ? 2 : 0 });
       }
     }
-    if (R.chance(0.06 * suerte) && this.cofres[a.isl]) {
+    if (R.chance(0.06 * suerte) && this.cofres[a.isl] && this.cofres[a.isl].until > this.t) {
       a.berries += R.int(2000, 20000);
       delete this.cofres[a.isl];
       this.ev('hallazgo', { a: this.nm(a), isla: this.isl(a).n, esJugador: !!a.user }, { ids: [a.id] });
@@ -845,10 +855,11 @@ import { rollLineageRace } from '../races.js';
   Sim.prototype.piensa = function (a) {
     if (a.state === 'calabozo' || a.state === 'prision') {
       if (this.t - (a.stateSince || 0) >= (a.duracion || 360)) {
-        a.state = 'libre'; a.lowUntil = this.t + (a.state === 'prision' ? 720 : 180);
-        a.insignias['fuga'] = (a.state === 'prision' && a.user) ? 'fuga' : a.insignias['fuga'];
+        const eraPrision = a.state === 'prision'; // leer ANTES de sobrescribir el estado
+        a.state = 'libre'; a.lowUntil = this.t + (eraPrision ? 720 : 180);
+        a.insignias['fuga'] = (eraPrision && a.user) ? 'fuga' : a.insignias['fuga'];
         this.ev('fuga', { a: this.nm(a), isla: this.isl(a).n, esJugador: !!a.user }, { ids: [a.id] });
-        if (a.state === 'prision') this.leaveIsland(a);
+        if (eraPrision && a.isl === 'impel' && D.ISLA['logue']) this.llegarIsla(a, 'logue'); // Impel Down no tiene rutas: lo sueltan en Logue Town
       }
       return;
     }
@@ -864,12 +875,16 @@ import { rollLineageRace } from '../races.js';
       ['taberna', (0.12 + 0.35 * a.ocultos.social + (noche ? 0.4 : 0)) * (fx.taberna || 1) * (sesgo.taberna || 1)],
       ['explorar', (0.10 + 0.5 * a.ocultos.curios) * (fx.explorar || 1) * (sesgo.explorar || 1)],
       ['entrenar', (0.08 + 0.35 * a.ocultos.ambicion) * (fx.entrenar || 1) * (sesgo.entrenar || 1)],
-      ['descansar', 0.06 * (fx.descansar || 1)]
+      ['descansar', 0.06 * (fx.descansar || 1)],
+      ['tesoro', (0.05 + 0.4 * (a.ocultos.codicia || 0)) * (fx.tesoro || 1)] // el susurro «Busca tesoros» ya tiene acción real
     ];
     if (a.fac === 'mar' || a.fac === 'caz') opts.push(['arrestar', (0.14 + 0.2 * a.ocultos.obed) * (fx.arrestar || 1) * (sesgo.arrestar || 1)]);
     else if (a.fac === 'pir' || a.fac === 'rev') opts.push(['pelea', 0.16 * (fx.pelea || 1) * (sesgo.pelea || 1)]);
     const miCrew = this.crewOf(a);
+    // zarpar: con tripulación pesa más; sin ella, bote propio para CUALQUIER facción
+    // (antes marines, cazadores y revolucionarios sin crew jamás salían de su base)
     if (a.crew >= 0) opts.push(['zarpar', 0.10 * (fx.zarpar || 1) * (sesgo.zarpar || 1) * (miCrew && miCrew.cap === a.id ? 2.2 : 1)]);
+    else opts.push(['zarpar', 0.06 * (fx.zarpar || 1) * (sesgo.zarpar || 1)]);
     if (a.crew < 0 && a.fac === 'pir') opts.push(['fundar', 0.03 * (sesgo.lazos ? 0.5 : 1)]);
     if (a.crew >= 0 && this.crewOf(a).mem.length < 10) opts.push(['recluta', 0.05 * (fx.recluta || 1) * (sesgo.recluta || 1)]);
     if (this.pozo && !this.pozo.fin && a.isl === 'arabasta') opts.push(['cavar', 0.25]);
@@ -901,7 +916,7 @@ import { rollLineageRace } from '../races.js';
         const vec = (this.vecinos[a.isl] || []).filter(id => {
           const d = D.ISLA[id];
           if (!d) return false;
-          if (d.oculta) return false;
+          if (d.oculta && !(d.final && this.cubosFin)) return false; // la isla final solo se navega tras la ruta dorada
           if (d.reg === 'NW' && a.level < 16) return false;
           if (d.reg === 'PAR' && a.level < 8 && miReg !== 'PAR') return false;
           if ((d.bajoMar || d.cielo) && a.level < 12) return false;
@@ -927,7 +942,7 @@ import { rollLineageRace } from '../races.js';
     const R = this.rng;
     // tormentas móviles
     if (R.chance(0.25) && this.storms.length < 3) {
-      const isl = R.pick(D.ISLAS.filter(i => !i.noNav));
+      const isl = R.pick(D.ISLAS.filter(i => !i.noNav && !i.oculta)); // las tormentas no delatan la isla final
       this.storms.push({ x: isl.x + R.rango(-100, 100), y: isl.y + R.rango(-60, 60), r: R.rango(40, 90), until: this.t + R.int(180, 480), islCerca: isl.id });
       this.ev('tormenta', { isla: isl.n }, {});
     }
@@ -976,6 +991,8 @@ import { rollLineageRace } from '../races.js';
   Sim.prototype.daily = function () {
     this.publicarCarteles(false);
     this.tributoTirano();
+    // la constancia se premia: cien días de mar
+    if (this.user && this.dia() >= 100 && !this.user.insignias['cien']) this.user.insignias['cien'] = 'cien';
     // pozo del Oro Rosa: avanza con los que cavaron + minero ausente
     if (!this.pozo.fin) {
       const cavadores = Object.keys(this.pozo.cavadores);
@@ -993,7 +1010,7 @@ import { rollLineageRace } from '../races.js';
           const a = this.byId(id); if (!a) return;
           const lingotes = Math.min(30, this.pozo.cavadores[id]);
           a.berries += lingotes * 20000;
-          a.insignias['ororosa'] = 'Excavador del Oro Rosa';
+          a.insignias['ororosa'] = 'ororosa'; // la clave debe existir en D.INSIGNIAS para verse en la ficha
         });
         this.ev('pozoFin', { esJugador: parts.some(id => this.byId(id) && this.byId(id).user) }, {});
       }
@@ -1013,7 +1030,7 @@ import { rollLineageRace } from '../races.js';
       });
       if (st) {
         s.hull = Math.max(0, s.hull - this.rng.int(2, 6));
-        if (s.hull <= 20) this.ev('naufragio', { crew: crew.name, isla: D.ISLA[s.dest || s.isl].n, esJugador: cap && cap.user }, { ids: crew.mem.slice(0, 3) });
+        if (s.hull <= 20 && !s._naufragio) { s._naufragio = true; this.ev('naufragio', { crew: crew.name, isla: D.ISLA[s.dest || s.isl].n, esJugador: cap && cap.user }, { ids: crew.mem.slice(0, 3) }); }
       }
       if (this.rng.chance(0.004) && s.dest) {
         // Rey Marino (raro y peligroso)
@@ -1108,6 +1125,7 @@ import { rollLineageRace } from '../races.js';
       if (s.state !== 'navegando') continue;
       if (this.t >= s.t0 + s.dur) {
         s.state = 'puerto'; s.isl = s.dest; s.dest = null; s.plan = null;
+        s.hull = Math.min(100, s.hull + 35); s._naufragio = false; // el astillero repara al atracar
         const crew = this.crews[s.crew];
         for (const m of this.agents) {
           if (m.state === 'navegando' && m.plan && m.plan.ship === s.id) this.llegarIsla(m, s.isl);
@@ -1160,4 +1178,5 @@ import { rollLineageRace } from '../races.js';
   };
 
   G.Sim = Sim;
+  G.Sim.XP_NEED = XP_NEED; // la ficha y la sim comparten la misma fórmula de nivel
 })(typeof window !== 'undefined' ? window : globalThis);

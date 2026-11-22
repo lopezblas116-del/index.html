@@ -129,11 +129,11 @@ test("los impuestos abusivos terminan en revuelta; los justos calman el puerto",
     islands_control: [{ island_id: "sabaody", name: "Archipiélago Sabaody", faction: "Tripulación", owner_id: "test-eco", owner_name: "Probador", tax_rate: 20, taxes: 0, treasury: 0, chaos: 55, blockade_until_day: 0, besieged_by: null, defense_level: 30 }],
     global_events: [], bounties_leaderboard: [], fallen_captains: [], bosses: [], devil_fruits: [], last_cycle_day: 0
   };
-  advanceLocalWorld(world, 1);
+  advanceLocalWorld(world, 1, () => 0.99); // aleatorio inyectado: sin invasiones ni fugas, el caos es determinista
   let island = world.islands_control[0];
   assert.equal(island.chaos, 65, "el impuesto del 20% suma 10 de caos por ciclo");
   assert.ok(world.global_events.some((entry) => /hierve/.test(entry.text)), "el descontento queda registrado");
-  advanceLocalWorld(world, 2);
+  advanceLocalWorld(world, 2, () => 0.99);
   island = world.islands_control[0];
   assert.equal(island.owner_id, null, "la revuelta derroca al dueño");
   assert.equal(island.faction, "Tirano");
@@ -144,8 +144,8 @@ test("los impuestos abusivos terminan en revuelta; los justos calman el puerto",
     islands_control: [{ island_id: "sabaody", name: "Archipiélago Sabaody", faction: "Tripulación", owner_id: "test-eco", owner_name: "Probador", tax_rate: 5, taxes: 0, treasury: 0, chaos: 30, blockade_until_day: 0, besieged_by: null, defense_level: 30 }],
     global_events: [], bounties_leaderboard: [], fallen_captains: [], bosses: [], devil_fruits: [], last_cycle_day: 0
   };
-  advanceLocalWorld(calmWorld, 1);
-  advanceLocalWorld(calmWorld, 2);
+  advanceLocalWorld(calmWorld, 1, () => 0.99);
+  advanceLocalWorld(calmWorld, 2, () => 0.99);
   assert.equal(calmWorld.islands_control[0].chaos, 26, "una tasación justa calma las aguas");
   assert.ok(!calmWorld.global_events.some((entry) => /REVUELTA/.test(entry.text)));
 });

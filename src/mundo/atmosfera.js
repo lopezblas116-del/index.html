@@ -442,6 +442,7 @@
     cv.addEventListener('dblclick', (e) => {
       e.preventDefault();
       MAPA.zoom(1, e.clientX, e.clientY); MAPA.zoom(1, e.clientX, e.clientY);
+      if (G.UI && G.UI.abrirIsla) G.UI.abrirIsla(null); // acercarse con doble clic no debe dejar el popover abierto encima
     });
     cv.addEventListener('mousemove', (e) => {
       const r = cv.getBoundingClientRect();

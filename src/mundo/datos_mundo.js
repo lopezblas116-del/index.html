@@ -331,6 +331,7 @@ import { getMapIslands } from '../map.js';
     bajomar: { n: 'Diez mil metros', r: 'oro', d: 'Bajó a la Isla del Hombre-Pez.' },
     cuatromares: { n: 'Los cuatro mares', r: 'oro', d: 'Pisó cada uno de los cuatro Blues.' },
     coleccionista: { n: 'Coleccionista', r: 'oro', d: 'Quince islas distintas pisadas.' },
+    ororosa: { n: 'Excavador del Oro Rosa', r: 'oro', d: 'Aportó al pozo del Oro Rosa hasta el fondo.' },
     heredero: { n: 'La historia continúa', r: 'negro', d: 'Aprendió de un alma que se fue.' }
   };
 

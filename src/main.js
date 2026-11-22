@@ -6,7 +6,7 @@ import {
   closeLegacyModal, closePantheon, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
-import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
+import { initHud, renderHud, setHudVisible } from "./ui/hud.js";
 import { generateRandomOrigin, isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
@@ -28,7 +28,7 @@ import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js"
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
 import { celebrateAvatar } from "./island_renderer.js";
-import { importEvents, registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
+import { registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
 import "./mundo/index.js";
 
 let character = loadGame();
@@ -37,6 +37,7 @@ const network = createNetwork();
 let sharedState = network.snapshot();
 if (character?.world) Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
 let timerId = null;
+let syncTimer = null;
 let branchTimer = null;
 let scouting = false;
 const byId = (id) => document.getElementById(id);
@@ -169,15 +170,6 @@ function persistRender(reschedule = false) {
 
 initWizard();
 initHud();
-listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
-listen(document, "onepiece:local-suggestion", (event) => {
-  if (!character || character.status === "dead" || character.location?.atSea) return;
-  const { islandId, poiId } = event.detail || {};
-  const island = getMapIslands(character).find((entry) => entry.id === islandId && entry.name === character.location?.island);
-  if (!island?.pois.some((poi) => poi.id === poiId)) return;
-  character.localSuggestion = poiId;
-  persistRender();
-});
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
@@ -186,12 +178,8 @@ window.addEventListener("mil-almas:ready", () => {
   registerCharacter(character);
   paint();
 });
-window.addEventListener("mil-almas:tick", () => {
-  if (character && importEvents(character)) {
-    saveGame(character);
-    renderGame(character);
-  }
-});
+// el espejo de eventos del mundo vivo corre dentro de syncCharacter (paint):
+// un segundo listener por tick duplicaba el recorrido del feed
 function resumeOffline() {
   if (!character) return;
   const pending = character.autonomy.pendingBranch;
@@ -202,10 +190,9 @@ function resumeOffline() {
 }
 window.addEventListener("online", () => { resumeOffline(); network.sync(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearTimeout(timerId);
-  else { resumeOffline(); scheduleTick(); }
+  if (document.hidden) { clearTimeout(timerId); clearTimeout(syncTimer); }
+  else { resumeOffline(); scheduleTick(); scheduleNetworkSync(); }
 });
-let syncTimer;
 function scheduleNetworkSync() {
   clearTimeout(syncTimer);
   if (document.hidden || (!SUPABASE_CONFIG.url && !SUPABASE_CONFIG.publishableKey)) return;
@@ -214,8 +201,17 @@ function scheduleNetworkSync() {
     scheduleNetworkSync();
   }, 30000);
 }
-document.addEventListener("visibilitychange", scheduleNetworkSync);
 scheduleNetworkSync();
+listen(document, "onepiece:hud-whisper", (event) => {
+  if (!character || character.status === "dead") return;
+  const before = publicSnapshot(character);
+  const text = event.detail?.text || "";
+  sendConsciousnessWhisper(character, text);
+  susurrar(text);
+  publishChanges(before, character, true);
+  if (character.location?.atSea) scoutFugitive(character);
+  persistRender();
+});
 if (character) {
   if (character.status !== "dead" && character.autonomy?.paused) {
     setAutonomyPaused(character, false);
@@ -231,21 +227,6 @@ if (character) {
   if (character.status !== "dead" && !character.captured) scheduleTick();
 } else showSetup();
 
-listen(document, "onepiece:map-destination", (event) => {
-  if (!character || character.status === "dead") return;
-  character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
-  persistRender();
-});
-listen(document, "onepiece:hud-whisper", (event) => {
-  if (!character || character.status === "dead") return;
-  const before = publicSnapshot(character);
-  const text = event.detail?.text || "";
-  sendConsciousnessWhisper(character, text);
-  susurrar(text);
-  publishChanges(before, character, true);
-  if (character.location?.atSea) scoutFugitive(character);
-  persistRender();
-});
 listen(byId("character-form"), "submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
@@ -282,6 +263,7 @@ function startNewGame() {
   closeLegacyModal();
   closePantheon();
   setHudVisible(false);
+  document.body.classList.remove("mil-cine"); // sin esto, la nueva partida arrancaba sin HUD (inmersión heredada)
   resetWizard();
   showSetup();
 }

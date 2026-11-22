@@ -1,5 +1,4 @@
 import { getMapIslands } from "../map.js";
-import { drawIslandSceneContext } from "../island_renderer.js";
 
 const MAP_IDS = {
   "East Blue": "EB",
@@ -84,22 +83,6 @@ function mapDe(juegoIsl) {
   if (!juegoIsl || !D?.ISLAS) return null;
   return D.ISLAS.find((entry) => entry.juegoId === juegoIsl.id) || null;
 }
-
-// ── Dioramas en el mapa vivo ──
-// Al acercar el zoom, MAPA dibuja cada isla como su escena 16-bit completa
-// (edificios, NPCs temáticos, almas presentes y el avatar si está ahí).
-// El módulo del mundo no importa a la app: la app le provee las piezas.
-function conectarEscenas() {
-  if (!window.MAPA?.configuraEscenas) return false;
-  window.MAPA.configuraEscenas({
-    juegoDe: (mapIsl) => juegoDe(mapIsl),
-    npcsDe: (mapIsl) => almasDeIsla(mapIsl.id, performance.now()),
-    personajeDe: (juegoIsl) => (lastCharacter && lastCharacter.location?.island === juegoIsl.name && !lastCharacter.location?.atSea) ? lastCharacter : null,
-    pinta: drawIslandSceneContext
-  });
-  return true;
-}
-if (!conectarEscenas()) window.addEventListener("mil-almas:ready", conectarEscenas, { once: true });
 
 function installWorldUi() {
   const mapPanel = byId("map-panel");
@@ -268,7 +251,7 @@ function updateChip(character) {
     return;
   }
   const island = user?.isl ? window.D.ISLA[user.isl] : null;
-  const region = character.location?.region || window.D.REGIONS[island?.reg]?.name;
+  const region = character.location?.region || window.D?.REGIONS?.[island?.reg]?.name;
   chip.textContent = `📍 ${character.location?.island || island?.n || "Puerto desconocido"} · ${SEA_ES[region] || region || "Mar desconocido"}`;
 }
 

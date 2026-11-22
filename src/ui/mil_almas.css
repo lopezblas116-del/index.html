@@ -21,9 +21,6 @@
   border: 1px solid var(--ump-border); border-radius: 9px; background: var(--ump-panel); backdrop-filter: blur(8px);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-#map-panel.mil-vivo #world-map,
-#map-panel.mil-vivo #planet-map,
-#map-panel.mil-vivo #worldMapCanvas { display: none !important; }
 #map-panel.mil-vivo #canvas-container #mapa {
   position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%;
   margin: 0; border: 0; border-radius: 0; background: #2161a7; touch-action: none;
@@ -44,8 +41,8 @@ body.game-active #mil-almas-ui { display: block; }
   border: 1px solid var(--ump-border); border-radius: 12px; background: rgba(11, 19, 41, .94); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
 }
 body.mil-live-mode #mil-almas-ui .mil-world-bar { display: flex; }
-body[data-camera-state="ISLAND_VIEW"] #mil-almas-ui .mil-world-bar { display: none; }
-body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: none; }
+body.mil-cine #mil-almas-ui .mil-world-bar { display: none; }
+body.mil-cine #canvas-container .mil-chip { display: none; }
 #mil-almas-ui .mil-world-bar > div:first-child { display: grid; gap: 3px; min-width: 0; }
 /* Marca estilo UMP: logo en Anton, subtítulo gris discreto */
 #mil-almas-ui .mil-world-bar strong { font-family: 'Anton', system-ui, sans-serif; font-weight: 400; font-size: 1.06rem; line-height: 1.1; letter-spacing: .07em; text-transform: uppercase; color: #fff; }

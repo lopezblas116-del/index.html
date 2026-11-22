@@ -70,6 +70,7 @@
       if (d.cuboDorado) sim.cuboDorado = d.cuboDorado;
       if (d.control) sim.control = d.control;
       sim.abrirRutaFinal(); // las rutas se recalculan al cargar: reabre la final si la saga ya cerró
+      sim.resemillarIds && sim.resemillarIds(); // los ids nuevos no pueden colisionar con herederos guardados
       // migración de mundos antiguos (creados antes de las razas y la política):
       // cada alma recibe raza por sorteo ponderado con la semilla del mundo, y
       // el mapa político arranca si no existía (bases de la Marina, tirano, células rev)
@@ -81,7 +82,7 @@
       sim.t = d.t;
       sim.byId = function (id) { return this.agents.find(a => a.id === id); };
       sim.user = d.user ? sim.byId(d.user) : null;
-      sim.onMuerte = null;
+      sim.onMuerte = onMuerteHandler; // sin esto, morir en una partida cargada pasaba en silencio
       J.sim = sim;
       return sim;
     } catch (e) { console.warn('Guardado corrupto', e); return null; }
@@ -90,10 +91,11 @@
   J.borrar = function () { try { localStorage.removeItem(CLAVE); } catch (e) {} };
 
   // ── Reanudar/crear el mundo ──
+  const onMuerteHandler = (viejo, heredero) => { UI.toast('«' + viejo.name + '» se fue. «' + heredero.name + '» recoge su bandera.'); UI.cerrarFicha(); };
   J.nuevo = function () {
     J.borrar();
     J.sim = new Sim(Math.floor(Math.random() * 90000) + 1000);
-    J.sim.onMuerte = (viejo, heredero) => { UI.toast('«' + viejo.name + '» se fue. «' + heredero.name + '» recoge su bandera.'); UI.cerrarFicha(); };
+    J.sim.onMuerte = onMuerteHandler;
   };
 
   J.iniciar = function () {
@@ -134,13 +136,11 @@
       UI.renderHeader();
       if (sim.t % 2 === 0) UI.renderFeed(true);
       const pop = $('pop-isla');
-      if (!pop.classList.contains('oculto')) UI.abrirIsla(D.ISLA[selActual()] || null);
+      if (!pop.classList.contains('oculto') && UI.tickIsla) UI.tickIsla(); // refresco barato, sin reconstruir el popover
       if (sim.user && !$('ficha').classList.contains('oculto')) UI.renderSusurros();
       window.dispatchEvent(new CustomEvent('mil-almas:tick'));
     }, Math.max(60, J.msPorMin));
   }
-  const selActual = () => { const p = $('pop-isla'); return p && p.dataset.isl ? p.dataset.isl : null; };
-
   function wire() {
     $('btn-nuevo').addEventListener('click', () => {
       if (J.sim.user) {

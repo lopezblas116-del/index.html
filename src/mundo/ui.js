@@ -69,16 +69,70 @@ import { getMapIslands } from '../map.js';
   };
 
   // ── Popover de isla ──
+  // Parte ESTÁTICA (título, región, encuentros, viaje): solo al abrir o cambiar de isla.
+  let islaAbierta = null; // la isla cuyo popover está abierto
   UI.abrirIsla = function (i) {
     const pop = $('pop-isla');
-    if (!i) { pop.classList.add('oculto'); return; }
+    if (!i) { pop.classList.add('oculto'); islaAbierta = null; return; }
     pop.classList.remove('oculto');
+    const cambio = !islaAbierta || islaAbierta.id !== i.id;
+    islaAbierta = i;
+    if (cambio) {
+      $('pi-titulo').textContent = i.n;
+      $('pi-region').textContent = (D.REGIONS[i.reg] ? D.REGIONS[i.reg].name : i.reg === 'RL' ? 'Línea Roja' : i.reg === 'CB' ? 'Franja de Calma' : 'Bajo el Mar') +
+        (i.noNav ? ' · aguas sin viento (no navegable)' : '') + (i.oculta ? ' · Isla oculta' : '');
+      // encuentros jugables: crisis narrativa, tributo, sabotaje, comitiva noble
+      const pe = $('pi-encuentros');
+      if (pe) {
+        pe.innerHTML = '';
+        const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+        // el puente real es juegoId (datos_mundo lo asigna a toda isla enlazada)
+        const islRaiz = car && getMapIslands(car).find(x => x.id === i.juegoId || x.name === i.n);
+        const tarjetas = islRaiz ? islandEncountersFor(islRaiz, car) : [];
+        if (car && !islRaiz) {
+          pe.innerHTML = '<div class="mil-encuentro vacio"><small>Isla fuera del mapa canónico: la política jugable ocurre en las 28 islas del atlas antiguo.</small></div>';
+        }
+        tarjetas.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'mil-encuentro';
+          card.innerHTML = '<b>' + esc(t.title) + '</b><p>' + esc(t.description) + '</p>' + (t.warning ? '<small>' + esc(t.warning) + '</small>' : '');
+          (t.actions || []).forEach(act => {
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.textContent = act.label;
+            btn.addEventListener('click', () => {
+              document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action, choice: act.choice } }));
+              setTimeout(() => UI.abrirIsla(i), 300);
+            });
+            card.appendChild(btn);
+          });
+          if (t.buttonLabel) {
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.textContent = t.buttonLabel;
+            btn.addEventListener('click', () => {
+              document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action } }));
+              setTimeout(() => UI.abrirIsla(i), 300);
+            });
+            card.appendChild(btn);
+          }
+          pe.appendChild(card);
+        });
+      }
+      const viajar = $('pi-viajar');
+      if (viajar) {
+        viajar.classList.toggle('oculto', !i.juego);
+        viajar.disabled = true;
+        viajar.title = 'Viaje directo pendiente: seleccionar un destino solo permite sugerir un rumbo, no zarpar.';
+      }
+    }
+    UI.pintaPopDinamico(i);
+  };
+
+  // Parte VIVA (presentes, noticias, control, charlas): barata de refrescar cada tick,
+  // sin reconstruir tarjetas ni listeners (antes se re-creaba TODO el popover ~1,2 s).
+  UI.pintaPopDinamico = function (i) {
     const presentes = sim.popOf(i.id).filter(a => a.state === 'libre');
     const news = sim.feed.filter(e => e.txt.includes(i.n)).slice(-6).reverse();
     const disc = sim.descubiertas[i.id];
-    $('pi-titulo').textContent = i.n;
-    $('pi-region').textContent = (D.REGIONS[i.reg] ? D.REGIONS[i.reg].name : i.reg === 'RL' ? 'Línea Roja' : 'Bajo el Mar') +
-      (i.noNav ? ' · Franja de Calma (no navegable)' : '') + (i.oculta ? ' · Isla oculta' : '');
     $('pi-presentes').innerHTML = presentes.length
       ? presentes.slice(0, 10).map(a => {
         const ch = sim.charlaDe(a.id);
@@ -98,60 +152,11 @@ import { getMapIslands } from '../map.js';
     // control político: ley / tirano / libre (la cadena raza→opresión→revuelta vive aquí)
     const ctrl = sim.control && sim.control[i.id];
     $('pi-control').innerHTML = ctrl ? '<span class="mil-ctrl c-' + ctrl + '">' + (ctrl === 'ley' ? '⚖ Bajo la ley de la Marina' : ctrl === 'tirano' ? '⛓ Gobernador tirano · el tributo sangra' : '🕊 Libre') + '</span>' : '';
-    // encuentros jugables: crisis narrativa, tributo, sabotaje, comitiva noble
-    const pe = $('pi-encuentros');
-    if (pe) {
-      pe.innerHTML = '';
-      const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
-      // el puente real es juegoId (datos_mundo lo asigna a toda isla enlazada)
-      const islRaiz = car && getMapIslands(car).find(x => x.id === i.juegoId || x.name === i.n);
-      const tarjetas = islRaiz ? islandEncountersFor(islRaiz, car) : [];
-      if (car && !islRaiz) {
-        pe.innerHTML = '<div class="mil-encuentro vacio"><small>Isla fuera del mapa canónico: la política jugable ocurre en las 28 islas del atlas antiguo.</small></div>';
-      }
-      tarjetas.forEach(t => {
-        const card = document.createElement('div');
-        card.className = 'mil-encuentro';
-        card.innerHTML = '<b>' + esc(t.title) + '</b><p>' + esc(t.description) + '</p>' + (t.warning ? '<small>' + esc(t.warning) + '</small>' : '');
-        (t.actions || []).forEach(act => {
-          const btn = document.createElement('button');
-          btn.type = 'button'; btn.textContent = act.label;
-          btn.addEventListener('click', () => {
-            document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action, choice: act.choice } }));
-            setTimeout(() => UI.abrirIsla(i), 300);
-          });
-          card.appendChild(btn);
-        });
-        if (t.buttonLabel) {
-          const btn = document.createElement('button');
-          btn.type = 'button'; btn.textContent = t.buttonLabel;
-          btn.addEventListener('click', () => {
-            document.dispatchEvent(new CustomEvent('mil-encuentro', { detail: { action: t.action } }));
-            setTimeout(() => UI.abrirIsla(i), 300);
-          });
-          card.appendChild(btn);
-        }
-        pe.appendChild(card);
-      });
-    }
-    // chat vivo en la isla
-    const activa = (sim.charlasActivas || []).filter(c => c.isl === i.id && sim.t < c.t1);
-    $('pi-charlas').innerHTML = activa.map(c => {
-      const A = sim.byId(c.A), B = sim.byId(c.B);
-      if (!A || !B) return '';
-      const idx = Math.min(c.guion.l.length - 1, Math.floor((sim.t - c.t0) / 7));
-      const lin = c.guion.l[idx];
-      if (!lin) return '';
-      const quien = lin[0] === 'A' ? A : B;
-      return '<div class="bubble"><b>' + esc(quien.name) + ':</b> ' + UI.textoCharla(lin[1]) + '</div>';
-    }).join('');
     UI.renderBurbujas(i);
-    const viajar = $('pi-viajar');
-    if (viajar) {
-      viajar.classList.toggle('oculto', !i.juego);
-      viajar.disabled = true;
-      viajar.title = 'Viaje directo pendiente: seleccionar un destino solo permite sugerir un rumbo, no zarpar.';
-    }
+  };
+  // El reloj de la simulación llama esto cada tick: solo refresca si el popover está abierto.
+  UI.tickIsla = function () {
+    if (islaAbierta && !$('pop-isla').classList.contains('oculto')) UI.pintaPopDinamico(islaAbierta);
   };
 
   UI.renderBurbujas = function (i) {
@@ -184,11 +189,11 @@ import { getMapIslands } from '../map.js';
     $('ft-raza').textContent = rz + (D.OPRIMIDAS.includes(a.raza) ? ' · raza perseguida: la Marina te mira de más' : ' · raza sin tributo de sangre');
     $('ft-sueno').textContent = S ? S.n : '';
     $('ft-frase').textContent = S ? '«' + S.cita + '»' : '';
-    $('ft-nivel').textContent = 'Nivel ' + a.level + ' · ' + a.xp + '/' + (Math.round(4.5 * Math.pow(a.level - 1, 2.05)) + 20) + ' XP';
+    $('ft-nivel').textContent = 'Nivel ' + a.level + ' · ' + a.xp + '/' + G.Sim.XP_NEED(a.level) + ' XP';
     $('ft-stats').innerHTML = D.STATS.map(k => '<span><b>' + D.STAT_N[k] + '</b> ' + a.stats[k] + '</span>').join('');
     $('ft-belis').textContent = fmtBelis(a.berries) + ' Belis';
     $('ft-cartel').innerHTML = a.bounty > 0 ? 'Cartel: <b class="oro">' + fmtBelis(a.bounty) + '</b>' : 'Sin cartel. Todavía.';
-    $('ft-animo').textContent = 'Ánimo: ' + (a.animo || 'Tranquilo') + ' · HP ' + a.hp + ' · ' + (a.state === 'libre' ? (a.act || 'Libre') : a.state);
+    $('ft-animo').textContent = 'Ánimo: ' + (a.anim || 'Tranquilo') + ' · HP ' + a.hp + ' · ' + (a.state === 'libre' ? (a.act || 'Libre') : a.state);
     $('ft-fruta').innerHTML = a.fruta ? 'Fruta: <b>' + (D.FRUTAS.find(f => f.k === a.fruta) || {}).n + '</b> (maestría ' + a.maestria + ')' : 'Sin Fruta del Diablo';
     const rasgosTxt = D.EJES.map(e => e.polos[a.rasgos[e.k]].n).join(' · ');
     $('ft-rasgos').textContent = rasgosTxt;
@@ -407,8 +412,6 @@ import { getMapIslands } from '../map.js';
     }));
     const nom = $('wz-nombre');
     if (nom) nom.addEventListener('input', () => { W.datos.nombre = nom.value.trim(); });
-    // secreto aleatorio al final
-    W.datos.secreto = W.datos.secreto || G.Sim && null;
   }
 
   UI.wizSiguiente = function () {
@@ -418,10 +421,16 @@ import { getMapIslands } from '../map.js';
     if (W.paso === 1 && !W.datos.camino) { UI.toast('Elige un camino'); return; }
     if (W.paso === 2 && !W.datos.oficio) { W.datos.oficio = D.OFICIOS[0].k; }
     if (W.paso === 3 && !W.datos.sueno) { UI.toast('Gira la brújula y elige un sueño'); return; }
-    if (W.paso < 4) { W.paso++; G.SFX.tick(); UI.wizRender(); return; }
+    if (W.paso < 4) {
+      // el mar de origen se sortea al ENTRAR a la tarjeta: lo que se ve es lo que se juega
+      if (W.paso === 3 && !W.datos.mar) W.datos.mar = W.datos.camino === 'avent'
+        ? ['EB', 'NB', 'WB', 'SB'][Math.floor(Math.random() * 4)]
+        : ({ pir: 'EB', mar: 'EB', rev: 'WB', caz: 'EB' })[W.datos.camino] || 'EB';
+      W.paso++; G.SFX.tick(); UI.wizRender(); return;
+    }
     // zarpar
     W.datos.secreto = D.SECRETOS[Math.floor(Math.random() * D.SECRETOS.length)].k;
-    W.datos.mar = W.datos.camino === 'avent' ? ['EB', 'NB', 'WB', 'SB'][Math.floor(Math.random() * 4)] : ({ pir: 'EB', mar: 'EB', rev: 'WB', caz: 'EB' })[W.datos.camino];
+    if (!W.datos.mar) W.datos.mar = 'EB';
     const a = sim.crearJugador({ nombre: W.datos.nombre, camino: W.datos.camino, mar: W.datos.mar, sueno: W.datos.sueno, oficio: W.datos.oficio, rasgos: W.datos.rasgos, secreto: W.datos.secreto });
     UI.wizardCerrar();
     UI.toast('¡' + a.name + ' abre los ojos en ' + D.ISLA[a.isl].n + '!');

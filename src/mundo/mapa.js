@@ -17,6 +17,7 @@
   let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   // ── Globo ──
   let rotLon = -0.35;                 // rotación horizontal actual (radianes)
+  const envuelveX = (x) => ((x % D.W) + D.W) % D.W; // el mapa es un anillo: la costura se cruza sin salto
   let TEX = null;                     // textura del mundo para la esfera
   const nubes = [];
   for (let i = 0; i < 26; i++) {
@@ -90,7 +91,7 @@
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.movio = true;
       if (globoF() > 0.5) gira(dx);
-      else { cam.x = clamp(drag.cx - dx / cam.z, 0, D.W); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
+      else { cam.x = envuelveX(drag.cx - dx / cam.z); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
       drag.x = e.clientX; drag.y = e.clientY; drag.cx = cam.x; drag.cy = cam.y;
     });
     window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; });
@@ -129,7 +130,7 @@
         zT = cam.z; // la pinza es entrada viva: el objetivo la sigue sin retraso
         if (globoF() < 0.5) {
           // el punto del mundo bajo los dedos sigue bajo los dedos: zoom real, no centrado
-          cam.x = clamp(pellizco.wx - (mx - ancho / 2) / cam.z, 0, D.W);
+          cam.x = envuelveX(pellizco.wx - (mx - ancho / 2) / cam.z);
           cam.y = clamp(pellizco.wy - (my - alto / 2) / cam.z, 0, D.H);
         } else {
           gira(mx - pellizco.mx);
@@ -142,7 +143,7 @@
         const dx = e.touches[0].clientX - drag.x, dy = e.touches[0].clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.movio = true;
         if (globoF() > 0.5) gira(dx);
-        else { cam.x = clamp(drag.cx - dx / cam.z, 0, D.W); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
+        else { cam.x = envuelveX(drag.cx - dx / cam.z); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
         drag.x = e.touches[0].clientX; drag.y = e.touches[0].clientY; drag.cx = cam.x; drag.cy = cam.y;
       }
     }, { passive: false });
@@ -298,7 +299,7 @@
       const r = cv.getBoundingClientRect();
       const mx = cx - r.left, my = cy - r.top;
       const wx = cam.x + (mx - ancho / 2) / z0, wy = cam.y + (my - alto / 2) / z0;
-      cam.x = clamp(wx - (mx - ancho / 2) / zT, 0, D.W);
+      cam.x = envuelveX(wx - (mx - ancho / 2) / zT);
       cam.y = clamp(wy - (my - alto / 2) / zT, 0, D.H);
     }
   };
@@ -312,118 +313,9 @@
     ultT = t;
   }
 
-  // ── Dioramas 16-bit EN el mapa: al acercar el zoom, cada isla se convierte en su escena completa ──
+  // ── UN SOLO MAPA: la isla crece DENTRO del mapa (sin escenas-rectángulo).
+  //    LOD_ZOOM queda como umbral del modo inmersión y del ritmo de animación. ──
   MAPA.LOD_ZOOM = 1.5;
-  let apiEscenas = null;
-  // fusion inyecta: { juegoDe, npcsDe, personajeDe, pinta } — el mundo no depende de la app.
-  MAPA.configuraEscenas = function (api) { apiEscenas = api; };
-
-  function rectDiorama(i, off) {
-    const w = Math.min(Math.max(i.r * 30, 300), 560); // tope: dioramas que siempre caben en pantalla
-    const h = w * 400 / 640;
-    return { x: i.x - w / 2 + off, y: i.y - h / 2, w, h };
-  }
-  MAPA.rectDiorama = rectDiorama;
-
-  // ── Dioramas sin superposiciones, por RESERVA y PASADAS:
-  //    1) cada isla con diorama reserva su rectángulo (prioridad: seleccionada y cercanía),
-  //    2) las islas que quedarían debajo de un rect reservado NO se pintan encima,
-  //    3) se pintan los dioramas reservados, 4) barcos y etiquetas solo fuera de ellos. ──
-  let dioFrameT = -1e9, dioReservados = [];
-  MAPA.reservaDiorama = function (i, off, t) {
-    const r = rectDiorama(i, off);
-    const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
-    if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return null;
-    if (t !== dioFrameT) { dioFrameT = t; dioReservados = []; }
-    for (const q of dioReservados) {
-      if (r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y) return null;
-    }
-    dioReservados.push(r);
-    return r;
-  };
-  // ¿algo de esto (blob de isla, barco, etiqueta) cae bajo un diorama ya reservado?
-  MAPA.bajoDiorama = function (x0, y0, x1, y1, t) {
-    if (t !== dioFrameT) return false;
-    for (const q of dioReservados) {
-      if (x0 < q.x + q.w && x1 > q.x && y0 < q.y + q.h && y1 > q.y) return true;
-    }
-    return false;
-  };
-  MAPA.dioramasReservados = () => dioReservados;
-
-  MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
-    const r = rectDiorama(i, off);
-    // solo pinta la escena si ESTA isla reservó su rectángulo este frame;
-    // si no, la llamada cae a la vista blob (return false)
-    if (t !== dioFrameT) return false;
-    if (!dioReservados.some(q => q.x === r.x && q.y === r.y && q.w === r.w)) return false;
-    const s = r.w / 640;
-    const juego = apiEscenas?.juegoDe ? apiEscenas.juegoDe(i) : null;
-    if (juego && apiEscenas?.pinta) {
-      // NPCs: temáticos de la isla + almas presentes del sim (copia nueva, sin mutar la isla).
-      const escena = { ...juego, npcs: [...(juego.npcs || []), ...(apiEscenas.npcsDe ? apiEscenas.npcsDe(i) : [])].slice(0, 10) };
-      const pers = apiEscenas.personajeDe ? apiEscenas.personajeDe(juego) : null;
-      c2.save();
-      c2.translate(r.x, r.y);
-      c2.scale(s, s);
-      c2.beginPath();
-      c2.moveTo(26, 0);
-      c2.arcTo(640, 0, 640, 400, 26);
-      c2.arcTo(640, 400, 0, 400, 26);
-      c2.arcTo(0, 400, 0, 0, 26);
-      c2.arcTo(0, 0, 640, 0, 26);
-      c2.closePath();
-      c2.clip();
-      apiEscenas.pinta(c2, escena, pers, t);
-      c2.restore();
-    } else {
-      // isla de simulación (sin escena del catálogo): diorama temático procedural cacheado
-      if (!i._dio) i._dio = renderDioramaTema(i);
-      c2.save();
-      c2.translate(r.x, r.y);
-      c2.scale(s, s);
-      c2.beginPath();
-      c2.moveTo(26, 0);
-      c2.arcTo(640, 0, 640, 400, 26);
-      c2.arcTo(640, 400, 0, 400, 26);
-      c2.arcTo(0, 400, 0, 0, 26);
-      c2.arcTo(0, 0, 640, 0, 26);
-      c2.closePath();
-      c2.clip();
-      c2.drawImage(i._dio, 0, 0);
-      propsVivas(c2, i, t);
-      c2.restore();
-    }
-    // marco dorado y nombre, fuera del recorte
-    c2.save();
-    c2.translate(r.x, r.y);
-    c2.scale(s, s);
-    c2.strokeStyle = 'rgba(244,193,26,0.75)';
-    c2.lineWidth = 5 / cam.z;
-    c2.beginPath();
-    c2.moveTo(26, 0);
-    c2.arcTo(640, 0, 640, 400, 26);
-    c2.arcTo(640, 400, 0, 400, 26);
-    c2.arcTo(0, 400, 0, 0, 26);
-    c2.arcTo(0, 0, 640, 0, 26);
-    c2.closePath();
-    c2.stroke();
-    c2.restore();
-    // rótulo con tamaño constante en pantalla (unidades de mundo = px_pantalla / zoom)
-    const fs = Math.max(7, 16 / cam.z);
-    const lw = Math.max(130 / cam.z, i.n.length * fs * 0.62 + 18 / cam.z);
-    const bh = 24 / cam.z;
-    c2.fillStyle = 'rgba(12,22,38,0.72)';
-    c2.fillRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
-    c2.strokeStyle = 'rgba(244,193,26,0.6)';
-    c2.lineWidth = 1.2 / cam.z;
-    c2.strokeRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
-    c2.font = '700 ' + fs + 'px system-ui, sans-serif';
-    c2.fillStyle = '#f4d97a';
-    c2.textAlign = 'center';
-    c2.fillText(i.n, i.x + off, r.y - 11 / cam.z);
-    return true;
-  };
   // Exposiciones para la capa de gráficos mejorados (GFX)
   MAPA.cam = cam;
   MAPA.nubes = nubes;
@@ -446,128 +338,6 @@
       pts.push([Math.cos(ang) * rr, Math.sin(ang) * rr * 0.82]);
     }
     i._pts = pts; return pts;
-  }
-
-  // ── Dioramas temáticos para islas de simulación (sin escena del catálogo) ──
-  // Se pre-renderizan una vez por isla (640×400) y en vivo solo se animan olas y almas.
-  function renderDioramaTema(i) {
-    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
-    const tema = i.tema || 'verde';
-    const c = document.createElement('canvas');
-    c.width = 640; c.height = 400;
-    const g = c.getContext('2d');
-    const cielos = { desierto: ['#ffdca6', '#ffb371'], blanco: ['#cfe4ff', '#f0f8ff'], industrial: ['#a8b8cc', '#d2dfe9'], prision: ['#2e3d59', '#5a7095'], mar: ['#7fc3ee', '#cfeeff'], tropical: ['#ffe8b8', '#ffcb8f'], fortaleza: ['#9fc0e8', '#dcecfb'] };
-    const [cs1, cs2] = cielos[tema] || ['#a4dcf4', '#ddf2ff'];
-    const sky = g.createLinearGradient(0, 0, 0, 208);
-    sky.addColorStop(0, cs1); sky.addColorStop(1, cs2);
-    g.fillStyle = sky; g.fillRect(0, 0, 640, 208);
-    // astro y nubes fijas
-    g.fillStyle = tema === 'prision' ? 'rgba(210,225,255,0.5)' : 'rgba(255,240,190,0.9)';
-    g.beginPath(); g.arc(540, 60, 26, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.75)';
-    for (let k = 0; k < 3; k++) {
-      const cx = 60 + ruido(k * 3.3 + i.r) * 380, cy = 40 + ruido(k * 7.1) * 60;
-      g.beginPath(); g.ellipse(cx, cy, 34, 12, 0, 0, 7); g.fill();
-      g.beginPath(); g.ellipse(cx + 22, cy - 8, 22, 9, 0, 0, 7); g.fill();
-    }
-    // mar de fondo con horizonte
-    g.fillStyle = '#2a6cb0'; g.fillRect(0, 200, 640, 60);
-    g.fillStyle = 'rgba(255,255,255,0.22)';
-    for (let k = 0; k < 14; k++) g.fillRect(20 + ruido(k * 2.7 + i.r) * 600, 208 + ruido(k * 5.3) * 44, 22, 2);
-    // terreno: playa y tierra con borde pixelado
-    g.fillStyle = rgb(T.sand); g.fillRect(0, 248, 640, 152);
-    g.fillStyle = rgb(T.land); g.fillRect(0, 266, 640, 134);
-    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 264, 640, 4);
-    // props por tema
-    const arbusto = (x, y, s, col) => { g.fillStyle = col; g.fillRect(x, y, 10 * s, 8 * s); g.fillRect(x + 3 * s, y - 5 * s, 6 * s, 6 * s); };
-    const palmera = (x, y, s) => {
-      g.fillStyle = '#8a5a33'; g.fillRect(x, y - 26 * s, 5 * s, 26 * s);
-      g.fillStyle = rgb(T.tree); g.fillRect(x - 14 * s, y - 34 * s, 33 * s, 9 * s);
-      g.fillRect(x + 8 * s, y - 40 * s, 8 * s, 8 * s);
-    };
-    const pino = (x, y, s, col) => { g.fillStyle = '#6b4a2f'; g.fillRect(x + 4 * s, y - 8 * s, 4 * s, 8 * s); g.fillStyle = col || rgb(T.tree); g.fillRect(x - 6 * s, y - 30 * s, 24 * s, 23 * s); g.fillRect(x - 3 * s, y - 38 * s, 18 * s, 9 * s); };
-    const casa = (x, y, s, techo) => { g.fillStyle = '#f0e6d2'; g.fillRect(x, y - 18 * s, 26 * s, 18 * s); g.fillStyle = techo; g.fillRect(x - 3 * s, y - 24 * s, 32 * s, 7 * s); g.fillStyle = '#6b4a2f'; g.fillRect(x + 10 * s, y - 10 * s, 6 * s, 10 * s); };
-    const fabrica = (x, y, s) => { g.fillStyle = '#9aa5b1'; g.fillRect(x, y - 34 * s, 48 * s, 34 * s); g.fillStyle = '#7d8794'; g.fillRect(x + 6 * s, y - 52 * s, 10 * s, 20 * s); g.fillRect(x + 24 * s, y - 60 * s, 10 * s, 28 * s); g.fillStyle = 'rgba(230,235,240,0.75)'; g.fillRect(x + 27 * s, y - 74 * s, 4 * s, 14 * s); };
-    const duna = (x, y, s) => { g.fillStyle = '#e8c98a'; g.beginPath(); g.ellipse(x, y, 60 * s, 14 * s, 0, Math.PI, 0); g.fill(); };
-    const cactusP = (x, y, s) => { g.fillStyle = '#3f8f4f'; g.fillRect(x, y - 22 * s, 7 * s, 22 * s); g.fillRect(x - 8 * s, y - 16 * s, 8 * s, 5 * s); g.fillRect(x + 7 * s, y - 12 * s, 8 * s, 5 * s); };
-    const iglu = (x, y, s) => { g.fillStyle = '#eef6ff'; g.beginPath(); g.arc(x, y - 12 * s, 16 * s, Math.PI, 0); g.fill(); g.fillStyle = '#b8d4ee'; g.fillRect(x - 4 * s, y - 9 * s, 8 * s, 9 * s); };
-    const muro = (x, y, s) => { g.fillStyle = '#8d99a6'; g.fillRect(x, y - 44 * s, 130 * s, 44 * s); g.fillStyle = '#76828e'; for (let k = 0; k < 5; k++) g.fillRect(x + 8 * s + k * 26 * s, y - 52 * s, 14 * s, 9 * s); };
-    const torre = (x, y, s) => { g.fillStyle = '#6d7884'; g.fillRect(x, y - 64 * s, 16 * s, 64 * s); g.fillStyle = '#2b6cb0'; g.fillRect(x + 2 * s, y - 74 * s, 12 * s, 11 * s); };
-    const reja = (x, y, s) => { g.fillStyle = '#4a5568'; g.fillRect(x, y - 40 * s, 90 * s, 6 * s); for (let k = 0; k < 7; k++) g.fillRect(x + 4 * s + k * 13 * s, y - 40 * s, 4 * s, 40 * s); };
-    const farol = (x, y, s) => { g.fillStyle = '#e8e2d2'; g.fillRect(x, y - 56 * s, 10 * s, 56 * s); g.fillStyle = '#d33'; g.fillRect(x + 1 * s, y - 64 * s, 8 * s, 9 * s); };
-    const roca = (x, y, s) => { g.fillStyle = '#78838f'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 18 * s, y - 34 * s); g.lineTo(x + 34 * s, y); g.closePath(); g.fill(); };
-    let k = 0;
-    switch (tema) {
-      case 'desierto':
-        duna(120, 300, 1); duna(420, 330, 1.2); duna(260, 355, 0.9);
-        cactusP(90, 330, 1); cactusP(540, 345, 1.2); cactusP(330, 360, 0.9);
-        g.fillStyle = '#d9b36c'; g.beginPath(); g.moveTo(380, 352); g.lineTo(430, 268); g.lineTo(480, 352); g.closePath(); g.fill(); // pirámide
-        break;
-      case 'blanco':
-        for (k = 0; k < 7; k++) pino(40 + k * 88, 320 + ruido(k) * 40, 1, '#dfeefc');
-        iglu(300, 340, 1.2); iglu(500, 360, 1);
-        g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(0, 266, 640, 8); // nieve fresca
-        break;
-      case 'industrial':
-        fabrica(70, 330, 1); fabrica(250, 350, 1.2); fabrica(450, 325, 0.9);
-        for (k = 0; k < 5; k++) { g.fillStyle = '#5f6a76'; g.fillRect(120 + k * 96, 300, 12, 26); } // chimeneas
-        break;
-      case 'fortaleza':
-        muro(160, 340, 1.4); torre(140, 340, 1); torre(420, 340, 1.1);
-        g.fillStyle = '#2b6cb0'; g.fillRect(300, 268, 8, 22); g.fillStyle = '#f5f0e6'; g.fillRect(308, 268, 14, 9); // bandera
-        break;
-      case 'prision':
-        reja(200, 350, 1.4); g.fillStyle = '#3a4658'; g.fillRect(120, 290, 400, 20); // muralla alta
-        farol(480, 350, 0.8);
-        break;
-      case 'mar': // restaurante flotante estilo Baratie
-        g.fillStyle = '#6b4a2f'; g.fillRect(180, 296, 280, 18);
-        casa(240, 296, 1.6, '#d33'); farol(200, 296, 0.6);
-        break;
-      case 'tropical':
-        palmera(90, 330, 1.1); palmera(200, 360, 0.9); palmera(420, 330, 1.2); palmera(560, 355, 1);
-        casa(300, 350, 1.1, '#c98a3d');
-        break;
-      case 'ciudad': case 'puerto':
-        farol(80, 345, 1.1);
-        for (k = 0; k < 4; k++) casa(140 + k * 90, 330 + (k % 2) * 26, 1 + ruido(k) * 0.4, ['#c0533d', '#3d6bc0', '#c9a13d', '#4f8f5f'][k]);
-        g.fillStyle = '#8a5a33'; g.fillRect(40, 356, 560, 10); // muelle
-        break;
-      case 'rocosa':
-        roca(110, 340, 1.4); roca(300, 355, 1); roca(480, 330, 1.7); roca(560, 360, 0.9);
-        break;
-      default: // verde, bosque, jungla
-        for (k = 0; k < 6; k++) pino(50 + k * 104, 320 + ruido(k * 1.7 + i.r) * 46, 0.9 + ruido(k) * 0.5);
-        arbusto(180, 355, 1.2, rgb(T.land2)); arbusto(400, 345, 1, rgb(T.land2));
-        casa(500, 350, 1, '#7a9a4d');
-    }
-    // luz de tarde + viñeta suave: la misma capa 32-bit de los dioramas del catálogo
-    const luz = g.createLinearGradient(0, 0, 640, 400);
-    luz.addColorStop(0, 'rgba(255,244,214,.10)');
-    luz.addColorStop(.5, 'rgba(255,255,255,0)');
-    luz.addColorStop(1, 'rgba(4,14,28,.16)');
-    g.fillStyle = luz; g.fillRect(0, 0, 640, 400);
-    const vina = g.createRadialGradient(320, 180, 170, 320, 200, 430);
-    vina.addColorStop(0, 'rgba(0,0,0,0)');
-    vina.addColorStop(1, 'rgba(3,10,22,.15)');
-    g.fillStyle = vina; g.fillRect(0, 0, 640, 400);
-    return c;
-  }
-  // Capa viva encima del diorama cacheado: olas del horizonte y almas caminando.
-  function propsVivas(g, i, t) {
-    g.fillStyle = 'rgba(255,255,255,0.3)';
-    for (let k = 0; k < 5; k++) {
-      const x = ((t / 26 + k * 137 + i.r * 9) % 620) + 10;
-      g.fillRect(x, 212 + (k % 3) * 14, 20, 2);
-    }
-    const n = 2 + (Math.floor(i.r) % 3);
-    for (let k = 0; k < n; k++) {
-      const x = 80 + ruido(k * 9.3 + i.r) * 480;
-      const y = 296 + ruido(k * 3.1) * 60;
-      const paseo = Math.sin(t / 1400 + k * 2.4) * 26;
-      g.fillStyle = '#3d2f23'; g.fillRect(x + paseo, y - 8, 5, 9); // cuerpo
-      g.fillStyle = '#e8c8a0'; g.fillRect(x + paseo + 1, y - 12, 3, 4); // cabeza
-    }
   }
 
   // ── Vista media de la isla: bajío claro, espuma, arena, tierra con parches,
@@ -1083,7 +853,7 @@
     if (i._flag) {
       const [fx, fy] = i._flag;
       const fac = (MAPA._sim && MAPA._sim.control && MAPA._sim.control[i.id]) || '';
-      const color = fac === 'mar' ? '#2b6cb0' : fac === 'rev' ? '#e67e22' : fac === 'tirano' ? '#7d3c98' : fac === 'pir' ? '#1c1c1c' : '#c9a13d';
+      const color = fac === 'ley' ? '#2b6cb0' : fac === 'tirano' ? '#7d3c98' : '#c9a13d'; // control real: ley/tirano/libre
       const onda = Math.sin(t / 300 + i.x) * 1.6;
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -1159,12 +929,6 @@
   function rotulable(i) {
     return cam.z >= 0.95 || i.juego || i.base || i.tribunal || i.cuartel || i.natal;
   }
-
-  // ── UN SOLO MAPA: ya no hay dioramas-rectángulo. La isla nunca es sustituida
-  //    por una escena aparte: crece DENTRO del mapa y revela su arte pixel.
-  //    La API queda por compatibilidad (GFX la consulta) y responde "no". ──
-  const dioramasActivos = new Set();
-  MAPA.usaDiorama = function () { return false; };
 
   // ── Modo inmersión: al acercar el zoom el HUD se retira (clase mil-cine en <body>)
   //    y queda SOLO la isla en pixel art, sin interferencia de nada. La píldora
@@ -1305,9 +1069,7 @@
       y = isl.y + isl.r * 0.55 + 14;
       ang = lado > 0 ? 0 : Math.PI;
     }
-    // si cae bajo un diorama reservado, no se dibuja: no cruza por encima de la escena
     s._px = x; s._py = y;
-    if (MAPA.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) return;
     y += Math.sin(t / 700 + s.id * 1.7) * 0.9; // balanceo: ningún barco quieto en el agua
     // estela
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4;
@@ -1774,7 +1536,7 @@
 
     // proyección mundo→esfera (compartida por nubes, barcos, avisos y etiquetas)
     const proyecta = (wx, wy) => {
-      let lam = (wx / D.W) * 2 * Math.PI - rotLon;
+      let lam = (wx / D.W) * 2 * Math.PI - rotLon - Math.PI; // MISMA convención que la textura y el clic (antes quedaba espejado 180°)
       lam = ((lam + Math.PI * 3) % (2 * Math.PI)) - Math.PI;
       if (Math.abs(lam) > 1.45) return null;
       const phi = (wy / D.H) * Math.PI - Math.PI / 2;
@@ -2015,7 +1777,7 @@
       return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
         - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
     });
-    // PASADA 0: reservas de diorama (el rectángulo lo gana la isla más prioritaria)
+    // islas visibles: cada una se dibuja en la envoltura más cercana a la cámara
     const mejorEnvoltura = (i) => {
       const mg = Math.max(190, i.r * 16);
       let mejor = null, mejorD = 1e18;
@@ -2027,36 +1789,16 @@
       }
       return mejor;
     };
-    const conDiorama = new Map(); // id → envoltura elegida
-    for (const i of visibles) {
-      if (!MAPA.usaDiorama(i)) continue;
-      const off = mejorEnvoltura(i);
-      if (off === null) continue;
-      if (MAPA.reservaDiorama(i, off, t)) conDiorama.set(i.id, off);
-    }
-    // PASADA 1: blobs de las islas SIN diorama; si su zona cae bajo un diorama
-    // reservado, no se pinta (antes quedaba como mancha encima de la escena vecina)
     const dibujadas = [];
     for (const i of visibles) {
-      if (conDiorama.has(i.id)) continue;
       const off = mejorEnvoltura(i);
       if (off === null) continue;
-      const cx = i.x + off, cy = i.y;
-      if (MAPA.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
       dibujaIsla(i, off, t);
       dibujadas.push([i, off]);
     }
-    // PASADA 2: los dioramas reservados, encima de todo lo demás
-    for (const [id, off] of conDiorama) {
-      const i = D.ISLA[id];
-      if (i) MAPA.dibujaEscenaIsla(ctx, i, t, off);
-    }
-    // barcos — dentro de dibujaBarco se comprueba si caen bajo un diorama reservado
+    // barcos y luego etiquetas: ningún barco tapa un rótulo
     for (const s of sim.ships) dibujaBarco(s, sim, t);
-    // etiquetas al final: ningún barco las tapa (antes se pintaban bajo los barcos y quedaban ilegibles)
-    for (const [i, off] of dibujadas) {
-      if (!MAPA.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) MAPA.etiquetaIsla(i, off);
-    }
+    for (const [i, off] of dibujadas) MAPA.etiquetaIsla(i, off);
     // nubes: puffs suaves de tres lóbulos, nunca elipses duras
     for (const n of nubes) {
       n.x += n.v / 60; if (n.x > D.W + 60) n.x = -60;
