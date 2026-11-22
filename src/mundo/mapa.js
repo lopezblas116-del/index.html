@@ -66,7 +66,7 @@
     let drag = null, pellizco = null;
     const gira = (dx) => { rotLon += dx * 0.0045; };
     cv.addEventListener('mousedown', e => {
-      vuelo = null;
+      cancelaVuelo(); // el arrastre toma el control
       drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false };
     });
     window.addEventListener('mousemove', e => {
@@ -80,10 +80,11 @@
     window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
+      cancelaVuelo(); // la lupa manda: un giro de rueda a mitad de vuelo toma el control
       MAPA.zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
     }, { passive: false });
     cv.addEventListener('touchstart', e => {
-      vuelo = null;
+      cancelaVuelo(); // el dedo toma el control
       if (e.touches.length === 1) {
         drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, cx: cam.x, cy: cam.y, movio: false };
       } else if (e.touches.length >= 2) {
@@ -184,24 +185,95 @@
     const r = rectDiorama(i, 0);
     const z = clamp(Math.min(ancho / (r.w + 90), alto / (r.h + 150)), 1.35, 4.2);
     dioramasActivos.add(i.id); // forzar el diorama: el clic ES intención de ver la escena
-    vuelo = { t0: performance.now(), dur: 750, fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(i.x, 0, D.W), ty: clamp(i.y + 36, 0, D.H), tz: clamp(z, Z_MIN, Z_MAX) }; // +36: baja la escena por debajo de la barra del HUD
+    // +36: baja la escena por debajo de la barra del HUD
+    vuelo = creaVuelo(i.x, i.y + 36, z, 750);
     zT = vuelo.tz;
   };
-  // Vuelo suave: interpola la cámara hacia el destino con easing cúbico (sensación fluida).
+  // ── Vuelo cinematográfico ──
+  // Ruta más corta con envoltura horizontal (el mapa es un anillo: la Muralla se cruza por el
+  // costurero), duración según distancia y "respiro orbital": los cruces largos elevan la cámara
+  // hasta el globo y aterrizan en el destino. La estela dorada dibuja la ruta mientras vuela.
+  function distX(d) { if (d > D.W / 2) d -= D.W; else if (d < -D.W / 2) d += D.W; return d; }
+  function creaVuelo(x, y, z, dur) {
+    const tz = clamp(z, Z_MIN, Z_MAX);
+    const dx = distX(x - cam.x), dy = clamp(y, 0, D.H) - cam.y;
+    const dNorm = clamp(Math.hypot(dx, dy) / (D.W * 0.8), 0, 1); // 0 = vecino, 1 = cruce del mundo
+    const v = {
+      t0: performance.now(),
+      dur: Math.max(Math.max(1, dur), 700 + 1050 * dNorm),
+      fx: cam.x, fy: cam.y, fz: cam.z,
+      tx: cam.x + dx, ty: clamp(y, 0, D.H), tz,
+      dip: dNorm * (cam.z + tz) / 2 // a cruce completo la cámara llega justo al globo (Z_MIN)
+    };
+    creaEstela(v);
+    return v;
+  }
   MAPA.volar = function (x, y, z, dur = 650) {
-    vuelo = { t0: performance.now(), dur: Math.max(1, dur), fx: cam.x, fy: cam.y, fz: cam.z, tx: clamp(x, 0, D.W), ty: clamp(y, 0, D.H), tz: clamp(z, Z_MIN, Z_MAX) };
+    vuelo = creaVuelo(x, y, z, dur);
   };
   MAPA.volando = function () { return Boolean(vuelo); };
   MAPA.avanzaVuelo = function (t) { avanzaVuelo(t); };
+  // La lupa (rueda / pinza / arrastre) toma el control: el vuelo cede y su estela se desvanece.
+  function cancelaVuelo() {
+    if (!vuelo) return;
+    if (estela && !estela.fin) estela.fin = performance.now();
+    vuelo = null;
+  }
   function avanzaVuelo(t) {
     if (!vuelo) return;
     const k = clamp((t - vuelo.t0) / vuelo.dur, 0, 1);
     const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
     cam.x = vuelo.fx + (vuelo.tx - vuelo.fx) * e;
     cam.y = vuelo.fy + (vuelo.ty - vuelo.fy) * e;
-    cam.z = vuelo.fz + (vuelo.tz - vuelo.fz) * e;
+    cam.z = clamp(vuelo.fz + (vuelo.tz - vuelo.fz) * e - vuelo.dip * Math.sin(Math.PI * e), Z_MIN, Z_MAX);
     zT = cam.z; // el vuelo manda: el objetivo acompaña para que la lupa no pelee con él
-    if (k >= 1) vuelo = null;
+    if (estela) estela.prog = e;
+    if (k >= 1) {
+      if (estela) estela.fin = t; // la ruta dorada se apaga sola tras el aterrizaje
+      cam.x = ((cam.x % D.W) + D.W) % D.W;
+      vuelo = null;
+    }
+  }
+  // ── Estela del vuelo: la Gran Ruta se dibuja sola hacia el destino (curva + cometa dorado) ──
+  let estela = null; // { pts, t0, prog, fin }
+  function creaEstela(v) {
+    const ax = cam.x, ay = cam.y, bx = v.tx, by = v.ty;
+    const lift = Math.min(230, 55 + Math.abs(bx - ax) * 0.14);
+    const cyy = Math.min(ay, by) - lift;
+    const pts = [];
+    for (let k = 0; k <= 28; k++) {
+      const u = k / 28, iu = 1 - u;
+      pts.push({ x: iu * iu * ax + 2 * iu * u * ((ax + bx) / 2) + u * u * bx, y: iu * iu * ay + 2 * iu * u * cyy + u * u * by });
+    }
+    estela = { pts, t0: v.t0, prog: 0, fin: 0 };
+  }
+  function pintaEstelaVuelo(t) {
+    if (!estela) return;
+    const alpha = estela.fin ? clamp(1 - (t - estela.fin) / 430, 0, 1) * 0.8 : 0.8;
+    if (alpha <= 0) { estela = null; return; }
+    const prog = estela.fin ? 1 : (estela.prog || 0);
+    const n = Math.max(2, Math.round(estela.pts.length * prog));
+    const inv = 1 / Math.max(0.35, cam.z);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    for (const off of [0, -D.W, D.W]) {
+      ctx.save(); ctx.translate(off, 0);
+      ctx.strokeStyle = 'rgba(244,193,26,0.9)'; ctx.lineWidth = 2.6 * inv;
+      ctx.setLineDash([10 * inv, 9 * inv]); ctx.lineDashOffset = -t / 22;
+      ctx.beginPath();
+      for (let k = 0; k < n; k++) { const p = estela.pts[k]; if (k) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }
+      ctx.stroke();
+      if (!estela.fin && n > 1) { // cometa: halo suave + núcleo brillante al frente de la ruta
+        const p = estela.pts[n - 1];
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 16 * inv);
+        g.addColorStop(0, 'rgba(255,224,130,0.5)'); g.addColorStop(1, 'rgba(255,224,130,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 16 * inv, 0, 7); ctx.fill();
+        ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(p.x, p.y, 3.6 * inv, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.setLineDash([]);
   }
   // zoom(direction, cx, cy): mueve el OBJETIVO de zoom (la lupa); con foco opcional en el cursor
   MAPA.zoom = function (direction, cx, cy) {
@@ -1289,7 +1361,7 @@
   };
 
   MAPA.render = function (sim, t) {
-    if (!ctx) return;
+    if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     const g = globoF();
@@ -1308,6 +1380,8 @@
     for (const off of [-D.W, 0, D.W]) ctx.drawImage(base, off, 0, D.W, D.H);
     // tormentas: espiral de viento girando + destello eléctrico ocasional
     for (const s of sim.storms) pintaTormenta(s, t);
+    // estela del vuelo: la ruta dorada se dibuja sola hacia el destino (bajo las islas)
+    pintaEstelaVuelo(t);
     // islas: SOLO las que cruzan la vista (culling con margen por diorama).
     // Orden por prioridad: la seleccionada primero y luego por cercanía a la cámara.
     const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);

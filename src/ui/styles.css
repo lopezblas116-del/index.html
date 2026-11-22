@@ -64,7 +64,9 @@ p { line-height: 1.35; }
 .progress-step.active .step-label { color: var(--text); }
 .step-label { font-size: .85rem; text-align: center; }
 .wizard-step { display: none; min-height: 0; margin-top: 8px; }
-.wizard-step.active { display: block; animation: appear .16s ease-out; }
+/* Colchón inferior: la barra de acciones es sticky y puede tapar la última fila
+   (tarjetas de rasgos) en pantallas bajas; el colchón deja despejarla con scroll. */
+.wizard-step.active { display: block; padding-bottom: 76px; animation: appear .16s ease-out; }
 @keyframes appear { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .step-header { margin-bottom: 16px; }
 .appearance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
