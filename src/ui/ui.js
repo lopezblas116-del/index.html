@@ -658,11 +658,16 @@ function updateMotivationCompass(form) {
     Poder: "Entrenar, superar rivales y buscar una posición de mando.",
     Riqueza: "Buscar oportunidades, tesoros y mercados rentables.",
     Fama: "Convertir cada hazaña en una historia que recorra los mares.",
+    Lazos: "Zarpar con gente que vuelva a casa contigo: la tripulación es familia.",
+    Conocimiento: "Descifrar el mundo: ruinas, calcos y la verdad del siglo perdido.",
+    Destrucción: "Hundir lo que te encadenó; que el mar recuerde tu nombre por el estruendo.",
     Justicia: "Defender a quienes no pueden protegerse."
   };
   if (byId("dream-description")) byId("dream-description").textContent = motivationText[motivation] || "Tu sueño influirá en las decisiones autónomas.";
-  const angle = { Libertad: 0, Justicia: 90, Poder: 180, Caos: 270 }[form.querySelector('[name="alignment"]:checked')?.value || "Libertad"] || 0;
-  byId("ideology-compass")?.style.setProperty("--compass-angle", `${angle}deg`);
+  // Aguja: la alineación fija el rumbo y el sueño le da el último giro fino
+  const rumbo = { Libertad: 0, Justicia: 90, Poder: 180, Caos: 270 }[form.querySelector('[name="alignment"]:checked')?.value || "Libertad"] || 0;
+  const fino = { Libertad: 0, Justicia: 10, Poder: -10, Riqueza: 14, Fama: -14, Lazos: 22, Conocimiento: -22, Destrucción: 18, Caos: -18 }[motivation] || 0;
+  byId("ideology-compass")?.style.setProperty("--compass-angle", `${rumbo + fino}deg`);
 }
 function showWizardStep(index) {
   const steps = [...document.querySelectorAll(".wizard-step")];
