@@ -26,9 +26,8 @@ import { getMapIslands } from '../map.js';
     const almas = sim.agents.filter(a => a.state !== 'muerto' && a.state !== 'retirado').length;
     $('cab-almas').textContent = almas.toLocaleString('es');
     $('cab-reloj').textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + (esNoche(sim.minOfDay()) ? ' 🌙' : '');
-    // Un solo reloj: el HUD superior refleja el mismo tiempo del mundo vivo.
-    const hudDia = document.querySelector('[data-hud-day]');
-    if (hudDia) hudDia.textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + ' · 1:4';
+    // UN SOLO RELOJ en pantalla: el de la barra del mundo vivo (con su luna).
+    // La marca del HUD RPG ya no repite día/hora — no hay dos motores de tiempo visibles.
     // Una sola luz: la atmósfera (noche/día) sigue al MISMO reloj que se pinta.
     // El HUD solo puede añadir "mist" (Franja de Calma); nunca un reloj distinto.
     const luz = esNoche(sim.minOfDay()) ? 'night' : 'day';

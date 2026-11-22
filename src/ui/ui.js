@@ -201,9 +201,11 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         detail.append(pursue);
       }
       const coordinates = document.createElement("p");
+      // Sin coordenadas crudas: el jugador no las escribe nunca. La zona se fija por nombre
+      // y el mapa del mundo vivo vuela hasta ella con "Investigar Zona".
       coordinates.textContent = location
-        ? `${location.name} · Coordenadas del mapa: X ${location.x}, Y ${location.y}`
-        : "Coordenadas desconocidas para este evento.";
+        ? `${location.name} · Zona marcada en el mapa del mundo`
+        : "Zona aún sin descubrir.";
       const investigate = document.createElement("button");
       investigate.type = "button";
       investigate.className = "one-hud-action";

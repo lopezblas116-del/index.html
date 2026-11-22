@@ -200,24 +200,25 @@ function installWorldUi() {
     byId("atlas").classList.add("oculto");
   });
   document.addEventListener("click", (event) => {
-    const navigation = event.target.closest('[data-hud-panel="navigation"]');
+    // NOTA: el botón "Navegación / Isla" del nav YA NO se secuestra aquí (stopPropagation
+    // en captura lo mataba y, si la isla no mapeaba, el botón quedaba muerto sin panel).
+    // Ahora abre el panel de navegación del HUD; el vuelo a tu isla vive dentro del panel
+    // vía el evento "onepiece:hud-volar-isla" (ver abajo).
     const zoom = event.target.closest("[data-map-zoom]");
-    if (navigation && lastCharacter && !lastCharacter.location?.atSea) {
-      event.stopPropagation();
-      const island = getMapIslands(lastCharacter).find((entry) => entry.name === lastCharacter.location?.island);
-      const mapa = island ? mapDe(island) : null;
-      if (!mapa) {
-        window.UI?.toast("No se encontró la isla actual.");
-        return;
-      }
-      if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
-      // Vuelo directo a tu isla en modo diorama (zoom cercano = escena 16-bit en el mapa).
-      if (window.MAPA?.enfocarIsla) window.MAPA.enfocarIsla(mapa); else window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
-    } else if (zoom) {
+    if (zoom) {
       event.stopPropagation();
       window.MAPA?.zoom?.(zoom.dataset.mapZoom === "in" ? 1 : -1);
     }
   }, true);
+  // Vuelo directo a tu isla desde el panel de navegación (modo diorama 16-bit).
+  document.addEventListener("onepiece:hud-volar-isla", () => {
+    if (!lastCharacter || lastCharacter.location?.atSea) return;
+    const island = getMapIslands(lastCharacter).find((entry) => entry.name === lastCharacter.location?.island);
+    const mapa = island ? mapDe(island) : null;
+    if (!mapa) return;
+    if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
+    if (window.MAPA?.enfocarIsla) window.MAPA.enfocarIsla(mapa); else window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
+  });
   window.addEventListener("mil-almas:tick", () => {
     syncLocation(lastCharacter);
   });
