@@ -57,7 +57,7 @@
       const p = document.createElement('div');
       p.className = 'pista-globo';
       p.textContent = 'Girá el globo · acercate con el zoom para bajar al mar · tocá una isla';
-      p.style.cssText = 'position:absolute;left:50%;bottom:76px;transform:translateX(-50%);max-width:92%;padding:8px 14px;background:rgba(10,18,34,0.82);border:1px solid rgba(244,193,26,0.5);border-radius:999px;color:#f4d97a;font:600 13px/1.3 system-ui,sans-serif;text-align:center;pointer-events:none;transition:opacity .8s;z-index:5;opacity:.95';
+      p.style.cssText = 'position:absolute;left:50%;bottom:106px;transform:translateX(-50%);max-width:92%;padding:8px 14px;background:rgba(10,18,34,0.82);border:1px solid rgba(244,193,26,0.5);border-radius:999px;color:#f4d97a;font:600 13px/1.3 system-ui,sans-serif;text-align:center;pointer-events:none;transition:opacity .8s;z-index:5;opacity:.95';
       if (getComputedStyle(cv.parentElement).position === 'static') cv.parentElement.style.position = 'relative';
       cv.parentElement.appendChild(p);
       MAPA._pista = p;
@@ -526,6 +526,16 @@
         arbusto(180, 355, 1.2, rgb(T.land2)); arbusto(400, 345, 1, rgb(T.land2));
         casa(500, 350, 1, '#7a9a4d');
     }
+    // luz de tarde + viñeta suave: la misma capa 32-bit de los dioramas del catálogo
+    const luz = g.createLinearGradient(0, 0, 640, 400);
+    luz.addColorStop(0, 'rgba(255,244,214,.10)');
+    luz.addColorStop(.5, 'rgba(255,255,255,0)');
+    luz.addColorStop(1, 'rgba(4,14,28,.16)');
+    g.fillStyle = luz; g.fillRect(0, 0, 640, 400);
+    const vina = g.createRadialGradient(320, 180, 170, 320, 200, 430);
+    vina.addColorStop(0, 'rgba(0,0,0,0)');
+    vina.addColorStop(1, 'rgba(3,10,22,.15)');
+    g.fillStyle = vina; g.fillRect(0, 0, 640, 400);
     return c;
   }
   // Capa viva encima del diorama cacheado: olas del horizonte y almas caminando.

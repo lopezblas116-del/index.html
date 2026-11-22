@@ -33,6 +33,24 @@ import { getMapIslands } from '../map.js';
 
   // ── Feed ──
   let filtro = 'todo';
+  let leidasHasta = -1; // último id de evento leído: lo que llegó después enciende el aviso rojo
+  function sinLeer() {
+    if (!sim) return 0;
+    return sim.feed.filter((e) => e.i > leidasHasta).length;
+  }
+  function pintaBadges() {
+    const n = sinLeer();
+    document.querySelectorAll('.mil-feed-toggle, #bottom-nav [data-hud-panel="news"]').forEach((el) => {
+      let b = el.querySelector('.mil-badge');
+      if (n <= 0) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('span'); b.className = 'mil-badge'; el.append(b); }
+      b.textContent = n > 9 ? '9+' : String(n);
+    });
+  }
+  UI.marcarLeidas = function () {
+    if (sim && sim.feed.length) leidasHasta = sim.feed[sim.feed.length - 1].i;
+    pintaBadges();
+  };
   UI.setFiltro = function (f) { filtro = f; UI.renderFeed(true); };
   UI.renderFeed = function (soloNuevos) {
     const caja = $('feed');
@@ -46,6 +64,8 @@ import { getMapIslands } from '../map.js';
       return '<div class="fe ' + cls + '"><span class="fh">' + 'D' + Math.floor(e.t / 1440) + ' ' + hhmm(e.t % 1440) + '</span><span class="fi">' + marca + '</span> ' + esc(e.txt) + '</div>';
     }).join('');
     caja.innerHTML = html || '<div class="fe vacio">Silencio en el mar…</div>';
+    const abierta = !($('mil-feed-drawer')?.classList.contains('oculto'));
+    if (abierta) UI.marcarLeidas(); else pintaBadges();
   };
 
   // ── Popover de isla ──

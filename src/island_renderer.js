@@ -13,6 +13,21 @@ function box(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, w, h);
 }
+// Degradado radial tolerante: los entornos de prueba usan un ctx sin createRadialGradient
+function radialSuave(ctx, px, py, r0, r1, c0, c1) {
+  if (!ctx.createRadialGradient) return null;
+  const g = ctx.createRadialGradient(px, py, r0, px, py, r1);
+  g.addColorStop(0, c0);
+  g.addColorStop(1, c1);
+  return g;
+}
+// Degradado lineal tolerante: sin soporte devuelve null y el pintor usa color plano
+function linearSuave(ctx, x0, y0, x1, y1, stops) {
+  if (!ctx.createLinearGradient) return null;
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const [o, c] of stops) g.addColorStop(o, c);
+  return g;
+}
 const normalizeText = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 function tree(ctx, x, y, color, fruit = false) {
   box(ctx, x + 10, y + 25, 8, 24, "#6a4934");
@@ -185,6 +200,8 @@ export const ISLAND_HOTSPOTS = {
 };
 
 function building(ctx, x, y, w, h, roof, wall) {
+  ctx.fillStyle = "rgba(6,14,26,.2)"; // sombra suave al piso: profundidad 32-bit
+  ctx.fillRect(x - 4, y + h - 4, w + 10, 9);
   box(ctx, x + 4, y + 9, w, h, "#423a35");
   box(ctx, x, y, w, h, wall);
   box(ctx, x - 5, y - 8, w + 10, 13, roof);
@@ -210,7 +227,9 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
   const palette = PALETTES[scene.theme] || PALETTES.green;
   const seed = scene.seed;
   ctx.imageSmoothingEnabled = false;
-  box(ctx, 0, 0, 640, 400, "#397d8d");
+  const mar = linearSuave(ctx, 0, 0, 0, 400, [[0, "#3f8aa4"], [.55, "#397d8d"], [1, "#2b6276"]]); // mar con profundidad (32-bit)
+  ctx.fillStyle = mar || "#397d8d";
+  ctx.fillRect(0, 0, 640, 400);
   for (let y = 8; y < 400; y += 16) for (let x = (y % 32 ? 7 : 20); x < 640; x += 43)
     box(ctx, x, y, 22, 2, (x + y + seed) % 3 ? "#518f9b" : "#71afaf");
 
@@ -222,6 +241,27 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
       box(ctx, x, y, 16, 10, (x + y + seed) % 5 ? "#bcb7a1" : "#a8a994");
       box(ctx, x + 2, y + 1, 8, 1, "#d0c8b0");
     }
+  }
+  // ── Capa de luz 32-bit: luz de tarde cruzando el terreno y parches de sol ──
+  const luz = linearSuave(ctx, 0, 12, 640, 388, [[0, "rgba(255,244,214,.12)"], [.5, "rgba(255,255,255,0)"], [1, "rgba(4,14,28,.18)"]]);
+  if (luz) {
+    ctx.fillStyle = luz;
+    ctx.fillRect(24, 12, 592, 272);
+  }
+  for (const [px, py, pr] of [[150, 92, 92], [436, 118, 112], [298, 198, 84]]) {
+    const g = radialSuave(ctx, px, py, 6, pr, "rgba(255,240,190,.12)", "rgba(255,240,190,0)");
+    if (!g) continue;
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, 7);
+    ctx.fill();
+  }
+  // playa: arena clara en el borde sur y espuma viva contra el mar
+  ctx.fillStyle = "rgba(233,208,150,.5)";
+  ctx.fillRect(24, 262, 592, 10);
+  for (let x = 26; x < 614; x += 13) {
+    const fo = Math.sin(now / 640 + x * .12) * 3;
+    box(ctx, x + fo, 280, 8, 2, "#eef7ff");
   }
   box(ctx, 27, 21, 15, 217, "#656b65");
   box(ctx, 598, 21, 15, 217, "#656b65");
@@ -356,6 +396,12 @@ export function drawIslandSceneContext(ctx, island, character, now = 0) {
       x: position.x - 32, y: position.y - 62, scale: 1, size: 64, fullBody: true, action, time: now,
       equipment: character.equipped, emotion: avatarEmotion(character)
     });
+  }
+  // Viñeta suave de estudio: cierra la escena con profundidad (32-bit)
+  const vina = radialSuave(ctx, 320, 176, 170, 430, "rgba(0,0,0,0)", "rgba(3,10,22,.16)");
+  if (vina) {
+    ctx.fillStyle = vina;
+    ctx.fillRect(0, 0, 640, 400);
   }
 }
 

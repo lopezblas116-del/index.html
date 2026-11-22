@@ -3,16 +3,23 @@
   --ma-border: rgba(90, 140, 190, .42);
   --ma-gold: #f2cf6b;
   --ma-muted: #a7b8c8;
+  /* Paleta UMP: paneles rectangulares oscuros, borde sutil, rojo de avisos */
+  --ump-panel: rgba(18, 29, 54, .92);
+  --ump-border: rgba(255, 255, 255, .1);
+  --ump-red: #e63946;
 }
+
+#mil-almas-ui { font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif; }
 
 #mil-almas-ui .oculto { display: none !important; }
 #map-panel #canvas-container { position: absolute; inset: 0; overflow: hidden; }
 #canvas-container #mapa { display: none; }
 #canvas-container .mil-chip { display: none; }
 #map-panel.mil-vivo #canvas-container .mil-chip {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); left: 14px; z-index: 3; display: block;
-  padding: 6px 12px; color: #f0f6fc; font: inherit; font-size: .85rem; pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px; background: rgba(10, 22, 38, .72); backdrop-filter: blur(6px);
+  position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 104px); left: 16px; z-index: 3; display: block;
+  max-width: min(44vw, 320px); padding: 7px 12px; color: #f0f6fc; font: inherit; font-size: .82rem; font-weight: 600; pointer-events: none;
+  border: 1px solid var(--ump-border); border-radius: 9px; background: var(--ump-panel); backdrop-filter: blur(8px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #map-panel.mil-vivo #world-map,
 #map-panel.mil-vivo #planet-map,
@@ -32,20 +39,29 @@ body.game-active #mil-almas-ui { display: block; }
 #mil-almas-ui .mil-toast { pointer-events: auto; }
 #mil-almas-ui .mil-feed-toggle { color: var(--ma-gold); }
 #mil-almas-ui .mil-world-bar {
-  position: absolute; top: 66px; left: 14px; right: 14px; z-index: 4; display: none;
-  align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px;
-  border: 1px solid var(--ma-border); border-radius: 10px; background: var(--ma-panel); backdrop-filter: blur(9px);
+  position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 4; display: none;
+  align-items: center; justify-content: space-between; gap: 10px; width: min(920px, calc(100% - 24px)); padding: 8px 12px;
+  border: 1px solid var(--ump-border); border-radius: 12px; background: rgba(11, 19, 41, .94); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
 }
 body.mil-live-mode #mil-almas-ui .mil-world-bar { display: flex; }
 body[data-camera-state="ISLAND_VIEW"] #mil-almas-ui .mil-world-bar { display: none; }
 body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: none; }
-#mil-almas-ui .mil-world-bar > div:first-child { display: grid; gap: 3px; }
-#mil-almas-ui .mil-world-bar strong, #mil-almas-ui .mil-eyebrow { color: var(--ma-gold); letter-spacing: .08em; }
+#mil-almas-ui .mil-world-bar > div:first-child { display: grid; gap: 3px; min-width: 0; }
+/* Marca estilo UMP: logo en Anton, subtítulo gris discreto */
+#mil-almas-ui .mil-world-bar strong { font-family: 'Anton', system-ui, sans-serif; font-weight: 400; font-size: 1.06rem; line-height: 1.1; letter-spacing: .07em; text-transform: uppercase; color: #fff; }
+#mil-almas-ui .mil-eyebrow { color: var(--ma-gold); letter-spacing: .08em; }
 #mil-almas-ui .mil-world-bar span { color: var(--ma-muted); font-size: .85rem; }
 #mil-almas-ui .mil-world-bar b { color: #fff; }
 #mil-almas-ui .mil-world-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Botones cuadrados de esquinas suaves, fondo panel oscuro (estilo UMP) */
+#mil-almas-ui .mil-world-actions button { position: relative; min-height: 36px; padding: 6px 12px; border: 1px solid var(--ump-border); border-radius: 9px; background: #121d36; color: #e8e6e3; font-size: .8rem; font-weight: 700; letter-spacing: .03em; }
+#mil-almas-ui .mil-world-actions button:hover, #mil-almas-ui .mil-world-actions button:focus-visible { border-color: var(--ma-gold); background: #1a2a4a; color: #fff; }
+#mil-almas-ui .mil-world-actions #btn-ajustes, #mil-almas-ui .mil-world-actions #btn-sonido { width: 36px; padding: 6px 0; text-align: center; }
+/* Aviso rojo de notificaciones (Bitácora viva y Diario del nav inferior) */
+.mil-badge { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 6px; border: 2px solid #0b1329; border-radius: 10px; background: var(--ump-red); color: #fff; font: 800 .66rem/16px 'Manrope', system-ui, sans-serif; text-align: center; box-shadow: 0 2px 8px rgba(0, 0, 0, .55); pointer-events: none; }
+#bottom-nav .mil-badge { border-color: #121d36; }
 #mil-almas-ui .mil-feed-drawer {
-  position: absolute; top: 122px; left: 14px; z-index: 4; width: min(390px, calc(100% - 28px));
+  position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 104px); left: 16px; z-index: 4; width: min(390px, calc(100% - 28px));
   max-height: min(56vh, 500px); overflow: auto; padding: 12px;
   border: 1px solid var(--ma-border); border-radius: 12px; background: var(--ma-panel); backdrop-filter: blur(10px);
 }
@@ -63,9 +79,9 @@ body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: non
 #mil-almas-ui .mil-panel h2, #mil-almas-ui .mil-panel h3 { margin: 4px 28px 8px 0; color: var(--ma-gold); }
 #mil-almas-ui .mil-panel p { margin: 7px 0; }
 #mil-almas-ui .mil-close { float: right; min-width: 40px; font-size: 1.2rem; }
-#mil-almas-ui .mil-island-pop { top: 125px; right: 14px; width: min(340px, calc(100% - 28px)); }
-#mil-almas-ui .mil-soul-card { top: 125px; right: 14px; width: min(380px, calc(100% - 28px)); }
-#mil-almas-ui .mil-newspaper, #mil-almas-ui .mil-settings, #mil-almas-ui .mil-atlas { top: 125px; left: 50%; width: min(620px, calc(100% - 28px)); transform: translateX(-50%); }
+#mil-almas-ui .mil-island-pop { top: calc(max(10px, env(safe-area-inset-top)) + 104px); right: 16px; width: min(340px, calc(100% - 28px)); }
+#mil-almas-ui .mil-soul-card { top: calc(max(10px, env(safe-area-inset-top)) + 104px); right: 16px; width: min(380px, calc(100% - 28px)); }
+#mil-almas-ui .mil-newspaper, #mil-almas-ui .mil-settings, #mil-almas-ui .mil-atlas { top: calc(max(10px, env(safe-area-inset-top)) + 104px); left: 50%; width: min(620px, calc(100% - 28px)); transform: translateX(-50%); }
 #mil-almas-ui .mil-atlas { max-height: calc(100% - 170px); overflow-y: auto; }
 #mil-almas-ui .mil-atlas h3 { margin: 14px 0 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: #f6c445; }
 #mil-almas-ui .mil-atlas-barra { height: 8px; border-radius: 6px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 6px 0 4px; }
@@ -97,12 +113,12 @@ body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: non
 #mil-almas-ui button:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (max-width: 600px) {
-  #map-panel.mil-vivo #canvas-container .mil-chip { top: 180px; left: 8px; }
-  #mil-almas-ui .mil-world-bar { top: 58px; left: 8px; right: 8px; align-items: flex-start; }
+  #map-panel.mil-vivo #canvas-container .mil-chip { top: calc(max(8px, env(safe-area-inset-top)) + 134px); left: 10px; max-width: 52vw; }
+  #mil-almas-ui .mil-world-bar { top: max(8px, env(safe-area-inset-top)); width: calc(100% - 16px); align-items: flex-start; }
   #mil-almas-ui .mil-world-actions { justify-content: flex-end; }
-  #mil-almas-ui .mil-world-actions button { padding: 5px 7px; font-size: .8rem; }
-  #mil-almas-ui .mil-feed-drawer { top: 112px; left: 8px; width: calc(100% - 16px); }
-  #mil-almas-ui .mil-panel { max-height: 68vh; }
+  #mil-almas-ui .mil-world-actions button { padding: 5px 9px; font-size: .74rem; }
+  #mil-almas-ui .mil-feed-drawer { top: calc(max(8px, env(safe-area-inset-top)) + 92px); left: 8px; width: calc(100% - 16px); }
+  #mil-almas-ui .mil-panel { max-height: 68vh; top: calc(max(8px, env(safe-area-inset-top)) + 92px); }
 }
 
 /* Política jugable: encuentros en el popup de isla, control y cubos azul/dorado */

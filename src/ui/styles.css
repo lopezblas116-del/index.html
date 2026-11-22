@@ -300,7 +300,7 @@ body.wizard-active .masthead{display:none}
 .psychology-card,.news-card-detail{margin:10px 0;padding:12px;border:1px solid #f4b41a;border-radius:8px;background:#0b1329}
 .psychology-card h3{color:#f4b41a;font-size:.8rem}
 
-.one-hud-vitals{position:absolute;top:56px;left:50%;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(180px,42vw);transform:translateX(-50%);pointer-events:none}
+.one-hud-vitals{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 104px);left:50%;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(180px,42vw);transform:translateX(-50%);pointer-events:none}
 .one-hud-vitals progress{height:5px;border:1px solid rgba(244,180,26,.48);background:#07101f}
 .one-hud-vitals [data-vital="health"]::-webkit-progress-value{background:linear-gradient(90deg,#c74442,#ff7771)}
 .one-hud-vitals [data-vital="experience"]::-webkit-progress-value{background:linear-gradient(90deg,#2679b8,#58c7ff)}
@@ -374,7 +374,7 @@ body[data-atmosphere="day"]{background-color:#0b1329}
 body[data-atmosphere="night"]{background-image:radial-gradient(ellipse at 50% 10%,rgba(35,86,145,.2),transparent 58%),linear-gradient(180deg,#071225,#0b1329)}
 body[data-atmosphere="mist"]{background-image:linear-gradient(115deg,rgba(170,220,224,.08),transparent 38%,rgba(170,220,224,.1)),linear-gradient(rgba(56,189,248,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.045) 1px,transparent 1px)}
 body[data-atmosphere="night"] #one-hud .one-hud-zoom,
-body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(11,19,41,.9)}
+body[data-atmosphere="mist"] #one-hud .one-hud-zoom{background-color:rgba(244,180,26,.62)}
 body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(170,220,224,.12)}
 @media(max-width:600px){#bottom-nav{font-size:11px}}
 
@@ -406,7 +406,7 @@ body[data-atmosphere="mist"] #one-hud .one-hud-nav{box-shadow:0 -4px 24px rgba(1
 #one-hud .one-hud-round:hover,#one-hud .one-hud-plus:hover{border-color:#f4b41a;background:#1b2b45}
 #one-hud .one-hud-round .nautical-icon,#one-hud .one-hud-plus .nautical-icon{width:24px;height:24px;color:#e5bd69;stroke-width:1.7}
 #one-hud .one-hud-plus{color:#e5bd69}
-#one-hud .one-hud-nav{border-top:1px solid rgba(244,180,26,.35);background:#0f1c36;box-shadow:0 -6px 20px #0004}
+#one-hud .one-hud-nav{border:1px solid rgba(255,255,255,.1);background:#121d36;box-shadow:0 14px 36px rgba(0,0,0,.6)}
 #one-hud .one-hud-nav button[aria-expanded="true"]{box-shadow:none}
 #one-hud .one-hud-nav .one-hud-nav-icon{display:grid;place-items:center;width:27px;height:25px;color:#d9b560}
 #one-hud .one-hud-nav .nautical-icon{width:23px;height:23px}

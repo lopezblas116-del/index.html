@@ -199,6 +199,11 @@ function installWorldUi() {
     const drawer = byId("mil-feed-drawer");
     const opened = drawer.classList.toggle("oculto") === false;
     event.currentTarget.setAttribute("aria-expanded", String(opened));
+    if (opened) window.UI?.marcarLeidas?.(); // leer la bitácora apaga el aviso rojo
+  });
+  // El Diario del nav inferior también cuenta como lectura
+  document.addEventListener("click", (event) => {
+    if (event.target.closest('[data-hud-panel="news"]')) window.UI?.marcarLeidas?.();
   });
   ui.querySelector("[data-close-feed]").addEventListener("click", () => {
     byId("mil-feed-drawer").classList.add("oculto");
