@@ -81,27 +81,39 @@
     }
     // ── interacción: arrastre, rueda, y PINZA con dos dedos centrada en el punto medio ──
     let drag = null, pellizco = null;
+    // fluidez: mientras hay gestos el mapa corre a 60 fps (animaMapa consulta este flag)
+    MAPA.interactuando = false;
+    let quietoTimer = null;
+    const toca = () => {
+      MAPA.interactuando = true;
+      clearTimeout(quietoTimer);
+      quietoTimer = setTimeout(() => { MAPA.interactuando = false; }, 450);
+    };
     const gira = (dx) => { rotLon += dx * 0.0045; };
     cv.addEventListener('mousedown', e => {
       cancelaVuelo(); // el arrastre toma el control
+      toca();
       drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false };
     });
     window.addEventListener('mousemove', e => {
       if (!drag) return;
+      toca();
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.movio = true;
       if (globoF() > 0.5) gira(dx);
       else { cam.x = envuelveX(drag.cx - dx / cam.z); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
       drag.x = e.clientX; drag.y = e.clientY; drag.cx = cam.x; drag.cy = cam.y;
     });
-    window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; });
+    window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; toca(); });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
       cancelaVuelo(); // la lupa manda: un giro de rueda a mitad de vuelo toma el control
+      toca();
       MAPA.zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
     }, { passive: false });
     cv.addEventListener('touchstart', e => {
       cancelaVuelo(); // el dedo toma el control
+      toca();
       if (e.touches.length === 1) {
         drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, cx: cam.x, cy: cam.y, movio: false };
       } else if (e.touches.length >= 2) {
@@ -120,6 +132,7 @@
       }
     }, { passive: true });
     cv.addEventListener('touchmove', e => {
+      toca();
       if (pellizco && e.touches.length >= 2) {
         e.preventDefault();
         const [a, b] = e.touches;
@@ -157,6 +170,7 @@
         MAPA.click({ clientX: t.clientX, clientY: t.clientY });
       }
       if (e.touches.length === 0) drag = null;
+      toca();
     });
   };
 
@@ -899,7 +913,13 @@
       // sombra + mini capitán: sombrero de paja, chaleco rojo, botas
       // gana presencia al adentrarse el zoom (mundo compensado en pantalla)
       const s = 1.4 * clamp(cam.z / 2.6, 1, 2.1);
-      elVivo(px + 0.2 * s, py + 0.5 * s, 1.9 * s, 'rgba(6,26,48,0.3)');
+      // sombra elíptica al piso: ancla el personaje al suelo (como en UMP)
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(px + 0.2 * s, py + 0.5 * s, 2.1 * s, 0.85 * s, 0, 0, 7);
+      ctx.fillStyle = 'rgba(6,26,48,0.35)';
+      ctx.fill();
+      ctx.restore();
       ctx.fillStyle = '#3d2f23'; ctx.fillRect(px - 1 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s); ctx.fillRect(px + 0.2 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s);
       ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.6 * s + bob, 2.2 * s, 2 * s);
       ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 1.5 * s, py - 3.2 * s + bob, 0.5 * s, 1.5 * s); ctx.fillRect(px + 1 * s, py - 3.2 * s + bob, 0.5 * s, 1.5 * s);
@@ -909,6 +929,21 @@
       ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.9 * s, py - 6.2 * s + bob, 1.8 * s, 0.6 * s);
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 0.6;
       ctx.beginPath(); ctx.arc(px, py - 2.6 * s + bob, 3.6 * s + Math.sin(t / 300) * 0.5, 0, 7); ctx.stroke();
+      // nombre flotante sobre el capitán: chip oscuro redondeado, texto legible a todo zoom
+      const nombre = (u.name || 'Capitán');
+      ctx.font = `600 ${(11 / cam.z).toFixed(1)}px Manrope, sans-serif`;
+      const tw2 = ctx.measureText(nombre).width + 10 / cam.z, fh = 15 / cam.z;
+      const bx = px - tw2 / 2, by = py - 6.2 * s - 20 / cam.z;
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, tw2, fh, 4 / cam.z); else ctx.rect(bx, by, tw2, fh);
+      ctx.fillStyle = 'rgba(18,29,54,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(244,180,26,0.45)'; ctx.lineWidth = 0.8 / cam.z; ctx.stroke();
+      ctx.fillStyle = '#f0f6fc';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(nombre, px, by + fh / 2);
+      ctx.restore();
     } else {
       dibujaCubo(px, py);
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.2;
@@ -1763,7 +1798,8 @@
       return;
     }
     // capa base estática (mar, franjas, muralla, rótulos): se pre-renderiza una vez por refit/resize
-    ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
+    // azul profundo tipo UMP: sin cuadrícula, el brillo lo ponen las olas y la espuma
+    ctx.fillStyle = '#1a4f8b'; ctx.fillRect(0, 0, ancho, alto);
     if (!base) base = crearBase();
     actualizaEventos(sim, t);
     ctx.save();

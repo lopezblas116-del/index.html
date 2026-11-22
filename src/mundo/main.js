@@ -108,8 +108,9 @@
     arrancaTimer();
     let ultimoFrame = 0;
     function animaMapa(t) {
-      // Rápido durante el vuelo y con el zoom cerca (dioramas con NPCs animados a ~60 fps).
-      const rapido = (typeof MAPA.volando === 'function' && MAPA.volando()) || MAPA.cam.z >= (MAPA.LOD_ZOOM || 1.5);
+      // Rápido durante el vuelo, con el zoom cerca y MIENTRAS HAYA GESTOS (arrastre/pinza/rueda):
+      // así el mapa se siente fluido al tocarlo y ahorra batería en reposo.
+      const rapido = (typeof MAPA.volando === 'function' && MAPA.volando()) || MAPA.cam.z >= (MAPA.LOD_ZOOM || 1.5) || MAPA.interactuando;
       if (!document.hidden && $('mapa').offsetParent && t - ultimoFrame >= (rapido ? 16 : 50)) {
         // La cámara avanza ANTES de renderizar: funciona igual con el mapa base o con GFX.
         if (typeof MAPA.volando === 'function' && MAPA.volando() && typeof MAPA.avanzaVuelo === 'function') MAPA.avanzaVuelo(t);

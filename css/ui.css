@@ -23,7 +23,7 @@
 }
 #map-panel.mil-vivo #canvas-container #mapa {
   position: absolute; inset: 0; z-index: 2; display: block; width: 100%; height: 100%;
-  margin: 0; border: 0; border-radius: 0; background: #2161a7; touch-action: none;
+  margin: 0; border: 0; border-radius: 0; background: #1a4f8b; touch-action: none;
 }
 
 #mil-almas-ui { position: fixed; inset: 0; z-index: 110; display: none; pointer-events: none; }
@@ -192,3 +192,32 @@ body.mil-cine #pop-isla { opacity: 1; }
 #arrival-banner .arrival-name { display: block; margin: 3px 0 7px; color: #f4b41a; font: 400 clamp(1.25rem, 4vw, 1.6rem)/1.1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
 #arrival-banner .arrival-chip { display: inline-block; padding: 3px 12px; color: #f0f6fc; font: 600 .78rem/1.4 var(--font-body); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; background: rgba(255, 255, 255, .06); }
 @media (prefers-reduced-motion: reduce) { #arrival-banner { transition: none; } }
+
+/* ---------- Fluidez en móviles: el blur de los paneles grandes es lo más caro del HUD ---------- */
+@media (max-width: 768px) {
+  .one-hud-brand, .one-hud-nav, #one-hud .one-hud-settings,
+  #mil-almas-ui .mil-panel, #mil-almas-ui .mil-feed-drawer,
+  #mil-almas-ui .mil-world-bar, #mil-almas-ui .mil-chip, #arrival-banner {
+    backdrop-filter: none !important;
+  }
+}
+
+/* ---------- Móvil: barra del mundo compacta (los pestañones pasan a una fila scrolleable) ---------- */
+@media (max-width: 600px) {
+  #mil-almas-ui .mil-world-bar { padding: 7px 10px; gap: 8px; }
+  #mil-almas-ui .mil-world-bar strong { font-size: .92rem; }
+  #mil-almas-ui .mil-world-bar span { font-size: .74rem; }
+  #mil-almas-ui .mil-world-actions { flex-wrap: nowrap; overflow-x: auto; max-width: 46vw; padding-bottom: 2px; scrollbar-width: none; }
+  #mil-almas-ui .mil-world-actions::-webkit-scrollbar { display: none; }
+  #mil-almas-ui .mil-world-actions button { min-height: 32px; padding: 5px 9px; font-size: .74rem; flex: 0 0 auto; }
+}
+
+@media (max-width: 600px) {
+  /* el banner de llegada desciende en móvil para no cruzar el engranaje de ajustes */
+  #arrival-banner { top: calc(max(10px, env(safe-area-inset-top)) + 212px); }
+}
+
+@media (max-width: 600px) {
+  /* el chip de isla baja debajo de la marca en móvil (es informativo, no bloquea clics) */
+  #map-panel.mil-vivo #canvas-container .mil-chip { top: calc(max(10px, env(safe-area-inset-top)) + 164px); }
+}

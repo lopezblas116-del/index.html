@@ -28,8 +28,9 @@ body {
   margin: 0;
   color: var(--text);
   background-color: var(--navy);
-  background-image: linear-gradient(rgba(56, 189, 248, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, .045) 1px, transparent 1px), radial-gradient(ellipse at 50% -20%, rgba(35, 86, 145, .24), transparent 58%);
-  background-size: 24px 24px, 24px 24px, auto;
+  /* sin cuadrícula: el agua del canvas ya trae su propia textura; el fondo queda limpio y profundo */
+  background-image: radial-gradient(ellipse at 50% -20%, rgba(35, 86, 145, .24), transparent 58%);
+  background-size: auto;
   background-attachment: fixed;
   padding-bottom: 24px;
   transition: background-color .9s ease;
