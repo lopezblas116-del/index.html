@@ -208,6 +208,7 @@
       const M = G.MAPA;
       // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
       if (M.enGlobo && M.enGlobo()) return original(sim, t);
+      ctx.imageSmoothingEnabled = false; // pixel art nítido también en la capa GFX
       ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
       // vista del mundo (para el culling: no pintar lo que no se ve)
       const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
@@ -272,10 +273,9 @@
         if (off === null) continue;
         const cx = i.x + off, cy = i.y;
         if (M.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
-        M.sombraIsla(i, off);
-        M.pintaIslaVista(i, off, t);
-        M.anilloIsla(i, off, t);
-        if (M.marcasIsla) M.marcasIsla(ctx, i, t, off);
+        // UN SOLO MAPA: la misma isla detallada del mapa base (detalle cerca, vista media lejos)
+        if (M.dibujaIslaPublica) M.dibujaIslaPublica(i, off, t);
+        else { M.sombraIsla(i, off); M.pintaIslaVista(i, off, t); M.anilloIsla(i, off, t); if (M.marcasIsla) M.marcasIsla(ctx, i, t, off); }
         dibujadas.push([i, off]);
       }
       for (const [id, off] of conDiorama) {
@@ -283,9 +283,8 @@
         if (i && M.dibujaEscenaIsla) M.dibujaEscenaIsla(ctx, i, t, off);
       }
       // barcos con sprite (recalcula posición como el mapa base);
-      // con zoom cerca, los anclados se omiten: el diorama ya dibuja los suyos en el muelle
+      // UN SOLO MAPA: los anclados también se ven a zoom cercano (no hay dioramas que los tapen)
       for (const s of sim.ships) {
-        if (cam.z >= (M.LOD_ZOOM || 1.5) && s.state !== 'navegando') continue;
         let x, y, ang;
         if (s.state === 'navegando' && s.plan) {
           const k = clamp((sim.t - s.plan.t0) / Math.max(1, s.plan.dur), 0, 1);
@@ -313,15 +312,18 @@
         if (!M.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) M.etiquetaIsla(i, off);
       }
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
-      // tu avatar (el cubo solo con zoom lejos; cerca, el diorama ya muestra su sprite 16-bit)
-      const u = sim.user;
-      if (u && u.isl && !sim._fusionAtSea && cam.z < (M.LOD_ZOOM || 1.5)) {
-        const isl = D.ISLA[u.isl];
-        if (isl && !u.plan) {
-          const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
-          M.cubo(px, py);
-          ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
+      // tu capitán: figura pixel a zoom cercano, cubo y anillo a lo lejos (misma función que el mapa base)
+      if (M.avatarMundo) M.avatarMundo(sim, t);
+      else {
+        const u = sim.user;
+        if (u && u.isl && !sim._fusionAtSea) {
+          const isl = D.ISLA[u.isl];
+          if (isl && !u.plan) {
+            const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
+            if (M.cubo) M.cubo(px, py);
+            ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
+          }
         }
       }
       ctx.restore();
