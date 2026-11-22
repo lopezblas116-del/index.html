@@ -208,6 +208,10 @@
       const M = G.MAPA;
       // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
       if (M.enGlobo && M.enGlobo()) return original(sim, t);
+      // la lupa persigue su objetivo y el modo inmersión vigila el zoom TAMBIÉN aquí:
+      // GFX sustituye el render del mar, así que estos dos relojes no pueden vivir solo en el original
+      if (M.pasaZoomPublica) M.pasaZoomPublica(t);
+      if (M.actualizaCinePublica) M.actualizaCinePublica();
       ctx.imageSmoothingEnabled = false; // pixel art nítido también en la capa GFX
       ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
       // vista del mundo (para el culling: no pintar lo que no se ve)

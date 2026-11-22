@@ -139,3 +139,34 @@ body[data-camera-state="ISLAND_VIEW"] #canvas-container .mil-chip { display: non
 #mil-almas-ui .at-cubo.dorado { border-color: #d4ac0d; }
 #mil-almas-ui .at-cubo.dorado .cubo-g { background: #9a7d0a; border-color: #d4ac0d; border-top-color: #f1c40f; }
 #mil-almas-ui .at-cubo.dorado.hallado .cubo-g { background: #f1c40f; box-shadow: 0 0 12px rgba(241,196,15,0.9); }
+
+/* ── UN SOLO MAPA · Modo inmersión: al acercar el zoom el HUD se retira y
+   queda solo la isla en pixel art. La píldora "Alejar" te devuelve. ── */
+#mil-salir-cine, #mil-cine-nombre {
+  position: absolute; z-index: 6; opacity: 0; pointer-events: none;
+  transition: opacity .5s ease;
+  background: rgba(10,18,34,0.85); border: 1px solid rgba(244,193,26,0.55);
+  border-radius: 999px; color: #f4d97a;
+  font: 700 13px/1.3 system-ui, sans-serif; letter-spacing: .03em;
+}
+#mil-salir-cine { top: 12px; right: 12px; padding: 9px 18px; cursor: pointer; }
+#mil-salir-cine:hover { background: rgba(24,38,62,0.92); border-color: #f4c445; }
+body.mil-cine #mil-salir-cine { opacity: 1; pointer-events: auto; }
+#mil-cine-nombre {
+  top: 12px; left: 50%; transform: translateX(-50%);
+  padding: 8px 20px; font-size: 15px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6); white-space: nowrap;
+}
+#mil-cine-nombre.ver { opacity: .97; }
+/* el HUD se aparta con suavidad: barra Mil Almas, reloj One-Latam, vitales,
+   engranaje, nav inferior, chips y pista del globo */
+#mil-almas-ui .mil-world-bar, #bottom-nav { transition: opacity .5s ease; }
+body.mil-cine #mil-almas-ui .mil-world-bar,
+body.mil-cine #hud-header,
+body.mil-cine #one-hud .one-hud-vitals,
+body.mil-cine #one-hud .one-hud-settings,
+body.mil-cine #bottom-nav,
+body.mil-cine .mil-chip,
+body.mil-cine .pista-globo { opacity: 0 !important; pointer-events: none !important; }
+/* el popover de isla sigue siendo parte del mapa: nunca se esconde en inmersión */
+body.mil-cine #pop-isla { opacity: 1; }

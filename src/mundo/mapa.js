@@ -63,6 +63,21 @@
       cv.parentElement.appendChild(p);
       MAPA._pista = p;
     }
+    // ── modo inmersión: píldora "Alejar" + banner breve con el nombre de la isla ──
+    if (cv.parentElement && !cv.parentElement.querySelector('#mil-salir-cine')) {
+      const salir = document.createElement('button');
+      salir.type = 'button';
+      salir.id = 'mil-salir-cine';
+      salir.textContent = '⤡ Alejar';
+      salir.setAttribute('aria-label', 'Alejar y salir del modo inmersión');
+      salir.addEventListener('click', () => MAPA.volar(cam.x, cam.y, 1.25, 720));
+      cv.parentElement.appendChild(salir);
+      const nombre = document.createElement('div');
+      nombre.id = 'mil-cine-nombre';
+      nombre.setAttribute('role', 'status');
+      cv.parentElement.appendChild(nombre);
+      MAPA._cineNombre = nombre;
+    }
     // ── interacción: arrastre, rueda, y PINZA con dos dedos centrada en el punto medio ──
     let drag = null, pellizco = null;
     const gira = (dx) => { rotLon += dx * 0.0045; };
@@ -183,6 +198,7 @@
   // mapa entre entera en pantalla (con su playa, aldea y muelle) y vuela hasta allí.
   MAPA.enfocarIsla = function (i) {
     if (!i || !ancho) return;
+    MAPA._enfocada = i; // la isla encuadrada: el banner del modo inmersión la nombra
     const z = clamp(Math.min(ancho / (i.r * 5.4), alto / (i.r * 4.6)), 1.35, 4.2);
     vuelo = creaVuelo(i.x, i.y + 22, z, 750);
     zT = vuelo.tz;
@@ -1030,10 +1046,12 @@
     return i.edif;
   }
 
-  // anillo blanco punteado girando en islas con evento activo
+  // anillo blanco punteado girando en islas con evento activo;
+  // al acercar se hace sutil: avisa sin tapar el arte de la isla
   function anilloIsla(i, ox, t) {
     if (!eventoIsl.has(i.id)) return;
     ctx.save();
+    ctx.globalAlpha = Math.max(0.32, 1 - (cam.z - 1.1) / 1.1);
     ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
     ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t / 80;
     ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r * 1.9, 0, 7); ctx.stroke();
@@ -1050,6 +1068,46 @@
   //    La API queda por compatibilidad (GFX la consulta) y responde "no". ──
   const dioramasActivos = new Set();
   MAPA.usaDiorama = function () { return false; };
+
+  // ── Modo inmersión: al acercar el zoom el HUD se retira (clase mil-cine en <body>)
+  //    y queda SOLO la isla en pixel art, sin interferencia de nada. La píldora
+  //    "Alejar" (o la lupa / la pinza) te devuelve. Histéresis: entra a 2.0, sale a 1.7. ──
+  const CINE_ENTRA = 2.0, CINE_SALE = 1.7;
+  let cineActivo = false;
+  MAPA.enCine = () => cineActivo;
+  function muestraNombreCine() {
+    const el = MAPA._cineNombre;
+    if (!el) return;
+    const sm = MAPA._sim;
+    // nombre honesto: la isla encuadrada, o la más cercana a la cámara (llegues como llegues)
+    let isla = selIsl || MAPA._enfocada || null;
+    if (!isla) {
+      let mejorD = 1e18;
+      for (const i of D.ISLAS) {
+        if (i.oculta) continue;
+        const dx = distX(i.x - cam.x), d = dx * dx + (i.y - cam.y) * (i.y - cam.y);
+        if (d < mejorD) { mejorD = d; isla = i; }
+      }
+      if (isla && mejorD > 260 * 260) isla = null; // demasiado lejos: no hay isla protagonizando
+    }
+    if (!isla) isla = (sm && sm.user && D.ISLA[sm.user.isl]) || null;
+    if (!isla) return;
+    el.textContent = isla.n;
+    el.classList.add('ver');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('ver'), 2800);
+  }
+  function actualizaCine() {
+    const cine = cam.z >= (cineActivo ? CINE_SALE : CINE_ENTRA);
+    if (cine === cineActivo) return;
+    cineActivo = cine;
+    document.body.classList.toggle('mil-cine', cine);
+    if (cine) muestraNombreCine();
+  }
+  // GFX sustituye el render del mar: expone el easing de la lupa y el vigilante
+  // del modo inmersión para que la capa mejorada los llame en cada frame
+  MAPA.actualizaCinePublica = actualizaCine;
+  MAPA.pasaZoomPublica = function (t) { pasaZoom(t); };
 
   // Marcas del mundo sobre cada isla: secretos sin descubrir (?) y Cubos Rojos hallados.
   // Tamaño compensado por zoom: se ven igual de chicos en pantalla a cualquier escala.
@@ -1679,6 +1737,12 @@
   MAPA.cubo = dibujaCubo;
   MAPA.etiquetaIsla = function (i, ox) {
     if (!rotulable(i)) return;
+    // UN SOLO MAPA: al acercar el zoom el nombre se desvanece — la isla habla por sí sola.
+    // El nombre queda en el popover al tocar la isla y en el banner breve del modo inmersión.
+    const alpha = clamp(1 - (cam.z - 1.32) / 0.3, 0, 1);
+    if (alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
     // contorno oscuro: el nombre se lee aunque pase un barco por debajo
@@ -1691,12 +1755,14 @@
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
     }
+    ctx.restore();
   };
 
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
+    actualizaCine(); // el HUD se retira solo al acercar (modo inmersión), antes de cualquier retorno
     const g = globoF();
     ctx.imageSmoothingEnabled = g < 0.5; // en el mar, píxeles nítidos; en el globo, mezcla suave de celdas
     if (g >= 0.999) {
