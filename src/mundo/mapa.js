@@ -44,9 +44,10 @@
     const fit = () => {
       const r = cv.parentElement.getBoundingClientRect();
       ancho = r.width; alto = r.height;
-      cv.width = Math.round(ancho * devicePixelRatio); cv.height = Math.round(alto * devicePixelRatio);
+      const DPR = Math.min(window.devicePixelRatio || 1, 2); // tope 2: 3x en móviles cuadruplica el costo sin ganancia visible
+      cv.width = Math.round(ancho * DPR); cv.height = Math.round(alto * DPR);
       cv.style.width = ancho + 'px'; cv.style.height = alto + 'px';
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.imageSmoothingEnabled = false; // pixel art nítido: ningún escalado borroso
       base = null; TEX = null; estrellado = null;
     };
@@ -78,6 +79,34 @@
       nombre.setAttribute('role', 'status');
       cv.parentElement.appendChild(nombre);
       MAPA._cineNombre = nombre;
+    }
+    // ── joystick táctil: empujás hacia donde querés ir, la cámara VA A ESE LADO ──
+    // (el arrastre del mapa queda para pan fino; el joystick es el control direccional)
+    if (cv.parentElement && !cv.parentElement.querySelector('.mil-joystick')) {
+      const jw = document.createElement('div');
+      jw.className = 'mil-joystick';
+      const js = document.createElement('div'); js.className = 'mil-joystick-stick';
+      jw.appendChild(js);
+      jw.setAttribute('aria-hidden', 'true');
+      jw.style.cssText = 'position:absolute;left:16px;bottom:150px;width:104px;height:104px;border-radius:50%;background:rgba(10,18,34,0.55);border:2px solid rgba(244,193,26,0.5);z-index:6;touch-action:none;backdrop-filter:blur(2px)';
+      js.style.cssText = 'position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(244,193,26,0.85);box-shadow:0 2px 10px rgba(0,0,0,0.45);pointer-events:none;transition:transform .05s';
+      cv.parentElement.appendChild(jw);
+      const jst = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
+      MAPA._joystick = jst;
+      const reacciona = (e) => {
+        if (jst.id === null || e.pointerId !== jst.id) return;
+        const dx = e.clientX - jst.cx, dy = e.clientY - jst.cy;
+        const d = Math.hypot(dx, dy), mx = 38;
+        const k = d > mx ? mx / d : 1;
+        js.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+        jst.x = dx / mx; jst.y = dy / mx;
+        e.preventDefault();
+      };
+      jw.addEventListener('pointerdown', (e) => { jst.id = e.pointerId; jst.cx = e.clientX; jst.cy = e.clientY; toca(); cancelaVuelo(); try { jw.setPointerCapture(e.pointerId); } catch (err) {} reacciona(e); });
+      jw.addEventListener('pointermove', reacciona);
+      const suelta = (e) => { if (e.pointerId !== jst.id) return; jst.id = null; jst.x = 0; jst.y = 0; js.style.transform = 'translate(0,0)'; };
+      jw.addEventListener('pointerup', suelta);
+      jw.addEventListener('pointercancel', suelta);
     }
     // ── interacción: arrastre, rueda, y PINZA con dos dedos centrada en el punto medio ──
     let drag = null, pellizco = null;
@@ -511,7 +540,10 @@
     return (h ^ (h >>> 13)) >>> 0;
   }
   const rIsla = (i, k) => (hIsla(i, k) % 1000) / 1000;
-  const SPR_S = 8; // píxeles del sprite por unidad de mundo (más resolución al adentrarse)
+  const ES_MOVIL = (typeof screen !== 'undefined' && Math.min(screen.width || 0, screen.height || 0) < 820) || (typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent || ''));
+  const SPR_S = ES_MOVIL ? 5 : 6;
+  // px del sprite por unidad de mundo. Con las islas grandes 8px eran ~18MB por isla
+  // (×16 en caché ≈ 280MB: la GPU del teléfono se ahogaba). 5-6 mantiene el pixel art nítido.
 
   // ── EL LAYOUT canónico de cada isla: UNA lista determinista de casas, árboles
   //    y adornos compartida por TODO el arte. El zoom ya no cambia de artista:
@@ -1038,30 +1070,47 @@
     const bob = Math.sin(t / 650) * 0.4;
     ctx.save();
     if (cam.z >= DETALLE_Z) {
-      // sombra + mini capitán: sombrero de paja, chaleco rojo, botas
-      // gana presencia al adentrarse el zoom (mundo compensado en pantalla)
-      const s = 1.4 * clamp(cam.z / 2.6, 1, 2.1);
-      // sombra elíptica al piso: ancla el personaje al suelo (como en UMP)
+      // sombra + mini capitán en la MISMA tinta del mundo: outline, luz del norte,
+      // ojos y sonrisa — proporción de héroe (algo más alto que una casa, nunca gigante)
+      const s = 1.15 * clamp(cam.z / 2.6, 1, 2.0);
+      const O = 'rgba(30,22,12,0.55)';
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(px + 0.2 * s, py + 0.5 * s, 2.1 * s, 0.85 * s, 0, 0, 7);
       ctx.fillStyle = 'rgba(6,26,48,0.35)';
       ctx.fill();
       ctx.restore();
-      ctx.fillStyle = '#3d2f23'; ctx.fillRect(px - 1 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s); ctx.fillRect(px + 0.2 * s, py - 1.7 * s + bob, 0.8 * s, 1.7 * s);
-      ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.6 * s + bob, 2.2 * s, 2 * s);
-      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 1.5 * s, py - 3.2 * s + bob, 0.5 * s, 1.5 * s); ctx.fillRect(px + 1 * s, py - 3.2 * s + bob, 0.5 * s, 1.5 * s);
-      ctx.fillRect(px - 0.8 * s, py - 5 * s + bob, 1.6 * s, 1.5 * s);
-      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 1.5 * s, py - 5.7 * s + bob, 3 * s, 0.8 * s);
-      ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 1.5 * s, py - 5.1 * s + bob, 3 * s, 0.4 * s);
-      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.9 * s, py - 6.2 * s + bob, 1.8 * s, 0.6 * s);
+      // pantalón azul corto + botas con puntas
+      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s); ctx.fillRect(px + 0.05 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s);
+      ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      ctx.strokeStyle = O; ctx.lineWidth = 0.35;
+      ctx.strokeRect(px - 1.1 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      // torso: camisa roja con luz del norte y dos botones
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 0.4 * s);
+      ctx.strokeStyle = O; ctx.strokeRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
+      ctx.fillStyle = 'rgba(30,22,12,0.5)'; ctx.fillRect(px - 0.2 * s, py - 3.35 * s + bob, 0.4 * s, 0.4 * s); ctx.fillRect(px - 0.2 * s, py - 2.55 * s + bob, 0.4 * s, 0.4 * s);
+      // brazos con puños: la piel del capitán es de mar
+      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s);
+      ctx.fillStyle = '#d4a97f'; ctx.fillRect(px - 1.6 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s); ctx.fillRect(px + 1.1 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s);
+      // cara: piel, ojos y la sonrisa del que ya eligió su mar
+      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 0.85 * s, py - 5 * s + bob, 1.7 * s, 1.35 * s);
+      ctx.fillStyle = '#2b1c10'; ctx.fillRect(px - 0.55 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s); ctx.fillRect(px + 0.2 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s);
+      ctx.fillRect(px - 0.15 * s, py - 3.95 * s + bob, 0.3 * s, 0.16 * s);
+      // sombrero de paja: ala ancha, copa, cinta roja y brillo del ala
+      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.75 * s);
+      ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 1.55 * s, py - 5.05 * s + bob, 3.1 * s, 0.4 * s);
+      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.22 * s);
+      ctx.strokeStyle = O;
+      ctx.strokeRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 1.1 * s); ctx.strokeRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 0.6;
       ctx.beginPath(); ctx.arc(px, py - 2.6 * s + bob, 3.6 * s + Math.sin(t / 300) * 0.5, 0, 7); ctx.stroke();
       // nombre flotante sobre el capitán: chip oscuro redondeado, texto legible a todo zoom
       const nombre = (u.name || 'Capitán');
       ctx.font = `600 ${(11 / cam.z).toFixed(1)}px Manrope, sans-serif`;
       const tw2 = ctx.measureText(nombre).width + 10 / cam.z, fh = 15 / cam.z;
-      const bx = px - tw2 / 2, by = py - 6.2 * s - 20 / cam.z;
+      const bx = px - tw2 / 2, by = py - 7.6 * s - 20 / cam.z;
       ctx.save();
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(bx, by, tw2, fh, 4 / cam.z); else ctx.rect(bx, by, tw2, fh);
@@ -1955,11 +2004,25 @@
     ctx.restore();
   };
 
+  let joyTimer = null;
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     actualizaCine(); // el HUD se retira solo al acercar (modo inmersión), antes de cualquier retorno
+    // joystick: empuje → la cámara viaja en ESA dirección (izquierda = izquierda)
+    const joy = MAPA._joystick;
+    if (joy && (Math.abs(joy.x) > 0.14 || Math.abs(joy.y) > 0.14)) {
+      if (globoF() > 0.5) rotLon += joy.x * 0.02;
+      else {
+        const paso = (ancho / cam.z) * 0.011; // ~1% de la vista por frame empujado
+        cam.x = envuelveX(cam.x + joy.x * paso);
+        cam.y = clamp(cam.y + joy.y * paso, 0, D.H);
+        MAPA.interactuando = true; // empuje = gesto vivo: el mapa corre fluido
+        clearTimeout(joyTimer);
+        joyTimer = setTimeout(() => { MAPA.interactuando = false; }, 450);
+      }
+    }
     const g = globoF();
     ctx.imageSmoothingEnabled = g < 0.5; // en el mar, píxeles nítidos; en el globo, mezcla suave de celdas
     if (g >= 0.999) {
@@ -1989,7 +2052,7 @@
     const visibles = [];
     for (const i of D.ISLAS) {
       if (i.oculta) continue;
-      const mg = Math.max(190, i.r * 16);
+      const mg = i.r * 2.6 + 80; // el sprite y su halo llegan a ~r*2.2: margen justo, no r*16
       let entra = false;
       for (const off of [0, -D.W, D.W]) {
         const x = i.x + off;
@@ -2005,7 +2068,7 @@
     });
     // islas visibles: cada una se dibuja en la envoltura más cercana a la cámara
     const mejorEnvoltura = (i) => {
-      const mg = Math.max(190, i.r * 16);
+      const mg = i.r * 2.6 + 80;
       let mejor = null, mejorD = 1e18;
       for (const off of [0, -D.W, D.W]) {
         const x = i.x + off;
