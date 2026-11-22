@@ -197,7 +197,9 @@
         const off = mejorEnv(i);
         if (off === null) continue;
         // UN SOLO MAPA: la misma isla detallada del mapa base (detalle cerca, vista media lejos)
-        if (M.dibujaIslaPublica) M.dibujaIslaPublica(i, off, t);
+        // con vida propia: flotación suave + resaltado al pasar el cursor (halo y micro-zoom)
+        if (M.pintaIslaConVida) M.pintaIslaConVida(i, off, t);
+        else if (M.dibujaIslaPublica) M.dibujaIslaPublica(i, off, t);
         else { M.sombraIsla(i, off); M.pintaIslaVista(i, off, t); M.anilloIsla(i, off, t); if (M.marcasIsla) M.marcasIsla(ctx, i, t, off); }
         dibujadas.push([i, off]);
       }

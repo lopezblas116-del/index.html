@@ -105,6 +105,21 @@
       drag.x = e.clientX; drag.y = e.clientY; drag.cx = cam.x; drag.cy = cam.y;
     });
     window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; toca(); });
+    // hover sin arrastre: isla bajo el cursor → resalte + cursor de mano (no corre en globo)
+    window.addEventListener('mousemove', e => {
+      if (drag) { cv.style.cursor = 'grabbing'; return; }
+      const r = cv.getBoundingClientRect();
+      const px = e.clientX - r.left, py = e.clientY - r.top;
+      if (px < 0 || py < 0 || px > r.width || py > r.height || globoF() > 0.5) {
+        MAPA._hoverIsla = null;
+        if (px >= 0 && py >= 0 && px <= r.width && py <= r.height && globoF() > 0.5) cv.style.cursor = 'grab';
+        return;
+      }
+      const wx = px / cam.z + cam.x - ancho / (2 * cam.z);
+      const wy = py / cam.z + cam.y - alto / (2 * cam.z);
+      MAPA._hoverIsla = islaEn(wx, wy);
+      cv.style.cursor = MAPA._hoverIsla ? 'pointer' : 'default';
+    });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
       cancelaVuelo(); // la lupa manda: un giro de rueda a mitad de vuelo toma el control
@@ -906,7 +921,7 @@
     if (!u || !u.isl || sim._fusionAtSea || u.plan) return;
     const isl = D.ISLA[u.isl];
     if (!isl) return;
-    const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
+    const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5 + bobIsla(isl, t);
     const bob = Math.sin(t / 650) * 0.4;
     ctx.save();
     if (cam.z >= DETALLE_Z) {
@@ -960,6 +975,49 @@
     ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
     ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
   }
+
+  // ── flotación: cada isla sube y baja lento con su propia fase (el mar la mece) ──
+  // La sombra del agua NO flota: la isla se mece sobre su sombra, como en UMP.
+  function bobIsla(i, t) { return Math.sin(t / 2800 + i.x * 0.13) * 1.8; }
+  MAPA.bobIsla = bobIsla;
+
+  // ── pintaIslaConVida: flotación + resaltado al pasar el cursor ──
+  // Un solo envoltorio para mapa base y GFX: bajo el cursor la isla crece un
+  // 3.5% con suavizado y su bajío se enciende (luz de agua poco profunda).
+  function pintaIslaConVida(i, off, t) {
+    const hov = MAPA._hoverIsla === i;
+    // escala de hover suavizada (lerp por frame: entra y sale sin salto)
+    i._hs = (i._hs || 1) + ((hov ? 1.035 : 1) - (i._hs || 1)) * 0.12;
+    const cx = i.x + off, cy = i.y, r = i.r;
+    if (hov) {
+      const pulso = 1 + Math.sin(t / 500) * 0.03;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 1.55 * pulso, r * 1.22 * pulso, 0, 0, 7);
+      ctx.fillStyle = 'rgba(140,215,255,0.28)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(190,235,255,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.translate(0, bobIsla(i, t));
+    if (i._hs !== 1) {
+      ctx.translate(cx, cy); ctx.scale(i._hs, i._hs); ctx.translate(-cx, -cy);
+    }
+    dibujaIsla(i, off, t);
+    ctx.restore();
+  }
+  MAPA.pintaIslaConVida = pintaIslaConVida;
+
+  // ── hover: isla bajo el cursor (resalta y pone el cursor de mano) ──
+  const islaEn = (wx, wy) => {
+    for (const i of D.ISLAS) {
+      for (const off of [0, -D.W, D.W]) {
+        if (dist(wx, wy, i.x + off, i.y) < Math.max(14, i.r + 10)) return i;
+      }
+    }
+    return null;
+  };
+  MAPA.islaEn = islaEn;
 
   // Las VENTANAS que enciende la noche son las de las casas reales del LAYOUT:
   // la misma lista que pinta el sprite, casa por casa, con la altura de su ventana.
@@ -1848,7 +1906,7 @@
     for (const i of visibles) {
       const off = mejorEnvoltura(i);
       if (off === null) continue;
-      dibujaIsla(i, off, t);
+      pintaIslaConVida(i, off, t); // flotación + hover: la isla se mece y responde al cursor
       dibujadas.push([i, off]);
     }
     // barcos y luego etiquetas: ningún barco tapa un rótulo
