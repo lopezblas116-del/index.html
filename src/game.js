@@ -245,12 +245,19 @@ function learnCombatTechnique(character) {
   if (!isGrandLine) return " El entrenamiento extremo no despierta Haki en los Cuatro Mares.";
   if (!character.haki.grandLineSince) character.haki.grandLineSince = Date.now();
   const matured = Date.now() - character.haki.grandLineSince >= 30 * 24 * 60 * 60 * 1000;
+  const resonance = Number(character.haki.resonance) || 0;
+  // Causa y efecto del poder: cada batalla al límite afila la voluntad
+  // (resonancia) y baja el umbral de cicatrices que exige el Haki.
+  const requiredScars = Math.max(3, 5 - Math.floor(resonance / 2));
   const available = ["busoshoku", "kenbunshoku"].filter((key) => !character.haki[key]);
-  if (!matured || character.haki.survivalEvents < 5 || !available.length || Math.random() > 0.1) return " El Haki exige meses en el Grand Line y cicatrices reales.";
+  const chance = 0.1 * (resonance >= 3 ? 2 : 1);
+  if (!matured || character.haki.survivalEvents < requiredScars || !available.length || Math.random() > chance) {
+    return ` El Haki exige meses en el Grand Line y cicatrices reales (resonancia ${resonance}).`;
+  }
   const haki = pick(available);
   character.haki[haki] = true;
   const names = { busoshoku: "Busoshoku (Armadura)", kenbunshoku: "Kenbunshoku (Observación)" };
-  return ` ¡Despierta el Haki ${names[haki]}!`;
+  return ` ¡Despierta el Haki ${names[haki]}! ${resonance >= 3 ? "Las batallas vividas reverberan en su voluntad." : ""}`.trimEnd();
 }
 function resolveCombat(character, rivalType = "piratas rivales", dangerous = false, mission = false) {
   const traits = traitsOf(character);
@@ -315,6 +322,9 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
     if (atGrandLine) {
       character.haki.grandLineSince ??= Date.now();
       character.haki.survivalEvents += 1;
+      // La resonancia de la voluntad: vencer batallas peligrosas en la Grand
+      // Line afila el Haki futuro (efecto visible en el entrenamiento).
+      character.haki.resonance = (Number(character.haki.resonance) || 0) + (dangerous ? 2 : 1);
     }
     const xp = Math.round((25 + rivalLevel * 8 + (mission ? 25 : 0)) * (1 + (character.racialLearning?.talentBonus || 0)));
     const reward = addReputation(character, (mission ? 70000 : 35000) + rivalLevel * 12000, mission ? `victoria en ${character.location.island}` : `combate contra ${rivalType}`);

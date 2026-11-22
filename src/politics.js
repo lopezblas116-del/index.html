@@ -1,5 +1,7 @@
 import { getMapIslands } from "./map.js";
 import { awardBerries } from "./gm_engine.js";
+import { recordPoliticalEcho } from "./lore_engine.js";
+import { raceTreatmentAtPort } from "./race_system.js";
 
 const log = (character, message) => {
   character.log.unshift({ time: new Date().toISOString(), message });
@@ -22,6 +24,7 @@ export function lootCelestialTribute(character, world) {
   const berries = 300 + Math.floor(Math.random() * 201);
   const earned = awardBerries(character, berries);
   character.world.lastTributeDay = day;
+  recordPoliticalEcho(character, "tribute", island.name);
   character.world.news.unshift({ type: "politics", text: `🏴‍☠️ ${character.name} saquea el tributo celestial de ${island.name}; la Marina retira sus tropas y el puerto cae en anarquía.`, day: character.world.day, location: island.name });
   log(character, `💰 Tributo celestial saqueado en ${island.name}: +฿${earned}. La guarnición se retira.`);
   return { ok: true, type: "tribute_theft", island: island.name, berries: earned, message: `Tributo saqueado: +฿${earned}. La Marina abandona el puerto.` };
@@ -46,6 +49,7 @@ export function sabotageTyrantPort(character, world) {
   character.revolutionarySupport.supplies += 1;
   character.revolutionarySupport.sabotagedIslands.push(island.id);
   character.inventory.items.push("Suministro revolucionario");
+  recordPoliticalEcho(character, "sabotage", island.name);
   character.world.news.unshift({ type: "revolutionary", text: `🕊 La resistencia clandestina abre un refugio en ${island.name}.`, day: character.world.day, location: island.name });
   log(character, `🕊 Sabotaje en ${island.name}: el Ejército Revolucionario ofrece un refugio y suministros.`);
   return { ok: true, type: "port_sabotage", island: island.name, message: "Refugio revolucionario desbloqueado; recibes suministros." };
@@ -58,6 +62,7 @@ export function attackWorldNoble(character, world) {
   }
   character.world.nobleAlert = true;
   character.bounty = Math.max(0, Number(character.bounty) || 0) + 10_000_000;
+  recordPoliticalEcho(character, "noble", island.name);
   character.world.news.unshift({ type: "world-noble", text: `🚨 ALERTA ROJA GLOBAL: ${character.name} atacó a la comitiva noble en ${island.name}. Un Almirante y una flota Buster Call han sido movilizados.`, day: character.world.day, location: island.name });
   log(character, `🚨 Ataque a la comitiva noble: alerta global, +฿10.000.000 de recompensa y respuesta inmediata de la Marina.`);
   return { ok: true, type: "noble_attack", island: island.name, message: "Alerta roja global: un Almirante y un Buster Call responden al ataque." };
@@ -65,7 +70,10 @@ export function attackWorldNoble(character, world) {
 
 export function maybeCaptureAtAuction(character, random = Math.random) {
   const island = currentIsland(character);
-  if (character.status === "dead" || character.captured || character.race === "human" || !island?.auctionHouse || random() >= 0.35) return false;
+  if (character.status === "dead" || character.captured || character.race === "human" || !island?.auctionHouse) return false;
+  // Causa y efecto: la sangre perseguida se paga más alto en la subasta.
+  const { captureRiskModifier } = raceTreatmentAtPort(character.race, island);
+  if (random() >= 0.35 * (captureRiskModifier || 1)) return false;
   const ransom = 200 + Math.floor(random() * 501);
   character.captured = { island: island.name, ransom, day: character.world.day };
   log(character, `⛓️ ${character.name} es capturado en ${island.name} y vendido en una subasta clandestina. Rescate: ฿${ransom} o infiltración de la tripulación.`);

@@ -3,10 +3,9 @@ import {
   loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
-  closeLegacyModal, closePantheon, initIslandView, initWizard, openPantheon,
-  renderGame, renderIslandView, resetWizard, showSetup
+  closeLegacyModal, closePantheon, initWizard, openPantheon,
+  renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
-import { focusMap, returnToGlobalMap } from "./world3d.js";
 import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
 import { generateRandomOrigin, isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
@@ -24,11 +23,13 @@ import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
-import { resolveIslandCrisis } from "./narrative_engine.js";
+import { beginStarterIslandAdventure, resolveIslandCrisis } from "./narrative_engine.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
 import { celebrateAvatar } from "./island_renderer.js";
+import { importEvents, registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
+import "./mundo/index.js";
 
 let character = loadGame();
 initVfx();
@@ -44,12 +45,14 @@ function paint() {
   if (!character) return;
   ensureBlockOneData(character);
   ensureAdvancedSystems(character);
+  const startingIsland = getMapIslands(character).find((island) => island.name === character.location?.island);
+  const starterAdventureStarted = beginStarterIslandAdventure(character, startingIsland);
   if (syncCodex(character)) saveGame(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
-  renderIslandView(character);
   renderHud(character);
   trackVisualChanges(character);
+  if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
   clearTimeout(branchTimer);
   const pending = character.autonomy?.pendingBranch;
   if (pending && !character.autonomy.paused) {
@@ -166,7 +169,6 @@ function persistRender(reschedule = false) {
 
 initWizard();
 initHud();
-initIslandView();
 listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
 listen(document, "onepiece:local-suggestion", (event) => {
   if (!character || character.status === "dead" || character.location?.atSea) return;
@@ -179,6 +181,17 @@ listen(document, "onepiece:local-suggestion", (event) => {
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
+window.addEventListener("mil-almas:ready", () => {
+  if (!character) return;
+  registerCharacter(character);
+  paint();
+});
+window.addEventListener("mil-almas:tick", () => {
+  if (character && importEvents(character)) {
+    saveGame(character);
+    renderGame(character);
+  }
+});
 function resumeOffline() {
   if (!character) return;
   const pending = character.autonomy.pendingBranch;
@@ -226,7 +239,9 @@ listen(document, "onepiece:map-destination", (event) => {
 listen(document, "onepiece:hud-whisper", (event) => {
   if (!character || character.status === "dead") return;
   const before = publicSnapshot(character);
-  sendConsciousnessWhisper(character, event.detail?.text || "");
+  const text = event.detail?.text || "";
+  sendConsciousnessWhisper(character, text);
+  susurrar(text);
   publishChanges(before, character, true);
   if (character.location?.atSea) scoutFugitive(character);
   persistRender();
@@ -243,6 +258,7 @@ listen(byId("character-form"), "submit", (event) => {
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
   const randomOrigin = generateRandomOrigin();
   character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), ...randomOrigin, starterChallenge: true, profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  registerCharacter(character);
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;
@@ -250,15 +266,16 @@ listen(byId("character-form"), "submit", (event) => {
   ensureBlockOneData(character);
   persistRender(true);
 });
-listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const before = publicSnapshot(character); sendConsciousnessWhisper(character, input.value); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
-listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
+listen(byId("whisper-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status === "dead") return; const input = byId("whisper-input"); if (!input) return; const text = input.value; const before = publicSnapshot(character); sendConsciousnessWhisper(character, text); susurrar(text); publishChanges(before, character, true); if (character.location?.atSea) scoutFugitive(character); input.value = ""; persistRender(); input.focus(); });
+listen(byId("heir-form"), "submit", (event) => { event.preventDefault(); if (!character || character.status !== "dead") return; const heir = createHeir(character, { name: byId("heir-name")?.value.trim() || undefined, username: byId("heir-username")?.value.trim() || undefined }); if (!heir) return; character = heir; registerCharacter(character); ensureBlockOneData(character); event.currentTarget.reset(); closeLegacyModal(); persistRender(true); });
 listen(document.querySelector("[data-close-pantheon]"), "click", closePantheon);
 listen(document.querySelector("[data-close-legacy]"), "click", closeLegacyModal);
 listen(document.querySelector("[data-open-heir]"), "click", () => { const modal = byId("legacy-modal"); if (modal && !modal.open) modal.showModal(); });
 function startNewGame() {
   clearTimeout(timerId);
   clearTimeout(branchTimer);
-  returnToGlobalMap(true);
+  window.MAPA?.volar?.((window.D?.W || 1600) / 2, (window.D?.H || 800) / 2, 1, 600);
+  retirarUser("nueva partida");
   removeStorage(SAVE_KEY);
   character = null;
   byId("character-form")?.reset();
@@ -305,7 +322,7 @@ listen(document, "onepiece:hud-investigate-news", (event) => {
   if (!character || character.status === "dead" || !Number.isFinite(location?.x) || !Number.isFinite(location?.y)) return;
   character.navigationTarget = { ...location, type: "news" };
   persistRender();
-  focusMap(location);
+  window.MAPA?.volar?.(location.x, location.y, 1.8, 700);
 });
 listen(document, "onepiece:hud-redirect", (event) => {
   const location = event.detail?.location;
@@ -313,7 +330,7 @@ listen(document, "onepiece:hud-redirect", (event) => {
   const result = suggestNavigation(character, location);
   if (result.accepted) character.navigationTarget = { ...location, type: "news" };
   persistRender();
-  if (result.accepted) focusMap(location);
+  if (result.accepted) window.MAPA?.volar?.(location.x, location.y, 1.8, 700);
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
 listen(document, "onepiece:hud-trade", (event) => {
@@ -420,4 +437,25 @@ listen(document, "onepiece:hud-gm-bounty", (event) => {
   const result = adjustLocalBounty(character, event.detail?.value);
   if (result.ok) persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.ok ? "Recompensa local actualizada." : result.message } }));
+});
+
+// Puente con el mundo vivo: el popup de isla dispara 'mil-encuentro' y aquí
+// se ejecuta con las reglas reales de politics.js y narrative_engine.js.
+window.ONE_LATAM = { getCharacter: () => character, getWorld: () => character?.world?.shared?.world || character?.world || null, getIslands: () => getMapIslands(character) };
+listen(document, "mil-encuentro", (event) => {
+  if (!character || character.status === "dead") return;
+  const { action, choice } = event.detail || {};
+  if (action === "story-crisis") {
+    document.dispatchEvent(new CustomEvent("onepiece:story-crisis-choice", { detail: { choice } }));
+    return;
+  }
+  const world = character.world?.shared?.world || character.world;
+  let result = null;
+  if (action === "tribute") result = lootCelestialTribute(character, world);
+  else if (action === "sabotage") result = sabotageTyrantPort(character, world);
+  else if (action === "noble") result = attackWorldNoble(character, world);
+  if (result) {
+    persistRender();
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+  }
 });

@@ -1,6 +1,7 @@
 import { ensureBlockOneData } from "./block1.js";
 import { getMapIslands } from "./map.js";
 import { cargoCapacity, raceTreatmentAtPort } from "./race_system.js";
+import { politicalTradeAdjustment, pickWeightedEnemy } from "./lore_engine.js";
 import { awardBerries } from "./gm_engine.js";
 import { assessPortTax, isPortBlockaded } from "./geopolitics.js";
 
@@ -23,11 +24,12 @@ export function marketPrices(character) {
   const day = Number(character.world?.day) || 0;
   const island = getMapIslands(character).find((entry) => entry.name === port);
   const { portPriceModifier } = raceTreatmentAtPort(character.race, island);
+  const political = politicalTradeAdjustment(character);
   return Object.fromEntries(Object.entries(GOODS).map(([id, good]) => {
     const change = (hash(`${port}:${day}:${id}`) % 41 - 20) / 100;
     const specialty = island?.specialty === id ? 0.75 : 1;
     const discrimination = portPriceModifier;
-    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty * discrimination)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty / discrimination * 0.6)) }];
+    return [id, { ...good, buy: Math.max(1, Math.round(good.price * (1 + change) * specialty * discrimination * political.buy)), sell: Math.max(1, Math.round(good.price * (1 + change) * specialty / discrimination * 0.6 * political.sell)) }];
   }));
 }
 export function trade(character, id, action, localWorld) {
@@ -79,7 +81,8 @@ export function trade(character, id, action, localWorld) {
 export function seaEncounter(character, random = Math.random) {
   ensureBlockOneData(character);
   if (character.status === "dead" || random() >= 0.18) return null;
-  const enemy = ENEMIES[Math.floor(random() * ENEMIES.length)];
+  // El patrón naval (eco político) inclina el mar hacia la Marina.
+  const enemy = pickWeightedEnemy(character, random) || ENEMIES[Math.floor(random() * ENEMIES.length)];
   const traits = [...(character.soulCard?.traits?.pros ?? []), ...(character.soulCard?.traits?.cons ?? [])].map((trait) => trait.toLocaleLowerCase("es"));
   const cautious = traits.some((trait) => ["prudente", "cauteloso", "astuto"].includes(trait));
   const bold = traits.some((trait) => ["impulsivo", "agresivo"].includes(trait));

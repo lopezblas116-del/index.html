@@ -3,6 +3,7 @@ import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { getMapIslands } from "./map.js";
 import { canReadAncient } from "./archaeology_system.js";
 import { hasNauticalCrew } from "./systems.js";
+import { recordStarterClueVisit } from "./narrative_engine.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 
 export const MOODS = Object.freeze(["Eufórico", "Cauteloso", "Ambicioso", "Melancólico", "Vengativo"]);
@@ -194,6 +195,7 @@ export function resolveLocalActivity(character, random = Math.random, { advanceN
     character.location.localVenue = { id: target.id, name: target.name, type: target.type };
     delete character.location.localTarget;
     delete character.localSuggestion;
+    recordStarterClueVisit(character, island, target);
     const experience = satisfyLocalNeed(character, target);
     const corrected = `[BITÁCORA · ${psyche.mood}] ${character.name} entra en ${target.name}: ${experience}.`;
     character.log.unshift({ time: new Date().toISOString(), message: corrected });

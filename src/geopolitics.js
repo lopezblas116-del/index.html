@@ -130,6 +130,31 @@ export function advanceLocalWorld(world, day, random = Math.random) {
         recordWorldEvent(world, { event_id: `blockade-lifted-${island.island_id}-${cycle}`, type: "blockade", text: `El bloqueo naval de ${island.name} ha terminado.`, location: island.name, created_at: new Date().toISOString() });
       }
     }
+    // La política tiene memoria: los impuestos altos enardecen el puerto y
+    // una tasación justa calma las aguas. Causa y efecto en ambos sentidos.
+    for (const island of world.islands_control || []) {
+      if (!island.owner_id) continue;
+      const rate = Number(island.tax_rate) || 0;
+      if (rate > 10) {
+        island.chaos = Math.min(100, (Number(island.chaos) || 0) + (rate - 10));
+        if (island.chaos >= 45 && (island.unrest_reported_day ?? -999) < cycle - 3) {
+          island.unrest_reported_day = cycle;
+          recordWorldEvent(world, { event_id: `unrest-${island.island_id}-${cycle}`, type: "unrest", text: `🔥 El puerto de ${island.name} hierve: el impuesto del ${rate}% de ${island.owner_name || "la flota"} agota al pueblo. Si nada cambia, habrá revuelta.`, location: island.name, created_at: new Date().toISOString() });
+        }
+        if (island.chaos >= 70) {
+          const formerOwner = island.owner_name || "la flota";
+          island.owner_id = null;
+          island.owner_name = null;
+          island.faction = "Tirano";
+          island.tax_rate = 0;
+          island.defense_level = 0;
+          island.chaos = 40;
+          recordWorldEvent(world, { event_id: `revolt-${island.island_id}-${cycle}`, type: "revolt", text: `⚔ REVUELTA en ${island.name}: el pueblo derrocó a ${formerOwner} por sus impuestos del ${rate}%; los explotadores locales tomaron el puerto.`, location: island.name, created_at: new Date().toISOString() });
+        }
+      } else if ((Number(island.chaos) || 0) > 0) {
+        island.chaos = Math.max(0, island.chaos - 2);
+      }
+    }
     for (const boss of world.bosses) {
       if (boss.status !== "imprisoned" || random() >= 0.05) continue;
       boss.status = "fugitive";

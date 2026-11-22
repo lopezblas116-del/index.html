@@ -1,6 +1,7 @@
 import catalogData from "./data/codex_data.json" with { type: "json" };
 import islandData from "./data/islands_data.json" with { type: "json" };
 import loreData from "./data/lore_data.json" with { type: "json" };
+import { renderCatalogo } from "./catalogo_engine.js";
 import { DEVIL_FRUITS } from "./devil_fruits.js";
 import { RACES } from "./races.js";
 
@@ -87,35 +88,62 @@ export function renderCodex(container, character) {
   bar.setAttribute("aria-label", `Progreso del códice: ${progress.percent}%`);
   summary.append(heading, count, bar);
 
-  const grid = document.createElement("div");
-  grid.className = "one-hud-codex-grid";
-  for (const [key, label] of categories) {
-    const section = document.createElement("section");
-    section.className = "one-hud-codex-category";
-    const title = document.createElement("h3");
-    title.textContent = label;
-    const list = document.createElement("div");
-    list.className = "one-hud-codex-items";
-    for (const entry of progress.entries.filter((item) => item.key === key)) {
-      const item = document.createElement("article");
-      item.className = `one-hud-codex-item ${entry.unlocked ? "discovered" : "locked"}`;
-      const silhouette = document.createElement("span");
-      silhouette.className = "one-hud-codex-silhouette";
-      silhouette.setAttribute("aria-hidden", "true");
-      silhouette.textContent = silhouettes[key];
-      const name = document.createElement("span");
-      name.textContent = entry.unlocked ? entry.name : "Sin descubrir";
-      if (!entry.unlocked) item.setAttribute("aria-label", `${label}: elemento aún no descubierto`);
-      else item.setAttribute("aria-label", `${label}: ${entry.name}, descubierto`);
-      const lock = document.createElement("span");
-      lock.className = "one-hud-codex-lock";
-      lock.setAttribute("aria-hidden", "true");
-      lock.textContent = entry.unlocked ? "✦" : "🔒";
-      item.append(silhouette, name, lock);
-      list.append(item);
+  const body = document.createElement("div");
+  const buildEnciclopedia = () => {
+    const grid = document.createElement("div");
+    grid.className = "one-hud-codex-grid";
+    for (const [key, label] of categories) {
+      const section = document.createElement("section");
+      section.className = "one-hud-codex-category";
+      const title = document.createElement("h3");
+      title.textContent = label;
+      const list = document.createElement("div");
+      list.className = "one-hud-codex-items";
+      for (const entry of progress.entries.filter((item) => item.key === key)) {
+        const item = document.createElement("article");
+        item.className = `one-hud-codex-item ${entry.unlocked ? "discovered" : "locked"}`;
+        const silhouette = document.createElement("span");
+        silhouette.className = "one-hud-codex-silhouette";
+        silhouette.setAttribute("aria-hidden", "true");
+        silhouette.textContent = silhouettes[key];
+        const name = document.createElement("span");
+        name.textContent = entry.unlocked ? entry.name : "Sin descubrir";
+        if (!entry.unlocked) item.setAttribute("aria-label", `${label}: elemento aún no descubierto`);
+        else item.setAttribute("aria-label", `${label}: ${entry.name}, descubierto`);
+        const lock = document.createElement("span");
+        lock.className = "one-hud-codex-lock";
+        lock.setAttribute("aria-hidden", "true");
+        lock.textContent = entry.unlocked ? "✦" : "🔒";
+        item.append(silhouette, name, lock);
+        list.append(item);
+      }
+      section.append(title, list);
+      grid.append(section);
     }
-    section.append(title, list);
-    grid.append(section);
-  }
-  container.replaceChildren(summary, grid);
+    body.replaceChildren(grid);
+  };
+  const buildCatalogo = () => {
+    body.replaceChildren();
+    renderCatalogo(body);
+  };
+  const tabs = document.createElement("div");
+  tabs.className = "one-hud-tabs";
+  tabs.setAttribute("role", "tablist");
+  [
+    ["Enciclopedia", buildEnciclopedia],
+    ["Catálogo del mundo", buildCatalogo]
+  ].forEach(([label, build], index) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.textContent = label;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-selected", String(index === 0));
+    tab.addEventListener("click", () => {
+      [...tabs.children].forEach((node, nodeIndex) => node.setAttribute("aria-selected", String(nodeIndex === index)));
+      build();
+    });
+    tabs.append(tab);
+  });
+  container.replaceChildren(summary, tabs, body);
+  buildEnciclopedia();
 }

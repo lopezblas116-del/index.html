@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { chooseAutonomousAction, ensurePsyche, evaluateWhisper, recordActionOutcome, resolveLocalActivity, resolvePortDilemma, writeDailyReflection } from "../src/ai_engine.js";
 import { createCharacter, sendWhisper } from "../src/game.js";
+import { getMapIslands } from "../src/map.js";
+import { beginStarterIslandAdventure } from "../src/narrative_engine.js";
 
 test("legacy avatars receive a bounded psyche and personality-weighted decisions", () => {
   const captain = createCharacter({ name: "Cartógrafa", alignment: "Justicia", traits: ["Prudente", "Leal"] });
@@ -59,4 +61,23 @@ test("urgent fatigue defers whispers and the avatar walks to its data-driven loc
   assert.equal(captain.location.localVenue.id, "makino-tavern");
   assert.equal(captain.location.scenePosition.x, 112);
   assert.ok(captain.psyche.diary[0].text.includes("Taberna de Makino"));
+});
+
+test("arriving at a starting-island point of interest unlocks the starter decision", () => {
+  const captain = createCharacter({ name: "Navegante", originSea: "East Blue", starterChallenge: true });
+  const island = getMapIslands(captain).find((entry) => entry.name === captain.location.island);
+  const poi = island.pois[0];
+  assert.equal(beginStarterIslandAdventure(captain, island), true);
+
+  captain.location.localTarget = {
+    ...poi,
+    position: { x: poi.x, y: poi.y },
+    from: captain.location.scenePosition,
+    progress: 1
+  };
+  const visit = resolveLocalActivity(captain, () => 0);
+
+  assert.equal(captain.location.localVenue.id, poi.id);
+  assert.equal(captain.world.story.starterAdventure.status, "decision-ready");
+  assert.match(visit.message, new RegExp(poi.name));
 });

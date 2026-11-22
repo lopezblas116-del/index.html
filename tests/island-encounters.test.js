@@ -20,13 +20,14 @@ test("political actions appear as contextual encounters at an arrived port", () 
 test("encounters stay hidden at sea, on a preview island, or after the tribute cycle closes", () => {
   assert.deepEqual(islandEncountersFor(island, captain({ location: { island: "Other", atSea: false } })), []);
   assert.deepEqual(islandEncountersFor(island, captain({ location: { island: island.name, atSea: true } })), []);
-  assert.deepEqual(islandEncountersFor(island, captain({ world: { day: 7, lastTributeDay: 1, nobleAlert: true } })), ["sabotage"].map((action) => ({
-    action,
-    title: "Contacto de la resistencia",
-    description: "Una célula local ofrece refugio y suministros si ayudas a desarticular el control tiránico.",
-    warning: "",
-    buttonLabel: "Ayudar a la resistencia"
-  })));
+  const sabotajes = islandEncountersFor(island, captain({ world: { day: 7, lastTributeDay: 1, nobleAlert: true } }));
+  assert.deepEqual(sabotajes.map(({ action }) => action), ["sabotage"]);
+  const sabotaje = sabotajes[0];
+  assert.equal(sabotaje.title, "Contacto de la resistencia");
+  assert.ok(sabotaje.description.startsWith("Una célula local ofrece refugio y suministros si ayudas a desarticular el control tiránico."), "descripción base intacta");
+  assert.match(sabotaje.description, /Según los registros del mundo:.*Ejército Revolucionario/, "con canon del Ejército Revolucionario");
+  assert.equal(sabotaje.warning, "");
+  assert.equal(sabotaje.buttonLabel, "Ayudar a la resistencia");
 });
 
 test("resistance encounters respect the captain's alignment and captivity state", () => {

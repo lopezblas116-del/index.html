@@ -1,6 +1,8 @@
 import { getMapIslands } from "./map.js";
 import { ensureAncientLanguage } from "./ancient_language.js";
 import { proceduralLore } from "./world_lore.js";
+import { raceTreatmentAtPort } from "./race_system.js";
+import { revolutionaryTrust } from "./lore_engine.js";
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const hash = (value) => [...String(value)].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
@@ -227,6 +229,8 @@ export function tavernAction(character, visitorId, action) {
   ensureAdvancedSystems(character);
   const visitor = getTavernCandidates(character).find((candidate) => candidate.id === visitorId);
   if (!visitor) return { ok: false, message: "Ese nakama ya no está disponible en este puerto." };
+  const island = getMapIslands(character).find((entry) => entry.name === character.location?.island);
+  const treatment = raceTreatmentAtPort(character.race, island);
   if (action === "round") {
     const cost = 25;
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para invitar una ronda.` };
@@ -237,6 +241,12 @@ export function tavernAction(character, visitorId, action) {
     return { ok: true, message: `${visitor.name} agradece la ronda. Lealtad: ${visitor.loyalty}%.` };
   }
   if (action === "recruit") {
+    // La segregación cierra la taberna para razas no humanas... salvo que la
+    // Revolución confíe en ti: sus redes reclutan sin mirar la sangre.
+    if (treatment.tavernPolicy === "denied" && revolutionaryTrust(character).discount >= 1) {
+      character.log.unshift({ time: new Date().toISOString(), message: `⛓️ La taberna de ${character.location?.island} rechaza tu raza. Quien rompe cadenas para la Revolución encuentra puertas abiertas.` });
+      return { ok: false, message: `La taberna de ${character.location?.island} no sirve a tu raza. Gana la confianza de la Revolución (sabotea puertos tiránicos) y sus redes te ayudarán a reclutar.` };
+    }
     const cost = 75;
     if (visitor.loyalty < 60) return { ok: false, message: `${visitor.name} necesita al menos 60% de lealtad antes de unirse.` };
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para formalizar el reclutamiento.` };
@@ -244,6 +254,9 @@ export function tavernAction(character, visitorId, action) {
     character.crew.push({ visitorId: visitor.id, name: visitor.name, role: visitor.role, trait: visitor.trait, loyalty: visitor.loyalty, attributes: visitor.attributes, port: character.tavern.port });
     character.avatarActivity = "tavern";
     character.log.unshift({ time: new Date().toISOString(), message: `⚓ ${visitor.name} se une a la tripulación como ${visitor.role}.` });
+    if (treatment.tavernPolicy === "watched") {
+      character.log.unshift({ time: new Date().toISOString(), message: `👁 El reclutamiento quedó registrado: la sangre perseguida atrae ojos del Gobierno en este puerto.` });
+    }
     return { ok: true, message: `¡${visitor.name} se unió a la tripulación!` };
   }
   return { ok: false, message: "Acción de taberna desconocida." };
