@@ -1,0 +1,8 @@
+{
+  "key": "grand-line",
+  "title": "La Grand Line",
+  "description": "El mar donde los sueños se hacen leyendas o tumbas: climas que cambian entre una isla y la siguiente, corrientes que desafían las cartas y recompensas que suben con cada hazaña. Aquí la Marina deja de patrullar y empieza a cazar.",
+  "climate": "grand-line",
+  "hazards": ["tormentas repentinas", "corrientes magnéticas que engañan al Log Pose", "rutas impredecibles", "capitanes con recompensas de siete cifras", "climas imposibles entre islas vecinas"],
+  "newsSeeds": ["el Log Pose tiembla antes de cada isla", "una tormenta corta el horizonte en segundos", "la corriente cambia de rumbo sin aviso", "un cartel de SE BUSCA con recompensa imposible", "un Almirante fue visto en aguas cercanas", "tripulaciones enteras desaparecen sin dejar bitácora"]
+}

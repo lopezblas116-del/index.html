@@ -1,0 +1,485 @@
+{
+  "routes": {
+    "East Blue": [
+      "Isla Dawn",
+      "Orange Town",
+      "Villa Syrup",
+      "Baratie",
+      "Arlong Park",
+      "Loguetown",
+      "Reverse Mountain",
+      "Paraíso",
+      "Nuevo Mundo"
+    ],
+    "West Blue": [
+      "Isla Ohara",
+      "Isla Kano",
+      "Water 7",
+      "Loguetown",
+      "Reverse Mountain",
+      "Paraíso",
+      "Nuevo Mundo"
+    ],
+    "North Blue": [
+      "Isla Flevance",
+      "Isla Minion",
+      "Isla Swallow",
+      "Loguetown",
+      "Reverse Mountain",
+      "Paraíso",
+      "Nuevo Mundo"
+    ],
+    "South Blue": [
+      "Isla Torino",
+      "Baterilla",
+      "Isla Karate",
+      "Loguetown",
+      "Reverse Mountain",
+      "Paraíso",
+      "Nuevo Mundo"
+    ]
+  },
+  "missionNames": [
+    "Proteger la aldea",
+    "Recuperar el mapa de navegación",
+    "Defender el astillero",
+    "Escoltar el barco restaurante",
+    "Liberar la isla",
+    "El asalto de Loguetown",
+    "Cruzar la Reverse Mountain",
+    "Entrar al Paraíso",
+    "Conquistar el Nuevo Mundo"
+  ],
+  "enemies": [
+    "piratas rivales",
+    "Marines",
+    "Cazarrecompensas",
+    "agentes del Gobierno",
+    "una banda local"
+  ],
+  "defaultDistricts": [
+    "Barrio del puerto",
+    "Plaza central",
+    "Distrito comercial"
+  ],
+  "defaultPois": [
+    {
+      "id": "inn",
+      "name": "Posada del puerto",
+      "type": "tavern",
+      "x": 112,
+      "y": 129
+    },
+    {
+      "id": "market",
+      "name": "Mercado local",
+      "type": "market",
+      "x": 515,
+      "y": 129
+    },
+    {
+      "id": "plaza",
+      "name": "Plaza del puerto",
+      "type": "plaza",
+      "x": 320,
+      "y": 205
+    },
+    {
+      "id": "armory",
+      "name": "Armería",
+      "type": "weapon_shop",
+      "x": 525,
+      "y": 210
+    }
+  ],
+  "worldNews": [
+    "la Marina interceptó una ruta pirata cerca de Loguetown.",
+    "un Cazarrecompensas entregó a un capitán buscado.",
+    "un avistamiento de Akuma no Mi agitó los mercados del East Blue.",
+    "una flota revolucionaria fue vista cerca de la Red Line.",
+    "un Rey del Mar obligó a desviar varias rutas.",
+    "un nuevo capitán reunió una tripulación y puso rumbo al Paraíso.",
+    "la Marina anunció ascensos tras una captura de alto perfil.",
+    "los Dragones Celestiales subieron el tributo este año; tres puertos amanecieron en huelga y la Marina respondió cerrando los muelles.",
+    "un Almirante recaló en Marineford: los carteles de la zona suben de precio y los muelles revisan cada casco.",
+    "la Revolución repartió panfletos en tres puertos segregados: «quien rompe cadenas encuentra puertas abiertas».",
+    "una subasta clandestina fue desmantelada; dos Gyojin recuperaron su libertad y juraron lealtad a quien los liberó.",
+    "un Buster Call de maniobras sacudió la Franja de Calma: ni los reyes del mar se atrevieron a acercarse.",
+    "los mercaderes se quejan de que el hampa paga mejor por mercancía robada que el mercado por la honesta.",
+    "un Yonko reclamó un mar entero como territorio y la Marina retiró sus patrullas de la zona sin rechistar.",
+    "se rumorea que una Akuma no Mi reapareció en un naufragio del Grand Line; tres tripulaciones zarparon tras la pista.",
+    "el Gobierno Mundial reclutó cazadores para la caza de sangre perseguida: los Lunarianes y Bucaneros viven con el nombre escrito en un cartel.",
+    "una comitiva noble cruzó la Red Line y los puertos del paso pagaron el tributo por adelantado para no ver la bandera roja.",
+    "un navegante veterano juró que su Log Pose marcó una isla que no aparece en ninguna carta; nadie ha vuelto a leer esa aguja.",
+    "los astilleros encarecen los cascos reforzados: la madera de calidad escasea y las máquinas de Germa no venden a buscados.",
+    "una tripulación entera desertó de la Marina con su barco; hay recompensa por sus cabezas y vergüenza en el cuartel.",
+    "los Mink cerraron su bosque a los forasteros tras la última luna llena; los mercaderes buscan rutas alternativas.",
+    "un arqueólogo vendió un calco de Poneglyph por una fortuna; ahora el Gobierno y tres Yonko persiguen su sombra.",
+    "un tirano local subió los impuestos al límite: el puerto hierve y se escucha susurrar el nombre de la Revolución.",
+    "cazarrecompensas emboscan en los muelles vigilados; la prudencia vuelve a estar de moda entre los buscados.",
+    "un barco fantasma llegó a la deriva sin tripulación; su bitácora menciona fechas del Siglo Vacío que nadie debería conocer.",
+    "los mercados se encienden: se rumorea que un Yonko declaró la guerra a un reino afiliado y las rutas ya se encarecen.",
+    "una logia naval publicó rutas seguras para cruzar la Franja de Calma; la Marina retira el panfleto a mano.",
+    "un Tontatta vendió mapas del subsuelo que nadie sabía que existían; las cofradías de arqueólogos están en efervescencia.",
+    "los reyes del mar hundieron dos buques mercantes; la ruta norte queda marcada como peligrosa en todas las cartas.",
+    "la Marina retiene el sueldo a quien no capture buscados este mes: los reclutas presionan hasta en los puertos más tranquilos.",
+    "la Gaceta anuncia que la era avanza: banderas viejas caen y los puertos cambian de dueño sin disparar un cañón.",
+    "se vio al Barco de Shanks cruzar el Reverse Mountain a una velocidad imposible.",
+    "los archivos secretos de la Marina mencionan un poneglyph de Road perdido en el Grand Line.",
+    "una organización misteriosa firmó sus actos con las siglas BW y nadie sabe quién está detrás.",
+    "el psíquico de la tripulación del adivino Hawk-Eyes predijo una era de sueños sin fin.",
+    "tres reyes del bajo mundo reunieron berries para comprar una Fruta del Diablo legendaria.",
+    "una ballena gigante llora frente a un faro de Double Cape desde hace décadas; los viejos dicen que espera a una tripulación.",
+    "el hijo de un pirata legendario fue visto por primera vez en años: la Marine moviliza flotas.",
+    "en un laboratorio militar alguien susurró la palabra Vegapunk y cortaron la comunicación.",
+    "un cocinero con sueños de All Blue peló patatas a 100 aspirantes y los aceptó a todos.",
+    "una espada negra dejó de venderse en los mercados: dicen que un espadachín compró la última.",
+    "el pajar de la información en Wano mantiene en secreto el contenido del último periódico de Morgans.",
+    "los esclavos de un reino olvidado despertaron con la marca del Sol de sus antepasados."
+  ],
+  "portDilemmas": [
+    {
+      "id": "tavern-dispute",
+      "title": "Una disputa en la taberna",
+      "text": "Dos marineros discuten por el pago de una tripulación desaparecida; la taberna espera que alguien intervenga.",
+      "choices": [
+        {
+          "id": "mediate",
+          "text": "Mediar y repartir el pago",
+          "honor": 8,
+          "greed": -2,
+          "liberty": 2,
+          "mood": "Cauteloso",
+          "berries": 20
+        },
+        {
+          "id": "take-cut",
+          "text": "Exigir una parte por resolverlo",
+          "honor": -3,
+          "greed": 8,
+          "liberty": 1,
+          "mood": "Ambicioso",
+          "berries": 70
+        },
+        {
+          "id": "leave",
+          "text": "Dejar que la tripulación lo resuelva",
+          "honor": 0,
+          "greed": 0,
+          "liberty": 4,
+          "mood": "Cauteloso",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "castaway-map",
+      "title": "Náufragos con un mapa roto",
+      "text": "Una familia náufraga ofrece un fragmento de mapa a cambio de agua y un lugar seguro en el próximo barco.",
+      "choices": [
+        {
+          "id": "rescue",
+          "text": "Compartir agua y llevarlos a puerto",
+          "honor": 9,
+          "greed": -3,
+          "liberty": 4,
+          "mood": "Eufórico",
+          "water": -1
+        },
+        {
+          "id": "trade",
+          "text": "Intercambiar provisiones por el fragmento",
+          "honor": 1,
+          "greed": 5,
+          "liberty": 1,
+          "mood": "Ambicioso",
+          "berries": 35
+        },
+        {
+          "id": "decline",
+          "text": "Seguir la ruta y guardar provisiones",
+          "honor": -2,
+          "greed": 2,
+          "liberty": 2,
+          "mood": "Cauteloso",
+          "berries": 10
+        }
+      ]
+    },
+    {
+      "id": "black-market-auction",
+      "title": "Subasta del mercado negro",
+      "text": "Un corredor ofrece una brújula robada a una familia del puerto; nadie más parece dispuesto a reclamarla.",
+      "locations": [
+        "Archipiélago Sabaody"
+      ],
+      "choices": [
+        {
+          "id": "return",
+          "text": "Devolver la brújula a sus dueños",
+          "honor": 8,
+          "greed": -2,
+          "liberty": 3,
+          "mood": "Eufórico",
+          "berries": -25
+        },
+        {
+          "id": "buy",
+          "text": "Comprar la brújula para la tripulación",
+          "honor": 0,
+          "greed": 2,
+          "liberty": 1,
+          "mood": "Ambicioso",
+          "berries": -40
+        },
+        {
+          "id": "expose",
+          "text": "Denunciar al corredor y abrir la subasta",
+          "honor": 3,
+          "greed": -1,
+          "liberty": 7,
+          "mood": "Vengativo",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "tribute-snitch",
+      "title": "El tributo que la Marina dejó sin custodia",
+      "text": "Un funcionario borracho presume que el tributo celestial de este puerto viaja sin escolta esta semana. La taberna espera tu palabra.",
+      "choices": [
+        {
+          "id": "spread",
+          "text": "Correr la voz entre la resistencia",
+          "honor": 4,
+          "greed": 0,
+          "liberty": 8,
+          "mood": "Rebelde",
+          "berries": 0
+        },
+        {
+          "id": "report",
+          "text": "Avisar a la Marina por la recompensa",
+          "honor": 6,
+          "greed": 6,
+          "liberty": -6,
+          "mood": "Ambicioso",
+          "berries": 120
+        },
+        {
+          "id": "forget",
+          "text": "Beberte el ron y olvidar el asunto",
+          "honor": 0,
+          "greed": 0,
+          "liberty": 2,
+          "mood": "Cauteloso",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "segregated-sailor",
+      "title": "Un Gyojin al que no dejan embarcar",
+      "text": "Un navegante Gyojin experto queda varado: ningún capitán de este puerto segregado lo embarca por su raza.",
+      "choices": [
+        {
+          "id": "hire",
+          "text": "Embarcarlo en tu tripulación sin mirar la sangre",
+          "honor": 10,
+          "greed": 0,
+          "liberty": 6,
+          "mood": "Honrado",
+          "berries": 0
+        },
+        {
+          "id": "press",
+          "text": "Presionar al gremio para que lo contraten otro",
+          "honor": 5,
+          "greed": 0,
+          "liberty": 4,
+          "mood": "Honrado",
+          "berries": 30
+        },
+        {
+          "id": "pass",
+          "text": "Seguir tu rumbo; no es tu batalla",
+          "honor": -4,
+          "greed": 0,
+          "liberty": 2,
+          "mood": "Cauteloso",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "noble-entourage",
+      "title": "La comitiva que exige pasar primero",
+      "text": "La comitiva de un noble mundial corta el muelle y expulsa a los mercaderes comunes. Nadie se atreve a decir nada.",
+      "choices": [
+        {
+          "id": "bow",
+          "text": "Reverencia y espera; el poder manda hoy",
+          "honor": 2,
+          "greed": 0,
+          "liberty": -5,
+          "mood": "Cauteloso",
+          "berries": 10
+        },
+        {
+          "id": "shelter",
+          "text": "Esconder a los mercaderes en tu bodega",
+          "honor": 8,
+          "greed": 0,
+          "liberty": 5,
+          "mood": "Honrado",
+          "berries": -20
+        },
+        {
+          "id": "mock",
+          "text": "Ricarles desde lo lejos y contar la historia en la taberna",
+          "honor": 1,
+          "greed": 0,
+          "liberty": 6,
+          "mood": "Rebelde",
+          "berries": 15
+        }
+      ]
+    },
+    {
+      "id": "rival-crew-wreck",
+      "title": "Tripulación rival a la deriva",
+      "text": "El barco que intentó asaltarte la semana pasada flota roto a la vista del puerto. Su capitán pide agua a gritos.",
+      "choices": [
+        {
+          "id": "share",
+          "text": "Compartir agua y remolque: el mar ya los castigó",
+          "honor": 9,
+          "greed": 0,
+          "liberty": 3,
+          "mood": "Honrado",
+          "berries": -25
+        },
+        {
+          "id": "salvage",
+          "text": "Saquear el pecio y dejarlos a su suerte",
+          "honor": -8,
+          "greed": 10,
+          "liberty": 4,
+          "mood": "Ambicioso",
+          "berries": 150
+        },
+        {
+          "id": "warn",
+          "text": "Avisar al puerto; que la ley decida",
+          "honor": 5,
+          "greed": 0,
+          "liberty": -2,
+          "mood": "Cauteloso",
+          "berries": 40
+        }
+      ]
+    },
+    {
+      "id": "fruit-smuggler",
+      "title": "El cofre que respira",
+      "text": "Un contrabandista ofrece barato un cofre sellado que respira: jura que dentro hay una Akuma no Mi sin dueño. Nadie garantiza nada.",
+      "choices": [
+        {
+          "id": "buy",
+          "text": "Comprar el cofre y asumir el riesgo",
+          "honor": 0,
+          "greed": 8,
+          "liberty": 5,
+          "mood": "Ambicioso",
+          "berries": -100
+        },
+        {
+          "id": "report",
+          "text": "Entregar el cofre a la Marina",
+          "honor": 6,
+          "greed": 0,
+          "liberty": -5,
+          "mood": "Cauteloso",
+          "berries": 90
+        },
+        {
+          "id": "walk",
+          "text": "Rechazar el negocio; los cofres que respiran muerden",
+          "honor": 2,
+          "greed": -2,
+          "liberty": 2,
+          "mood": "Prudente",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "tax-rioter",
+      "title": "El mozo que quiere quemar la aduana",
+      "text": "Un mozo de muelle, agotado por los impuestos del puerto, pide apoyo para incendiar la aduana esta noche.",
+      "choices": [
+        {
+          "id": "join",
+          "text": "Ayudar: el fuego también es un lenguaje",
+          "honor": -5,
+          "greed": 0,
+          "liberty": 10,
+          "mood": "Rebelde",
+          "berries": 0
+        },
+        {
+          "id": "organize",
+          "text": "Organizar huelga en vez de fuego",
+          "honor": 7,
+          "greed": 0,
+          "liberty": 7,
+          "mood": "Honrado",
+          "berries": -15
+        },
+        {
+          "id": "deter",
+          "text": "Disuadirlo: la represalia cae sobre todos",
+          "honor": 4,
+          "greed": 0,
+          "liberty": -2,
+          "mood": "Prudente",
+          "berries": 0
+        }
+      ]
+    },
+    {
+      "id": "old-captain-map",
+      "title": "El capitán viejo y su última ruta",
+      "text": "Un capitán jubilado ofrece su Log Pose de la vieja era a cambio de una historia contada de verdad; no acepta Berries.",
+      "choices": [
+        {
+          "id": "story",
+          "text": "Contarle tu historia de corazón y heredar la aguja",
+          "honor": 6,
+          "greed": 0,
+          "liberty": 4,
+          "mood": "Eufórico",
+          "berries": 0
+        },
+        {
+          "id": "buyout",
+          "text": "Ofrecer Berries hasta que ceda",
+          "honor": -3,
+          "greed": 6,
+          "liberty": 0,
+          "mood": "Ambicioso",
+          "berries": -80
+        },
+        {
+          "id": "skip",
+          "text": "Seguir a tu propio rumbo; tu aguja se hará con el tiempo",
+          "honor": 1,
+          "greed": 0,
+          "liberty": 5,
+          "mood": "Cauteloso",
+          "berries": 0
+        }
+      ]
+    }
+  ]
+}

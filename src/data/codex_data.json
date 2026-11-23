@@ -1,0 +1,15 @@
+{
+  "fruits": [
+    { "id": "bara-bara", "name": "Bara Bara no Mi" },
+    { "id": "mera-mera", "name": "Mera Mera no Mi" },
+    { "id": "tori-tori-phoenix", "name": "Tori Tori no Mi · Fénix" },
+    { "id": "hito-hito-daibutsu", "name": "Hito Hito no Mi · Daibutsu" },
+    { "id": "noro-noro", "name": "Noro Noro no Mi" },
+    { "id": "suna-suna", "name": "Suna Suna no Mi" }
+  ],
+  "ships": [
+    { "id": "caravel", "name": "Carabela" },
+    { "id": "marine-frigate", "name": "Fragata de la Marina" },
+    { "id": "new-world-ship", "name": "Navío del Nuevo Mundo" }
+  ]
+}

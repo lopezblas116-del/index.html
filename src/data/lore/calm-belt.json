@@ -1,0 +1,8 @@
+{
+  "key": "calm-belt",
+  "title": "Calm Belt",
+  "description": "Una franja sin viento que rodea todos los mares: los veleros quedan clavados y solo los motores, los remos o los reyes del mar deciden quién pasa. La Marina levantó aquí sus fortalezas porque nadie entra ni sale sin permiso.",
+  "climate": "calm-belt",
+  "hazards": ["ausencia total de viento", "deriva lenta bajo el sol", "reyes del mar al acecho", "fortalezas navales a la vista", "provisiones que se agotan a la deriva"],
+  "newsSeeds": ["velas inmóviles durante días", "sombras enormes bajo la quilla", "un silencio que inquieta a la tripulación", "un patrón naval exige papeles imposibles", "provisiones contadas al gramo", "una fortaleza de la Marina en el horizonte"]
+}

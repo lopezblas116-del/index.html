@@ -1,0 +1,8 @@
+{
+  "key": "red-line",
+  "title": "La Red Line",
+  "description": "Un continente-muro que da la vuelta al planeta y divide los mares: cruzarlo exige Reverse Mountain, el túnel del Holy Land o el permiso de los Dragones Celestiales que viven sobre él. Mary Geoise, capital del Gobierno Mundial, corona su cima; debajo, los puertos pagan el tributo que la sostiene.",
+  "climate": "variable",
+  "hazards": ["acantilados que no perdonan", "corrientes de paso estrechísimo", "vigilancia naval permanente", "comitivas de nobles con derecho de paso", "tributo celestial que financia la vigilancia"],
+  "newsSeeds": ["paso bloqueado por orden del Gobierno Mundial", "vigías en el horizonte anuncian patrullas", "corrientes contra la costa rompen cascos", "una comitiva de Dragones Celestiales exige tributo", "el nivel del tributo subió otra vez este año"]
+}
