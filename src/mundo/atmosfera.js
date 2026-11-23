@@ -356,9 +356,16 @@
     mini.id = 'mil-minimapa';
     mini.width = MINI_W * MINI_ESC; mini.height = MINI_H * MINI_ESC;
     mini.setAttribute('aria-label', 'Minimapa del mundo: haz clic para volar a ese punto');
-    mini.title = 'El mundo entero · clic para volar allí';
+    mini.title = 'Minimapa del MUNDO ENTERO · islas, tormentas y tu posición — clic para volar a ese punto';
+    // rótulo permanente: el cuadrado se explica solo (nadie adivina qué es)
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'mil-minimapa-etiqueta';
+    etiqueta.textContent = 'MUNDO';
+    etiqueta.style.cssText = 'position:absolute;left:14px;bottom:16px;z-index:7;pointer-events:none;font:800 8px/1 system-ui,sans-serif;letter-spacing:.22em;color:rgba(244,193,26,.85);text-shadow:0 1px 3px rgba(0,0,0,.8);';
+    cvDe().parentElement.appendChild(etiqueta);
+    mini._etiqueta = etiqueta;
     mini.style.cssText = 'position:absolute;left:12px;bottom:12px;width:' + MINI_W + 'px;height:' + MINI_H +
-      'px;z-index:6;border-radius:10px;cursor:pointer;transition:opacity .4s ease;box-shadow:0 10px 26px rgba(0,0,0,0.45);';
+      'px;z-index:6;border-radius:10px;cursor:pointer;transition:opacity .4s ease;box-shadow:0 10px 26px rgba(0,0,0,0.45);border:1px solid rgba(244,193,26,0.45);';
     mini.addEventListener('click', (e) => {
       const MAPA = G.MAPA, D = G.D;
       const r = mini.getBoundingClientRect();
@@ -372,6 +379,8 @@
 
   function pintaMini(sim, t, cam, D) {
     if (!miniCtx) return;
+    if (mini) mini.style.opacity = cam.z > 2.6 ? '0.25' : '1'; // de cerca, el minimapa se aparta
+    if (mini && mini._etiqueta) mini._etiqueta.style.opacity = cam.z > 2.6 ? '0' : '1';
     const mctx = miniCtx;
     mctx.setTransform(MINI_ESC, 0, 0, MINI_ESC, 0, 0);
     mctx.clearRect(0, 0, MINI_W, MINI_H);

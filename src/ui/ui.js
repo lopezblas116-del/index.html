@@ -571,6 +571,224 @@ let wizardInitialized = false;
 let selectedTraits = [];
 let currentStep = 0;
 let previewFrame = 0;
+// la bandera: ¿ya la tocó el jugador? (mientras no, se borda sola con lo elegido)
+let banderaTocada = false;
+// gancho interno: configureWizardLayout lo llena para que updateTraitButtons
+// pueda rebordar el emblema cuando la constelación cambia
+let rebordarBandera = null;
+let pintaBandera = null; // configurado por configureWizardLayout: repinta los lienzos de bandera
+
+// ── LA BANDERA DEL ALMA: el momento firma de la creación ──
+// Cuatro capas de decisión (campo, patrón, emblema, firma) + nombre de tripulación.
+// El diseño se guarda como datos compactos y la MISMA función lo pinta a cualquier
+// escala: lienzo del wizard, chip del capitán, tarjeta del alma y escena de izada.
+const BANDERA_CAMPOS = [
+  ["negro", "Negro jolly", "#181820"], ["rojo", "Rojo tormenta", "#a12f2a"],
+  ["azul", "Azul marino", "#1d3a6e"], ["verde", "Verde esmeralda", "#1e5e42"],
+  ["morado", "Morado profundo", "#4a2a6e"], ["oro", "Oro viejo", "#a97b1e"],
+  ["gris", "Gris tormenta", "#3d4451"], ["blanco", "Blanco hueso", "#e8e2d2"]
+];
+const BANDERA_PATRONES = [
+  ["liso", "Liso"], ["franja-h", "Franjas horizontales"], ["franja-v", "Franjas verticales"],
+  ["cruz", "Cruz completa"], ["rombos", "Rombos"], ["media-luna", "Media luna"], ["rayo", "Rayo central"]
+];
+const BANDERA_EMBLEMAS = [
+  ["calavera", "Calavera clásica"], ["paja", "Calavera de paja"], ["cicatriz", "Calavera con cicatriz"],
+  ["ancla", "Ancla"], ["espadas", "Espadas cruzadas"], ["estrella", "Estrella del norte"],
+  ["ala", "Ala de dragón"], ["mano", "Mano alzada"], ["guitarra", "Guitarra"],
+  ["boticario", "Cruz de boticario"], ["luna", "Luna y estrella"]
+];
+const BANDERA_FIRMAS = [
+  ["oro", "Oro", "#f4b41a"], ["rojo", "Rojo", "#d64541"], ["celeste", "Celeste", "#5fd0e8"],
+  ["blanco", "Blanco", "#f2f0e6"], ["negro", "Negro", "#111118"], ["verde", "Verde", "#67c98a"],
+  ["rosa", "Rosa", "#e08fb8"], ["violeta", "Violeta", "#9b7ce0"], ["cobre", "Cobre", "#c97a3d"], ["turquesa", "Turquesa", "#3fa896"]
+];
+const BANDERA_TRIPULACIONES = [
+  "Los Piratas del Alba", "La Bandada del Sur", "Los Corsarios de Sal", "La Niebla Errante",
+  "Los Hijos del Muelle", "La Marea Roja", "Los del Norte Lejano", "La Compañía del Coco",
+  "Los Vientos Libres", "La Flota del Amanecer"
+];
+// emblema que pide cada constelación: la bandera se borda con lo ya elegido
+const BANDERA_POR_CONSTELACION = {
+  "Corazón de Tormenta": "rayo", "Ojo del Huracán": "estrella", "Zorro del Archipiélago": "luna",
+  "Chispa y Navaja": "espadas", "Cartógrafo de Sombras": "estrella", "Lanza Justa": "espadas",
+  "Bandido de Sal": "calavera", "Juramento de Sal": "ancla", "Escudo del Puerto": "ancla",
+  "Farol del Linaje": "estrella", "Ojo del Siglo Perdido": "boticario", "Brisa Exploradora": "estrella",
+  "Calma del Faro": "estrella", "Vela Paciente": "ancla", "Colmillo del Wano": "espadas",
+  "Torbellino Rojo": "espadas", "Espada de la Compañía": "espadas", "Marea Contemplativa": "luna",
+  "Colmillo Sin Amo": "calavera", "Moneda del Puerto": "ancla"
+};
+const BANDERA_POR_FACCION = { Pirata: "calavera", Marine: "ancla", Revolucionario: "ala", Aventurero: "estrella", Autonomo: "estrella" };
+
+function disenoBanderaDe(form) {
+  const get = (name, fallback) => form.elements.namedItem(name)?.value || fallback;
+  return {
+    campo: get("flagCampo", "negro"), patron: get("flagPatron", "liso"),
+    emblema: get("flagEmblema", "calavera"), acentoA: get("flagAcentoA", "oro"),
+    acentoB: get("flagAcentoB", "rojo"), tripulacion: get("flagTripulacion", "")
+  };
+}
+function colorBandera(tabla, clave, fallback = "#181820") {
+  return tabla.find(([id]) => id === clave)?.[2] || fallback;
+}
+// El renderizador único de la bandera: tela, patrón, emblema y firma.
+// `t` anima la onda; el mismo dibujo sirve a 420px o a 30px de chip.
+export function drawFlag(ctx, diseno, w, h, t = 0) {
+  const campo = colorBandera(BANDERA_CAMPOS, diseno.campo);
+  const firmaA = colorBandera(BANDERA_FIRMAS, diseno.acentoA, "#f4b41a");
+  const firmaB = colorBandera(BANDERA_FIRMAS, diseno.acentoB, "#d64541");
+  const oscuro = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) * 0.55 | 0},${((n >> 8) & 255) * 0.55 | 0},${(n & 255) * 0.55 | 0})`;
+  };
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = campo;
+  ctx.fillRect(0, 0, w, h);
+  // patrón de fondo
+  ctx.fillStyle = oscuro(campo);
+  const osc = oscuro(campo);
+  if (diseno.patron === "franja-h") {
+    const franjas = 3, alto = h / (franjas * 2);
+    for (let i = 0; i < franjas; i++) ctx.fillRect(0, (i * 2 + 1) * alto, w, alto);
+  } else if (diseno.patron === "franja-v") {
+    const franjas = 3, ancho = w / (franjas * 2);
+    for (let i = 0; i < franjas; i++) ctx.fillRect((i * 2 + 1) * ancho, 0, ancho, h);
+  } else if (diseno.patron === "cruz") {
+    const grosor = h * 0.16;
+    ctx.fillRect(0, h / 2 - grosor / 2, w, grosor);
+    ctx.fillRect(w * 0.36, 0, grosor, h);
+  } else if (diseno.patron === "rombos") {
+    const paso = h / 4;
+    for (let fila = 0; fila < 4; fila++) for (let col = 0; col < Math.ceil(w / paso); col++) {
+      const cx = col * paso + (fila % 2 ? paso / 2 : 0), cy = fila * paso + paso / 2, r = paso * 0.18;
+      ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath(); ctx.fill();
+    }
+  } else if (diseno.patron === "media-luna") {
+    ctx.beginPath(); ctx.arc(w * 0.5, h * 0.52, h * 0.42, Math.PI * 0.15, Math.PI * 0.95); ctx.lineWidth = Math.max(2, h * 0.1); ctx.strokeStyle = osc; ctx.stroke();
+  } else if (diseno.patron === "rayo") {
+    ctx.beginPath();
+    ctx.moveTo(w * 0.52, h * 0.1); ctx.lineTo(w * 0.36, h * 0.55); ctx.lineTo(w * 0.5, h * 0.55);
+    ctx.lineTo(w * 0.44, h * 0.92); ctx.lineTo(w * 0.62, h * 0.42); ctx.lineTo(w * 0.49, h * 0.42);
+    ctx.closePath(); ctx.fill();
+  }
+  // emblema central
+  ctx.fillStyle = firmaA;
+  ctx.strokeStyle = firmaA;
+  const cx = w / 2, cy = h / 2, s = h * 0.26;
+  const calavera = (radio, conPaja, cicatriz) => {
+    ctx.beginPath(); ctx.arc(cx, cy - radio * 0.25, radio, 0, 7); ctx.fill();
+    ctx.fillRect(cx - radio * 0.62, cy + radio * 0.32, radio * 1.24, radio * 0.52);
+    // ojos y nariz en el color del campo para que se lean
+    ctx.save(); ctx.fillStyle = campo;
+    ctx.beginPath(); ctx.arc(cx - radio * 0.42, cy - radio * 0.32, radio * 0.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + radio * 0.42, cy - radio * 0.32, radio * 0.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy - radio * 0.02); ctx.lineTo(cx - radio * 0.14, cy + radio * 0.26); ctx.lineTo(cx + radio * 0.14, cy + radio * 0.26); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    if (conPaja) {
+      ctx.save(); ctx.fillStyle = firmaB;
+      ctx.beginPath(); ctx.ellipse(cx, cy - radio * 1.05, radio * 1.3, radio * 0.42, 0, Math.PI, 0); ctx.fill();
+      ctx.fillRect(cx - radio * 1.3, cy - radio * 1.12, radio * 2.6, radio * 0.14);
+      ctx.restore();
+    }
+    if (cicatriz) {
+      ctx.save(); ctx.strokeStyle = firmaB; ctx.lineWidth = Math.max(1.5, radio * 0.16);
+      ctx.beginPath(); ctx.moveTo(cx - radio * 0.95, cy - radio * 0.9); ctx.lineTo(cx - radio * 0.5, cy + radio * 0.3); ctx.stroke();
+      ctx.restore();
+    }
+  };
+  switch (diseno.emblema) {
+    case "paja": calavera(s, true, false); break;
+    case "cicatriz": calavera(s, false, true); break;
+    case "ancla": {
+      ctx.lineWidth = Math.max(2, s * 0.16); ctx.beginPath();
+      ctx.moveTo(cx, cy - s); ctx.lineTo(cx, cy + s * 0.7);
+      ctx.moveTo(cx - s * 0.55, cy - s * 0.35); ctx.lineTo(cx + s * 0.55, cy - s * 0.35);
+      ctx.moveTo(cx - s * 0.75, cy + s * 0.25); ctx.quadraticCurveTo(cx, cy + s * 1.15, cx + s * 0.75, cy + s * 0.25);
+      ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy - s * 1.05, s * 0.18, 0, 7); ctx.fill();
+      break;
+    }
+    case "espadas": {
+      ctx.lineWidth = Math.max(2, s * 0.16);
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dir * s, cy - s);
+        ctx.lineTo(cx - dir * s * 0.8, cy + s * 0.85);
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - dir * s * 0.95, cy + s * 0.55); ctx.lineTo(cx - dir * s * 0.65, cy + s * 0.95); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.35, s * 0.14, 0, 7); ctx.fill();
+      break;
+    }
+    case "estrella": {
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + i * (Math.PI * 4 / 5);
+        const px = cx + Math.cos(a) * s, py = cy + Math.sin(a) * s;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "ala": {
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 1.1, cy + s * 0.6);
+      ctx.quadraticCurveTo(cx - s * 0.4, cy - s * 1.1, cx + s * 0.9, cy - s * 0.75);
+      ctx.quadraticCurveTo(cx + s * 0.2, cy - s * 0.3, cx + s * 0.35, cy + s * 0.6);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "mano": {
+      ctx.lineWidth = Math.max(2, s * 0.22);
+      ctx.beginPath(); ctx.moveTo(cx, cy + s * 0.9); ctx.lineTo(cx, cy - s * 0.15); ctx.stroke();
+      for (const dx of [-0.5, -0.17, 0.17, 0.5]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * s * 0.5, cy - s * 0.15);
+        ctx.lineTo(cx + dx * s * 0.72, cy - s * (dx === 0.17 ? 1.05 : 0.7));
+        ctx.stroke();
+      }
+      break;
+    }
+    case "guitarra": {
+      ctx.beginPath(); ctx.ellipse(cx, cy + s * 0.45, s * 0.42, s * 0.5, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, cy - s * 0.25, s * 0.26, s * 0.3, 0, 0, 7); ctx.fill();
+      ctx.save(); ctx.fillStyle = campo; ctx.beginPath(); ctx.arc(cx, cy + s * 0.45, s * 0.14, 0, 7); ctx.fill(); ctx.restore();
+      ctx.fillRect(cx - s * 0.06, cy - s * 1.05, s * 0.12, s * 0.85);
+      break;
+    }
+    case "boticario": {
+      const g = s * 0.62;
+      ctx.fillRect(cx - g / 6, cy - g, g / 3, g * 2);
+      ctx.fillRect(cx - g, cy - g / 6, g * 2, g / 3);
+      break;
+    }
+    case "luna": {
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.8, Math.PI * 0.28, Math.PI * 1.72); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.85, cy - s * 0.55, s * 0.16, 0, 7); ctx.fill();
+      break;
+    }
+    default: calavera(s, false, false);
+  }
+  // firma: ribete inferior con los dos acentos de la ropa
+  ctx.fillStyle = firmaB;
+  ctx.fillRect(0, h - Math.max(2, h * 0.07), w, Math.max(2, h * 0.07));
+  ctx.fillStyle = firmaA;
+  ctx.fillRect(0, h - Math.max(2, h * 0.07) - Math.max(1.5, h * 0.035), w, Math.max(1.5, h * 0.035));
+  // onda: el lienzo ya sale ondeado si el caller usa la versión por tiras
+}
+// dibuja la bandera ondeando: corta el lienzo plano en tiras verticales con desfase sinusoidal
+function drawFlagOndeando(ctx, diseno, w, h, t = 0) {
+  const plano = drawFlag.plano || (drawFlag.plano = document.createElement("canvas"));
+  if (plano.width !== w || plano.height !== h) { plano.width = w; plano.height = h; }
+  const pctx = plano.getContext("2d");
+  drawFlag(pctx, diseno, w, h);
+  ctx.clearRect(0, 0, w, h);
+  const tiras = 14, ancho = w / tiras;
+  for (let i = 0; i < tiras; i++) {
+    const fase = (i / tiras) * Math.PI * 2.4 - t / 380;
+    const desplaz = Math.sin(fase) * h * 0.045 * (0.35 + (i / tiras) * 0.65);
+    ctx.drawImage(plano, i * ancho, 0, ancho, h, i * ancho, desplaz, ancho, h);
+  }
+}
 function animateWizardPreview() {
   if (previewFrame || typeof globalThis.requestAnimationFrame !== "function") return;
   let lastDraw = 0;
@@ -661,6 +879,26 @@ function configureWizardLayout(form) {
     if (ta) { ta.value = HISTORIAS_DADO[Math.floor(Math.random() * HISTORIAS_DADO.length)]; ta.dispatchEvent(new Event("input", { bubbles: true })); }
   });
   caraIzq.append(dado);
+  // el azar también arregla la cara: un dado para la apariencia completa
+  const dadoCara = document.createElement("button");
+  dadoCara.type = "button";
+  dadoCara.className = "button button-secondary dado-historia";
+  dadoCara.textContent = "🎲 El mar también te dio una cara";
+  dadoCara.addEventListener("click", () => {
+    const azarDe = (key) => {
+      const campo = form.elements.namedItem(key);
+      const grupo = document.querySelector(`[data-swatch="${key}"]`);
+      if (!campo) return;
+      const valores = [...grupo.querySelectorAll(".swatch")].map((s) => s.dataset.valor);
+      if (!valores.length) return;
+      campo.value = valores[Math.floor(Math.random() * valores.length)];
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+      grupo.querySelectorAll(".swatch").forEach((s) => s.classList.toggle("selected", s.dataset.valor === campo.value));
+    };
+    for (const key of ["skin", "eyes", "hair", "outfit", "outfitColor", "accessory", "detail", "coat"]) azarDe(key);
+    updateWizardSummary();
+  });
+  caraIzq.append(dadoCara);
   const caraDer = document.createElement("div"); caraDer.className = "cara-swatches";
   for (const [key, titulo, valores] of [
     ["skin", "Piel", ["Clara", "Bronceada", "Oscura"]],
@@ -787,7 +1025,130 @@ function configureWizardLayout(form) {
   const secTarjeta = document.createElement("section"); secTarjeta.className = "wizard-choice-section";
   const hTarjeta = document.createElement("h4"); hTarjeta.textContent = "Tu Tarjeta del Alma";
   secTarjeta.append(hTarjeta, ...[...summary.children]);
-  fase4.append(secBandera, secSueno, secGuia, secTarjeta);
+  // ── LA BANDERA SE BORDA: diseñador por capas — la tela que te nombra ──
+  const secTela = document.createElement("section"); secTela.className = "wizard-choice-section bandera-seccion";
+  const hTela = document.createElement("h4"); hTela.textContent = "Bordá tu bandera";
+  const notaTela = document.createElement("p"); notaTela.className = "muted";
+  notaTela.textContent = "Cuatro capas y un nombre: esta tela ondeará en tu barco, en tu chip y en tu historia. El mar ya te la bordó con lo que elegiste — tocá lo que quieras cambiarla.";
+  const lienzoBandera = document.createElement("canvas");
+  lienzoBandera.id = "bandera-lienzo"; lienzoBandera.width = 336; lienzoBandera.height = 210;
+  lienzoBandera.setAttribute("aria-label", "Vista previa de tu bandera ondeando");
+  const filaCrew = document.createElement("div"); filaCrew.className = "bandera-crew";
+  const inputCrew = document.createElement("input");
+  inputCrew.id = "flag-tripulacion"; inputCrew.maxLength = 28;
+  inputCrew.placeholder = "Nombre de tu tripulación…";
+  inputCrew.setAttribute("aria-label", "Nombre de la tripulación");
+  const dadoBordar = document.createElement("button"); dadoBordar.type = "button"; dadoBordar.className = "button button-secondary";
+  dadoBordar.textContent = "🎲 El mar te bordó una";
+  filaCrew.append(inputCrew, dadoBordar);
+  secTela.append(hTela, notaTela, lienzoBandera, filaCrew);
+  // filas de capas: campo, patrón, emblema y las dos firmas — píldoras con muestra de color
+  const capaFila = (nombre, capa, opciones, conChip) => {
+    const fila = document.createElement("div"); fila.className = "bandera-capa";
+    const titulo = document.createElement("span"); titulo.className = "bandera-capa-titulo"; titulo.textContent = nombre;
+    const grupo = document.createElement("div"); grupo.className = "bandera-opciones"; grupo.dataset.capa = capa;
+    for (const [id, texto, chip] of opciones) {
+      const boton = document.createElement("button");
+      boton.type = "button"; boton.className = "bandera-opcion"; boton.dataset.valor = id; boton.title = texto;
+      if (conChip && chip) { const c = document.createElement("span"); c.className = "bandera-chip"; c.style.background = chip; boton.append(c); }
+      const etiqueta = document.createElement("small"); etiqueta.textContent = texto; boton.append(etiqueta);
+      boton.addEventListener("click", () => {
+        banderaTocada = true;
+        const name = capa === "acentoA" ? "flagAcentoA" : capa === "acentoB" ? "flagAcentoB" : `flag${capa.charAt(0).toUpperCase()}${capa.slice(1)}`;
+        const campo = form.elements.namedItem(name);
+        if (campo) campo.value = id;
+        pintaBanderaWizard();
+      });
+      grupo.append(boton);
+    }
+    fila.append(titulo, grupo);
+    return fila;
+  };
+  secTela.append(
+    capaFila("Campo", "campo", BANDERA_CAMPOS, true),
+    capaFila("Patrón", "patron", BANDERA_PATRONES, false),
+    capaFila("Emblema", "emblema", BANDERA_EMBLEMAS, false),
+    capaFila("Firma superior", "acentoA", BANDERA_FIRMAS, true),
+    capaFila("Firma inferior", "acentoB", BANDERA_FIRMAS, true)
+  );
+  // los datos viajan como inputs ocultos del form: el submit los lee como el resto
+  for (const [name, valor] of [["flagCampo", "negro"], ["flagPatron", "liso"], ["flagEmblema", "calavera"], ["flagAcentoA", "oro"], ["flagAcentoB", "rojo"], ["flagTripulacion", ""]]) {
+    const oculto = document.createElement("input");
+    oculto.type = "hidden"; oculto.name = name; oculto.value = valor;
+    secTela.append(oculto);
+  }
+  // la tarjeta cierra con la bandera izada y el nombre de la tripulación
+  const flagCard = document.createElement("div"); flagCard.className = "bandera-tarjeta-card";
+  const miniFlag = document.createElement("canvas"); miniFlag.id = "bandera-tarjeta"; miniFlag.width = 168; miniFlag.height = 105;
+  miniFlag.setAttribute("aria-label", "Tu bandera en la Tarjeta del Alma");
+  const crewLine = document.createElement("p"); crewLine.className = "bandera-crew-linea muted";
+  flagCard.append(miniFlag, crewLine);
+  secTarjeta.append(flagCard);
+  // ── el motor local del diseñador ──
+  const marcarCapas = () => {
+    const d = disenoBanderaDe(form);
+    document.querySelectorAll(".bandera-opciones").forEach((grupo) => {
+      const capa = grupo.dataset.capa;
+      const valor = capa === "acentoA" ? d.acentoA : capa === "acentoB" ? d.acentoB : d[capa];
+      grupo.querySelectorAll(".bandera-opcion").forEach((o) => o.classList.toggle("selected", o.dataset.valor === valor));
+    });
+    if (inputCrew) inputCrew.value = d.tripulacion;
+  };
+  const pintaBanderaWizard = () => {
+    const d = disenoBanderaDe(form);
+    const ctx = lienzoBandera.getContext("2d");
+    if (ctx) drawFlagOndeando(ctx, d, lienzoBandera.width, lienzoBandera.height, performance.now());
+    const mctx = miniFlag.getContext("2d");
+    if (mctx) drawFlagOndeando(mctx, d, miniFlag.width, miniFlag.height, performance.now());
+    if (crewLine) crewLine.textContent = d.tripulacion ? `⚓ ${d.tripulacion}` : "⚓ Sin tripulación aún: ponéle nombre a tu bandera.";
+    marcarCapas();
+  };
+  const aplicarBanderaWizard = (diseno) => {
+    for (const [clave, valor] of Object.entries(diseno)) {
+      const name = clave === "tripulacion" ? "flagTripulacion" : `flag${clave.charAt(0).toUpperCase()}${clave.slice(1)}`;
+      const campo = form.elements.namedItem(name);
+      if (campo) campo.value = valor;
+    }
+    pintaBanderaWizard();
+  };
+  // la bandera nace bordada con lo ya elegido: constelación → emblema, ropa → firma,
+  // facción → emblema si no hay constelación todavía. Solo mientras no la toques.
+  const bordarConLoElegido = () => {
+    if (banderaTocada) return;
+    const d = disenoBanderaDe(form);
+    if (selectedTraits.length === 2) {
+      const buscar = (a, b) => CONSTELACIONES[`${a}|${b}`] || CONSTELACIONES[`${b}|${a}`];
+      const hit = buscar(selectedTraits[0], selectedTraits[1]);
+      const emblema = hit && BANDERA_POR_CONSTELACION[hit[0]];
+      if (emblema) d.emblema = emblema;
+    } else {
+      const faccion = form.querySelector('[name="faction"]:checked')?.value;
+      const emblemaFaccion = faccion && BANDERA_POR_FACCION[faccion];
+      if (emblemaFaccion) d.emblema = emblemaFaccion;
+    }
+    const colorRopa = form.elements.namedItem("outfitColor")?.value || "";
+    const firma = BANDERA_FIRMAS.find(([id]) => id === colorRopa.toLocaleLowerCase("es"));
+    if (firma) d.acentoA = firma[0];
+    aplicarBanderaWizard(d);
+  };
+  rebordarBandera = bordarConLoElegido;
+  dadoBordar.addEventListener("click", () => {
+    const pick = (tabla) => tabla[Math.floor(Math.random() * tabla.length)][0];
+    banderaTocada = true;
+    aplicarBanderaWizard({
+      campo: pick(BANDERA_CAMPOS), patron: pick(BANDERA_PATRONES), emblema: pick(BANDERA_EMBLEMAS),
+      acentoA: pick(BANDERA_FIRMAS), acentoB: pick(BANDERA_FIRMAS),
+      tripulacion: BANDERA_TRIPULACIONES[Math.floor(Math.random() * BANDERA_TRIPULACIONES.length)]
+    });
+  });
+  inputCrew?.addEventListener("input", () => {
+    banderaTocada = true;
+    const campo = form.elements.namedItem("flagTripulacion");
+    if (campo) campo.value = inputCrew.value;
+    if (crewLine) crewLine.textContent = inputCrew.value ? `⚓ ${inputCrew.value}` : "⚓ Sin tripulación aún: ponéle nombre a tu bandera.";
+  });
+  pintaBanderaWizard();
+  fase4.append(secTela, secBandera, secSueno, secGuia, secTarjeta);
   bandera.append(fase4);
   summary.remove();
   destino.hidden = false; rasgosStep.hidden = false; bandera.hidden = false;
@@ -854,6 +1215,7 @@ function updateWizardSummary() {
     Justicia: "Defender a quienes no pueden protegerse."
   };
   if (byId("dream-description")) byId("dream-description").textContent = motivationText[dream] || "Tu sueño influirá en las decisiones autónomas.";
+  pintaBandera?.(); // la tela no se queda quieta: ondea con el ciclo de la vista previa
 }
 function updateTraitButtons() {
   const orbitas = [...document.querySelectorAll(".rasgo-orbita")];
@@ -884,6 +1246,7 @@ function updateTraitButtons() {
     const grados = byId("anillo-grados");
     if (grados) grados.textContent = `${Math.round(ang) % 360}°`;
   }
+  rebordarBandera?.(); // la constelación nueva pide su emblema (mientras la bandera no se tocó a mano)
   const card = byId("constelacion-card");
   if (card) {
     if (selectedTraits.length === 2) {
@@ -978,6 +1341,71 @@ export function initWizard() {
   if (!form) return;
   configureWizardLayout(form);
   selectedTraits = [];
+  // ── validación con voz del juego: nada de burbujas nativas en inglés ──
+  const mostrarError = (campo, mensaje) => {
+    const label = campo?.closest("label");
+    if (!label) return;
+    let aviso = label.querySelector(".wz-error");
+    if (!aviso) {
+      aviso = document.createElement("p");
+      aviso.className = "wz-error";
+      aviso.setAttribute("role", "alert");
+      label.append(aviso);
+    }
+    aviso.textContent = mensaje;
+    aviso.hidden = false;
+    campo.classList.add("wz-campo-error");
+    campo.addEventListener("input", () => { aviso.hidden = true; campo.classList.remove("wz-campo-error"); }, { once: true });
+  };
+  function validarFaseUno() {
+    const name = form.elements.namedItem("name");
+    const handle = form.elements.namedItem("handle");
+    let ok = true;
+    if (name && name.value.trim().length < 2) {
+      mostrarError(name, "El mar necesita un nombre: al menos 2 letras.");
+      ok = false;
+    }
+    if (handle) {
+      let valor = handle.value.trim();
+      // el jugador escribe su nombre de usuario; el @ lo pone el barco si falta
+      if (valor && !valor.startsWith("@")) { valor = `@${valor}`; handle.value = valor.slice(0, 17); }
+      if (!/^@[a-zA-Z0-9_]{2,16}$/.test(valor)) {
+        mostrarError(handle, "Tu usuario: de 2 a 16 letras, números o guion bajo.");
+        ok = false;
+      }
+    }
+    return ok;
+  }
+  // ── el salto de fase se valida igual desde el botón y desde el stepper ──
+  function puedeAvanzarDe(i) {
+    if (i === 0) return validarFaseUno();
+    if (i === 1 && selectedTraits.length !== 2) {
+      const card = byId("constelacion-card");
+      if (card) { card.hidden = false; card.classList.add("revelada"); card.innerHTML = `<strong>El anillo espera dos rasgos</strong><p>Tocá dos orbes del anillo: la brújula gira con cada uno.</p>`; }
+      return false;
+    }
+    if (i === 2 && !form.elements.namedItem("race")?.value) {
+      if (monedasRestantes <= 0) {
+        // el destino no cambia tres veces: sin monedas, sortea él mismo y deja zarpar
+        const [raceId, raceNombre] = sortearConPeso(RAZAS_GACHA);
+        const [seaId, seaNombre] = sortearConPeso(MARES_GACHA);
+        if (form.elements.namedItem("race")) form.elements.namedItem("race").value = raceId;
+        if (form.elements.namedItem("originSea")) form.elements.namedItem("originSea").value = seaId;
+        const resultado = byId("resultado-destino");
+        if (resultado) {
+          resultado.dataset.raceNombre = raceNombre;
+          resultado.dataset.seaNombre = seaNombre;
+          resultado.hidden = false;
+          resultado.innerHTML = `<strong>El destino decidió por vos</strong><p>Sin monedas restantes, el mar sorteó tu raza y tu mar de origen: zarpá con lo que te dio.</p>`;
+        }
+        updateWizardSummary();
+        return true;
+      }
+      girarDestino(); // si no invocaste el destino, el destino te invoca: una tirada gratis
+      return false;
+    }
+    return true;
+  }
   // el Anillo del Carácter: cada orbe es un rasgo.
   // Delegación en document: el anillo se reconstruye al re-renderizar y los
   // listeners pegados a cada orbe morían con él — así el click sobrevive.
@@ -996,31 +1424,29 @@ export function initWizard() {
   byId("invocar-destino")?.addEventListener("click", girarDestino);
   const nextButton = byId("next-step");
   if (nextButton) nextButton.addEventListener("click", () => {
-    if (currentStep === 0) {
-      const name = form.elements.namedItem("name");
-      const handle = form.elements.namedItem("handle");
-      if (name && !name.value.trim()) { name.reportValidity(); return; }
-      if (handle && !/^@[a-zA-Z0-9_]{2,16}$/.test(handle.value.trim())) {
-        handle.setCustomValidity("Usa @ seguido por 2-16 letras, números o guion bajo.");
-        handle.reportValidity();
-        handle.setCustomValidity("");
-        return;
-      }
-    }
-    if (currentStep === 1 && selectedTraits.length !== 2) {
-      const card = byId("constelacion-card");
-      if (card) { card.hidden = false; card.classList.add("revelada"); card.innerHTML = `<strong>El anillo espera dos rasgos</strong><p>Tocá dos orbes del anillo: la brújula gira con cada uno.</p>`; }
-      return;
-    }
-    if (currentStep === 2 && !form.elements.namedItem("race")?.value) {
-      girarDestino(); // si no invocaste el destino, el destino te invoca: una tirada gratis
-      if (monedasRestantes <= 0) { showWizardStep(currentStep + 1); return; }
-      return;
-    }
+    if (!puedeAvanzarDe(currentStep)) return;
     showWizardStep(currentStep + 1);
   });
   const prevButton = byId("prev-step");
   if (prevButton) prevButton.addEventListener("click", () => showWizardStep(currentStep - 1));
+  // el stepper deja de ser decorativo: cada fase navega, validando el salto
+  document.addEventListener("click", (event) => {
+    const paso = event.target.closest(".fase-paso");
+    if (!paso?.dataset.stepNav) return;
+    const destino = Number(paso.dataset.stepNav) - 1;
+    if (Number.isNaN(destino) || destino === currentStep) return;
+    if (destino > currentStep) {
+      for (let i = currentStep; i < destino; i++) {
+        if (!puedeAvanzarDe(i)) { if (i !== currentStep) showWizardStep(i); return; }
+      }
+    }
+    showWizardStep(destino);
+  });
+  // salto directo pedido por fuera (ej.: el submit sin rasgos te devuelve al anillo)
+  document.addEventListener("onepiece:wizard-goto", (event) => {
+    const step = Number(event.detail?.step);
+    if (Number.isFinite(step)) showWizardStep(step);
+  });
   form.addEventListener("input", (event) => updateWizardSummary());
   form.addEventListener("change", (event) => {
     if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
@@ -1034,6 +1460,7 @@ export function initWizard() {
       const icon = form.querySelector('#dream-list .option-card.selected .option-icon, #dream-list .option-card.selected span');
       if (icon) { icon.classList.remove("dream-pulse"); void icon.offsetWidth; icon.classList.add("dream-pulse"); }
     }
+    if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) rebordarBandera?.();
     updateWizardSummary();
   });
   showWizardStep(0);
@@ -1061,11 +1488,43 @@ export function resetWizard() {
   if (brujula) brujula.style.setProperty("--compass-angle", "0deg");
   const card = byId("constelacion-card");
   if (card) { card.hidden = true; card.classList.remove("revelada"); }
+  // la bandera vuelve a sus valores de nacimiento y se reborda con el azar limpio
+  banderaTocada = false;
+  for (const [name, valor] of [["flagCampo", "negro"], ["flagPatron", "liso"], ["flagEmblema", "calavera"], ["flagAcentoA", "oro"], ["flagAcentoB", "rojo"], ["flagTripulacion", ""]]) {
+    const campo = form?.elements.namedItem(name);
+    if (campo) campo.value = valor;
+  }
+  rebordarBandera?.();
   showWizardStep(0);
   updateWizardSummary();
   actualizarMonedas();
   byId("wizard-container")?.scrollTo({ top: 0 });
   document.querySelector(".wizard-card")?.scrollTo({ top: 0 });
+}
+// ── LA IZADA: la escena que faltaba al zarpar — la bandera sube por el mástil ──
+export function escenaIzada(character) {
+  const flag = character?.flag;
+  if (!flag) return;
+  const limpiar = (texto) => String(texto ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const escena = document.createElement("div");
+  escena.id = "izada-escena";
+  escena.setAttribute("role", "status");
+  escena.innerHTML = `<div class="izada-mar"><div class="izada-barco"><div class="izada-mastil"><canvas class="izada-tela" width="252" height="150" aria-label="Tu bandera izándose"></canvas></div><div class="izada-casco">⛵</div></div><p class="izada-frase"><strong>${limpiar(flag.tripulacion || "Tu tripulación")} izan por primera vez su bandera</strong><small>El mar ya sabe tu nombre. Buena suerte, ${limpiar(character.name || "capitán")}.</small></p></div>`;
+  document.body.append(escena);
+  requestAnimationFrame(() => escena.classList.add("activa"));
+  const tela = escena.querySelector(".izada-tela");
+  let izadaFrame = null;
+  const ondular = (t) => {
+    if (!escena.isConnected) return;
+    const ctx = tela?.getContext("2d");
+    if (ctx) drawFlagOndeando(ctx, flag, tela.width, tela.height, t);
+    izadaFrame = requestAnimationFrame(ondular);
+  };
+  izadaFrame = requestAnimationFrame(ondular);
+  setTimeout(() => {
+    escena.classList.add("saliendo");
+    setTimeout(() => { cancelAnimationFrame(izadaFrame); escena.remove(); }, 900);
+  }, 2600);
 }
 export function openPantheon() { const dialog = byId("pantheon-dialog"); if (dialog && !dialog.open) dialog.showModal(); }
 export function closePantheon() { closeDialog("pantheon-dialog"); }

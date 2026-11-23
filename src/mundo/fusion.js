@@ -166,13 +166,7 @@ function installWorldUi() {
       <div><button class="filtro sel" data-f="todo" type="button">Todo</button><button class="filtro" data-f="importante" type="button">Importante</button><button class="filtro" data-f="mio" type="button">Mi alma</button></div>
       <div><button class="ritmo sel" data-r="1" type="button">×1</button><button class="ritmo" data-r="4" type="button">×4</button><button class="ritmo" data-r="12" type="button">×12</button></div>
     </section>
-    <div id="toast" class="mil-toast oculto" role="status" aria-live="polite"></div>
-    <div id="ov-wizard" class="oculto" aria-hidden="true"></div>
-    <section id="wizard" class="mil-panel oculto" aria-label="Creación de alma">
-      <button id="wz-cerrar" type="button">Cerrar</button><h2 id="wz-titulo"></h2>
-      <div id="wz-naveg"></div><div id="wz-cuerpo"></div><input id="wz-nombre">
-      <button id="wz-atras" type="button">Atrás</button><button id="wz-siguiente" type="button">Siguiente</button>
-    </section>`;
+    <div id="toast" class="mil-toast oculto" role="status" aria-live="polite"></div>`;
   document.body.append(ui);
   // el globo del mundo: una esquina, no una franja — tocás el orbe, se abre; tocás el mar, se va
   // el globo del mundo: un toque, una acción — si ya existe tu alma abre el
@@ -180,8 +174,11 @@ function installWorldUi() {
   const globo = ui.querySelector("#mil-globo");
   if (globo) globo.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (window.JUEGO?.sim?.user) window.UI?.abrirAtlas?.();
-    else window.UI?.wizardAbrir?.();
+    // el globo es la puerta del mundo: abre la Bitácora del Mar COMPLETA
+    // (con la Enciclopedia y el Atlas como pestañas dentro — observación del jugador)
+    const boton = document.querySelector('#bottom-nav [data-hud-panel="news"]');
+    if (boton) boton.click();
+    else window.UI?.abrirFicha?.();
   });
   // La Bitácora del nav inferior también cuenta como lectura
   document.addEventListener("click", (event) => {

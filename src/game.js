@@ -64,7 +64,7 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Grumete", allowRareRace = false, starterChallenge = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Grumete", allowRareRace = false, starterChallenge = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {}, flag = null }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const backstory = String(story).trim().slice(0, 280);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
@@ -93,6 +93,12 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     originSea,
     appearance: { ...avatarConfig },
     avatarConfig,
+    // la bandera del alma: diseño compacto, se pinta con drawFlag a cualquier escala
+    flag: flag && typeof flag === "object" ? {
+      campo: String(flag.campo || "negro"), patron: String(flag.patron || "liso"),
+      emblema: String(flag.emblema || "calavera"), acentoA: String(flag.acentoA || "oro"),
+      acentoB: String(flag.acentoB || "rojo"), tripulacion: String(flag.tripulacion || "").slice(0, 28)
+    } : null,
     avatarActivity: "idle",
     location: { region: originSea, island: route[0], routeIndex: 0, scenePosition: createScenePosition(spawn?.id || route[0], displayName) },
     mapPosition: spawn ? { x: spawn.x, y: spawn.y } : undefined,

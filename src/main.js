@@ -4,7 +4,7 @@ import {
 } from "./game.js";
 import {
   closeLegacyModal, closePantheon, HISTORIAS_DADO, initWizard, openPantheon,
-  renderGame, resetWizard, showSetup
+  renderGame, resetWizard, showSetup, escenaIzada
 } from "./ui/ui.js";
 import { initHud, renderHud, setHudVisible } from "./ui/hud.js";
 import { renderGameStateUI } from "../js/ui.js";
@@ -250,7 +250,17 @@ listen(byId("character-form"), "submit", (event) => {
   let historia = String(data.get("story") || "").trim();
   if (!historia) historia = HISTORIAS_DADO[Math.floor(Math.random() * HISTORIAS_DADO.length)];
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
-  if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
+  if (traits.length !== 2) {
+    // nada de window.alert: el wizard devuelve al jugador al anillo con su aviso propio
+    document.dispatchEvent(new CustomEvent("onepiece:wizard-goto", { detail: { step: 1 } }));
+    return;
+  }
+  // la bandera del alma viaja con el resto del formulario
+  const flag = {
+    campo: String(data.get("flagCampo") || "negro"), patron: String(data.get("flagPatron") || "liso"),
+    emblema: String(data.get("flagEmblema") || "calavera"), acentoA: String(data.get("flagAcentoA") || "oro"),
+    acentoB: String(data.get("flagAcentoB") || "rojo"), tripulacion: String(data.get("flagTripulacion") || "").trim()
+  };
   const avatarConfig = {
     skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"),
     hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "chaleco-sol"),
@@ -262,8 +272,10 @@ listen(byId("character-form"), "submit", (event) => {
   const raceGacha = String(data.get("race") || "");
   const seaGacha = String(data.get("originSea") || "");
   const faction = String(data.get("faction") || "Pirata");
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: faction === "Autonomo" ? "Autonomo" : faction, originSea: seaGacha || randomOrigin.originSea, race: raceGacha || randomOrigin.race, starterChallenge: true, profession: "Grumete", dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: historia, traits, appearance: avatarConfig });
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: faction === "Autonomo" ? "Autonomo" : faction, originSea: seaGacha || randomOrigin.originSea, race: raceGacha || randomOrigin.race, starterChallenge: true, profession: "Grumete", dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: historia, traits, appearance: avatarConfig, flag });
   registerCharacter(character);
+  // la escena de la primera izada: la bandera sube por el mástil antes del mundo
+  escenaIzada(character);
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
     character.world.year = Math.floor(character.world.day / 365) + 1;

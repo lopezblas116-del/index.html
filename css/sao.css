@@ -240,3 +240,124 @@
 @media (max-width: 600px){
   #one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; }
 }
+
+/* ============================================================
+   V9 · LA BANDERA DEL ALMA + wizard corregido + sub-interfaces
+   ============================================================ */
+
+/* ── errores del wizard con voz del juego (adiós burbuja nativa) ── */
+.wz-error{ margin: 6px 0 0; padding: 7px 11px; border: 1px solid rgba(224,110,100,.55); border-radius: 8px; background: rgba(224,110,100,.12); color: #ffb0a6; font-size: .8rem; animation: wzError .25s ease; }
+@keyframes wzError{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:none;} }
+.wz-campo-error{ border-color: rgba(224,110,100,.7) !important; box-shadow: 0 0 0 1px rgba(224,110,100,.4); }
+
+/* ── la barra de acciones: pie opaco de verdad, tapa scroll, no contenido ── */
+.wizard-actions{
+  position: sticky; bottom: 0; z-index: 4; margin: 10px -4px -4px;
+  padding: 10px 4px 6px; border-top: 1px solid rgba(244,180,26,.28);
+  background: linear-gradient(180deg, rgba(22,34,56,.82), #1a2742 34%, #162238);
+  box-shadow: 0 -12px 26px rgba(0,0,0,.45);
+}
+.wizard-step.active{ padding-bottom: 96px; }
+
+/* ── el orbe del anillo respira: texto que envuelve, nada cortado ── */
+.rasgo-orbita{ overflow-wrap: anywhere; }
+.rasgo-orbita small{ overflow-wrap: anywhere; hyphens: auto; }
+
+/* ── EL DISEÑADOR DE BANDERA: la tela que te nombra ── */
+.bandera-seccion{ margin-top: 6px; }
+.bandera-seccion h4{ margin-bottom: 4px; }
+#bandera-lienzo{
+  display: block; width: min(100%, 340px); margin: 10px auto 4px;
+  border: 1px solid rgba(244,180,26,.5); border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 18px rgba(244,180,26,.12);
+  background: #0b1329; image-rendering: auto;
+}
+.bandera-crew{ display: flex; gap: 8px; margin: 10px 0 4px; }
+.bandera-crew input{
+  flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 8px 12px;
+  border: 1px solid var(--sao-line, rgba(255,255,255,.22)); border-radius: 999px;
+  background: rgba(11,19,41,.9); color: #eef4ff; font: 700 .86rem 'Manrope', system-ui, sans-serif;
+}
+.bandera-crew input:focus{ outline: none; border-color: var(--sao-gold, #f4b41a); box-shadow: 0 0 12px rgba(244,180,26,.25); }
+.bandera-crew .button{ flex: 0 0 auto; white-space: nowrap; font-size: .78rem; }
+.bandera-capa{ display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: start; margin: 8px 0; }
+.bandera-capa-titulo{ padding-top: 9px; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: #9fb0cc; }
+.bandera-opciones{ display: flex; flex-wrap: wrap; gap: 5px; }
+.bandera-opcion{
+  display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 9px;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
+  background: rgba(11,19,41,.85); color: #c7d3e6; cursor: pointer;
+  font: 600 .74rem 'Manrope', system-ui, sans-serif;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.bandera-opcion:hover{ border-color: rgba(244,180,26,.6); }
+.bandera-opcion.selected{ border-color: #f4b41a; background: rgba(244,180,26,.14); color: #f4d58c; box-shadow: 0 0 10px rgba(244,180,26,.22); }
+.bandera-chip{ width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.45); }
+.bandera-tarjeta-card{ margin: 12px auto 0; max-width: 300px; display: grid; justify-items: center; gap: 7px; padding: 12px; border: 1px solid rgba(244,180,26,.4); border-radius: 12px; background: linear-gradient(160deg, rgba(244,180,26,.08), rgba(11,19,41,.9)); }
+#bandera-tarjeta{ width: 168px; height: 105px; border-radius: 6px; border: 1px solid rgba(255,255,255,.22); background: #0b1329; }
+.bandera-crew-linea{ margin: 0; font-weight: 700; color: #f4d58c !important; }
+
+/* ── LA IZADA: la primera vez que tu bandera sube por el mástil ── */
+#izada-escena{
+  position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 50% 108%, #0e2a4a 0%, #071226 44%, #030814 100%);
+  opacity: 0; transition: opacity .55s ease; pointer-events: all;
+}
+#izada-escena.activa{ opacity: 1; }
+#izada-escena.saliendo{ opacity: 0; }
+.izada-mar{ display: grid; justify-items: center; gap: 10px; }
+.izada-barco{ display: grid; justify-items: center; }
+.izada-mastil{
+  position: relative; width: 6px; height: min(34vh, 260px); min-height: 150px;
+  background: linear-gradient(180deg, #7a5a34, #4c3a22);
+  border-radius: 3px; box-shadow: 0 0 18px rgba(0,0,0,.6);
+}
+#izada-escena .izada-tela{
+  position: absolute; top: 0; left: 12px; width: 252px; height: 150px;
+  transform-origin: 0 0;
+  transform: translateY(118px) scale(.96); opacity: 0;
+  transition: transform 1.6s cubic-bezier(.2,.9,.3,1.05), opacity .5s ease .15s;
+  border-radius: 4px; box-shadow: 0 12px 30px rgba(0,0,0,.55);
+}
+#izada-escena.activa .izada-tela{ transform: translateY(0) scale(1); opacity: 1; }
+.izada-casco{ font-size: 44px; margin-top: 6px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+.izada-frase{ text-align: center; color: #eef4ff; font: 600 .95rem 'Manrope', system-ui, sans-serif; }
+.izada-frase strong{ display: block; font-size: 1.05rem; color: #f4b41a; letter-spacing: .04em; }
+.izada-frase small{ display: block; margin-top: 5px; color: #9fb0cc; }
+
+/* ── la bandera junto al capitán: el chip te nombra con tela ── */
+.one-hud-flag{ width: 34px; height: 21px; border-radius: 3px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.one-hud-captain{ display: inline-flex !important; align-items: center; gap: 8px; }
+.soul-flag{ display: grid; justify-items: center; gap: 4px; margin-top: 4px; }
+.soul-flag canvas{ width: 126px; height: 78px; border-radius: 5px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+.soul-flag small{ color: #f4d58c; font-weight: 700; letter-spacing: .06em; }
+
+/* ── sub-interfaces más modernas: la misma casa, mejor acabado ── */
+.mil-panel, .one-hud-dialog, #mil-feed-drawer{
+  animation: saoPanelIn .22s ease-out;
+}
+@keyframes saoPanelIn{ from{ opacity: 0; transform: translateY(10px) scale(.985);} to{ opacity: 1; transform: none;} }
+@media (prefers-reduced-motion: reduce){ .mil-panel, .one-hud-dialog, #mil-feed-drawer{ animation: none !important; } }
+.mil-panel::-webkit-scrollbar, .one-hud-dialog::-webkit-scrollbar, .one-hud-content::-webkit-scrollbar{ width: 8px; }
+.mil-panel::-webkit-scrollbar-thumb, .one-hud-dialog::-webkit-scrollbar-thumb, .one-hud-content::-webkit-scrollbar-thumb{ background: rgba(244,180,26,.35); border-radius: 99px; }
+.mil-panel::-webkit-scrollbar-track, .one-hud-dialog::-webkit-scrollbar-track{ background: rgba(255,255,255,.04); }
+.mil-badge{
+  position: absolute; top: -6px; right: -4px; min-width: 20px; height: 20px; padding: 0 6px;
+  display: grid; place-items: center; border-radius: 999px;
+  background: #e5544b; color: #fff; font: 800 10px/1 system-ui, sans-serif;
+  border: 1px solid rgba(255,255,255,.5); box-shadow: 0 3px 10px rgba(229,84,75,.45);
+  animation: badgePulso 2.4s ease-in-out infinite;
+}
+@keyframes badgePulso{ 0%,100%{ transform: scale(1);} 50%{ transform: scale(1.12);} }
+@media (prefers-reduced-motion: reduce){ .mil-badge{ animation: none; } }
+/* el minimapa se presenta: marco oro y rótulo (los pone atmosfera.js) */
+#mil-minimapa{ backdrop-filter: blur(3px); }
+.mil-minimapa-etiqueta{ transition: opacity .4s ease; }
+@media (max-width: 700px){
+  .bandera-capa{ grid-template-columns: 1fr; }
+  .bandera-capa-titulo{ padding-top: 2px; }
+  .bandera-crew{ flex-wrap: wrap; }
+  .one-hud-flag{ width: 26px; height: 16px; }
+  #izada-escena .izada-tela{ width: 176px; height: 105px; }
+}
+#izada-escena .izada-tela{ outline: 1px solid rgba(244,180,26,.4); outline-offset: -1px; }

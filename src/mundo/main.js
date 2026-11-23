@@ -149,9 +149,6 @@
     on('aj-cerrar', 'click', UI.cerrarAjustes);
     on('ficha-cerrar', 'click', UI.cerrarFicha);
     on('pop-cerrar', 'click', () => UI.abrirIsla(null));
-    on('wz-siguiente', 'click', UI.wizSiguiente);
-    on('wz-atras', 'click', UI.wizAtras);
-    on('wz-cerrar', 'click', UI.wizardCerrar);
     document.querySelectorAll('.filtro').forEach(b => b.addEventListener('click', () => {
       document.querySelectorAll('.filtro').forEach(x => x.classList.remove('sel'));
       b.classList.add('sel');
