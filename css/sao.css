@@ -545,3 +545,36 @@ html:not(.boot) #arranque{ display: none !important; }
 #one-hud .one-hud-content select option{ background:#0a1428; color:#d7e1f2; }
 /* las celdas del cofre y del mercado: mismo cristal */
 #one-hud .one-hud-grid > *{ border:1px solid var(--sao-line-soft); border-radius:var(--sao-radius-sm); background:rgba(9,18,36,.45); }
+
+/* ── V15 · el vidrio azul del mundo vivo para los diálogos raíz ── */
+/* La ficha, el atlas y la hemeroteca usan los tokens --ma-* (azul translúcido,
+   borde azul, oro champán). Los diálogos raíz re-declaran los tokens SAO para
+   apuntar a esa misma paleta: un solo vidrio, un solo oro, una sola voz. */
+.one-hud-backdrop{
+  --sao-panel: var(--ma-panel);
+  --sao-line: var(--ma-border);
+  --sao-line-soft: rgba(90, 140, 190, .22);
+  --sao-gold: var(--ma-gold);
+  --sao-gold-soft: rgba(242, 207, 107, .5);
+  --sao-text: #e9f0f7;
+  --sao-muted: #a7b8c8;
+  font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.one-hud-backdrop .one-hud-dialog{
+  background: var(--ma-panel);
+  border: 1px solid var(--ma-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .53);
+  backdrop-filter: blur(12px);
+  color: #e9f0f7;
+}
+/* esquinas idénticas a las de la ficha del mundo vivo */
+.one-hud-backdrop .one-hud-dialog::before,
+.one-hud-backdrop .one-hud-dialog::after{
+  width: 20px; height: 20px; opacity: .85;
+  border-color: var(--ma-gold);
+}
+.one-hud-backdrop .one-hud-dialog::before{ top: 7px; left: 7px; border-radius: 8px 0 0 0; }
+.one-hud-backdrop .one-hud-dialog::after{ bottom: 7px; right: 7px; border-radius: 0 0 8px 0; }
+/* la tipografía del mundo vivo también en los h3 internos */
+#one-hud .one-hud-backdrop h3{ font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif !important; }
