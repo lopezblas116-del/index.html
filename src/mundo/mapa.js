@@ -1999,25 +1999,11 @@
     ctx.restore();
   };
 
-  let joyTimer = null;
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     actualizaCine(); // el HUD se retira solo al acercar (modo inmersión), antes de cualquier retorno
-    // joystick: empuje → la cámara viaja en ESA dirección (izquierda = izquierda)
-    const joy = MAPA._joystick;
-    if (joy && (Math.abs(joy.x) > 0.14 || Math.abs(joy.y) > 0.14)) {
-      if (globoF() > 0.5) rotLon += joy.x * 0.02;
-      else {
-        const paso = (ancho / cam.z) * 0.011; // ~1% de la vista por frame empujado
-        cam.x = envuelveX(cam.x + joy.x * paso);
-        cam.y = clamp(cam.y + joy.y * paso, 0, D.H);
-        MAPA.interactuando = true; // empuje = gesto vivo: el mapa corre fluido
-        clearTimeout(joyTimer);
-        joyTimer = setTimeout(() => { MAPA.interactuando = false; }, 450);
-      }
-    }
     const g = globoF();
     ctx.imageSmoothingEnabled = g < 0.5; // en el mar, píxeles nítidos; en el globo, mezcla suave de celdas
     if (g >= 0.999) {

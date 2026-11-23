@@ -945,18 +945,20 @@ export function initWizard() {
   if (!form) return;
   configureWizardLayout(form);
   selectedTraits = [];
-  // el Anillo del Carácter: cada orbe es un rasgo
-  document.querySelectorAll(".rasgo-orbita").forEach((button) => {
-    if (!button) return;
-    button.addEventListener("click", () => {
-      const id = button.dataset.trait;
-      if (selectedTraits.includes(id)) selectedTraits = selectedTraits.filter((trait) => trait !== id);
-      else if (selectedTraits.length < 2) {
-        const conflict = selectedTraits.some((chosen) => TRAITS.find((trait) => trait.id === chosen)?.opposite === id || TRAITS.find((trait) => trait.id === id)?.opposite === chosen);
-        if (!conflict) selectedTraits.push(id);
-      }
-      updateTraitButtons();
-    });
+  // el Anillo del Carácter: cada orbe es un rasgo.
+  // Delegación en document: el anillo se reconstruye al re-renderizar y los
+  // listeners pegados a cada orbe morían con él — así el click sobrevive.
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(".rasgo-orbita");
+    if (!button || button.disabled) return;
+    const id = button.dataset.trait;
+    if (!id) return;
+    if (selectedTraits.includes(id)) selectedTraits = selectedTraits.filter((trait) => trait !== id);
+    else if (selectedTraits.length < 2) {
+      const conflict = selectedTraits.some((chosen) => TRAITS.find((trait) => trait.id === chosen)?.opposite === id || TRAITS.find((trait) => trait.id === id)?.opposite === chosen);
+      if (!conflict) selectedTraits.push(id);
+    }
+    updateTraitButtons();
   });
   byId("invocar-destino")?.addEventListener("click", girarDestino);
   const nextButton = byId("next-step");
