@@ -22,11 +22,11 @@ test("each mapped island has its own stable scene and island-specific options", 
 test("requested island venues are loaded from island data with medium-map coordinates", () => {
   const islands = getMapIslands();
   const expected = {
-    dawn: ["Taberna de Makino", "Muelle de Partida", "Molino de Viento", "Cabaña de Dadan", "Guarida de Higuma"],
-    shells: ["Base Militar del Capitán Morgan", "Patio de Ejecuciones", "Mercado Urbano"],
-    baratie: ["Cubierta Principal", "Cocina de Zeff", "Comedor Flotante", "Guarida de Don Krieg"],
-    arlong: ["Torre de Arlong", "Plaza Conomi", "Astillero de Gyojins"],
-    loguetown: ["Plaza de la Plataforma de Ejecución", "Tienda de Katanas de Ipponmatsu", "Bar Gold Roger", "Guarida de Capitán Smoker"]
+    dawn: ["Taberna de Makino", "Muelle de Partida", "Molino de Viento", "Cabaña de Dadan", "Guarida de Higuma", "Tablón del Puerto"],
+    shells: ["Base Militar del Capitán Morgan", "Patio de Ejecuciones", "Mercado Urbano", "Tablón del Puerto"],
+    baratie: ["Cubierta Principal", "Cocina de Zeff", "Comedor Flotante", "Guarida de Don Krieg", "Tablón del Puerto"],
+    arlong: ["Torre de Arlong", "Plaza Conomi", "Astillero de Gyojins", "Tablón del Puerto"],
+    loguetown: ["Plaza de la Plataforma de Ejecución", "Tienda de Katanas de Ipponmatsu", "Bar Gold Roger", "Guarida de Capitán Smoker", "Tablón del Puerto"]
   };
   for (const [id, names] of Object.entries(expected)) {
     const points = islands.find((island) => island.id === id).pois;

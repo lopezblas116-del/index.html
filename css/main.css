@@ -789,3 +789,46 @@ body.reduced-motion #game-container:not([hidden]),body.reduced-motion .one-hud-b
 .mil-globo-row{ display: flex; gap: 6px; }
 .mil-globo-row button{ flex: 1; text-align: center; padding: 8px 0; }
 @media (max-width: 640px){ #mil-globo-wrap{ top: calc(8px + env(safe-area-inset-top)); left: 8px; } #mil-globo{ width: 48px; height: 48px; } }
+
+/* ============================================================
+   PERFIL DEL CAPITÁN — el chip del mando: nombre y bandera
+   ============================================================ */
+.one-hud-captain{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 12px;border-radius:10px;border:1px solid rgba(244,180,26,.4);background:rgba(20,28,48,.85);backdrop-filter:blur(10px);cursor:pointer;transition:border-color .2s ease, box-shadow .2s ease}
+.one-hud-captain:hover{border-color:rgba(244,180,26,.75);box-shadow:0 0 14px rgba(244,180,26,.2)}
+.one-hud-captain .one-hud-captain-name{color:#f4b41a;font-weight:800;font-size:13.5px;letter-spacing:.01em;line-height:1.15}
+.one-hud-captain .one-hud-captain-fac{color:#9fb0cc;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+/* tarjeta del alma con jerarquía de capitán, no de formulario */
+.one-hud-soul-registration{letter-spacing:.14em}
+.soul-portrait{margin:6px auto 10px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5))}
+.soul-motto{border-left:2px solid rgba(244,180,26,.45);padding-left:10px;font-style:italic}
+.one-hud-objective{color:#f4b41a}
+/* tripulación del barco: filas limpias, sin amontonarse */
+.one-hud-crew-member{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid rgba(255,255,255,.14);border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.04)}
+.one-hud-crew-member span{color:#dfe7f3;font-size:13px}
+.one-hud-crew-member .one-hud-action{padding:5px 10px;font-size:12px}
+
+/* ============================================================
+   BRÚJULA DEL CARÁCTER — cristal, graduación fina y lectura viva
+   ============================================================ */
+.anillo-svg .brujula-cardenal{fill:#8fa2c0;font-size:8.5px;font-weight:700;font-family:'Manrope',system-ui,sans-serif;letter-spacing:.04em}
+.anillo-svg .brujula-cardenal.norte{fill:#f4b41a;font-weight:800}
+.anillo-svg .brujula-dial{fill:rgba(10,16,32,.85);stroke:rgba(244,180,26,.35);stroke-width:.8}
+.anillo-svg .brujula-grados{fill:#f4b41a;font-size:9px;font-weight:800;font-family:'Manrope',system-ui,sans-serif;letter-spacing:.02em}
+.anillo-svg .brujula-marca:not(.mayor){opacity:.35}
+.anillo-svg .brujula-marca{transition:opacity .3s ease}
+
+/* ============================================================
+   TABLÓN DEL PUERTO — encargos ordenados por riesgo
+   ============================================================ */
+.one-hud-tablon{margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,24,44,.55)}
+.one-hud-tablon h3{margin:0 0 6px;color:var(--color-gold,#f4b41a);font-size:14px}
+.one-hud-encargo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-radius:10px;margin-bottom:7px;background:rgba(255,255,255,.04);transition:border-color .16s ease}
+.one-hud-encargo:hover{border-color:rgba(244,180,26,.4)}
+.one-hud-encargo-head{display:flex;align-items:center;gap:7px}
+.one-hud-encargo-head strong{color:#eef3fa;font-size:13px}
+.one-hud-encargo small{color:#9fb0cc;font-size:11.5px}
+.one-hud-encargo .one-hud-action{white-space:nowrap;font-size:12px;padding:6px 10px}
+.one-hud-riesgo{display:inline-grid;place-items:center;min-width:44px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.04em}
+.one-hud-riesgo.riesgo-bajo{color:#9fd8a8;border:1px solid rgba(126,200,120,.4);background:rgba(126,200,120,.1)}
+.one-hud-riesgo.riesgo-medio{color:#f4c941;border:1px solid rgba(244,180,26,.45);background:rgba(244,180,26,.12)}
+.one-hud-riesgo.riesgo-alto{color:#f2918a;border:1px solid rgba(228,80,80,.45);background:rgba(228,80,80,.12)}

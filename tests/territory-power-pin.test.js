@@ -60,19 +60,30 @@ test("periodic naval invasions can be resisted or capture a weakly defended isla
   assert.match(lostWorld.global_events[0].text, /arrebató Isla Dawn/);
 });
 
-test("crossing the Red Line requires level, Haki, or crew preparation", () => {
+test("la Grand Line exige navegante y barco preparado, no solo niveles", () => {
   const captain = createCharacter({ name: "Navegante", originSea: "East Blue" });
-  captain.ship = { model: "Carabela de pruebas", acquired: true, health: 100 }; // sin barco el mar no suelta amarras
+  captain.ship = { model: "Carabela de pruebas", acquired: true, health: 100 };
+  captain.inventory ??= {}; captain.inventory.provisions = 4;
   captain.location.routeIndex = 6;
   captain.location.island = "Reverse Mountain";
   captain.mission.status = "complete";
   const originalRandom = Math.random;
-  Math.random = () => 0.9; // sin deriva: el test mide el gate de preparación, no el azar
+  Math.random = () => 0.9; // sin deriva ni combate: el test mide los gates, no el azar
   try {
+    // sin navegante: bloqueado aunque el nivel sea alto — el nivel no lee mapas
+    captain.level = 12;
     const blocked = performAction(captain, "navigate");
-    assert.match(blocked, /preparación/);
+    assert.match(blocked, /navegante/i);
     assert.equal(captain.location.routeIndex, 6);
-    captain.level = 3;
+    // con navegante pero casco rendido: el barco no está preparado para la Red Line
+    captain.crew = [{ name: "Fara", role: "Navegante", loyalty: 80 }];
+    captain.ship.health = 40;
+    const casco = performAction(captain, "navigate");
+    assert.match(casco, /casco|refuerza|repara/i);
+    assert.equal(captain.location.routeIndex, 6);
+    // navegante + barco sano: cruza aunque el nivel sea 1 — la preparación del barco vale
+    captain.level = 1;
+    captain.ship.health = 100;
     performAction(captain, "navigate");
     assert.equal(captain.location.routeIndex, 7);
   } finally {

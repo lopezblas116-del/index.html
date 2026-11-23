@@ -58,21 +58,27 @@ function avatarLayers(appearance, options) {
   const hairLuz = ({ Negro: "#3d3b49", Moreno: "#7d5533", Rubio: "#f2c96a", Rojo: "#cc5f4a", Gris: "#dde8e7", Blanco: "#ffffff", Verde: "#5ca37f" })[appearance.hair] || "#3d3b49";
   const coats = { makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" };
   // abrigo elegido a mano: su color manda sobre la vestimenta base
-  const COAT_COLOR = { Rojo: "#9b443a", Azul: "#355f82", Verde: "#46735a", Negro: "#343a48", Blanco: "#ddd8cc", Amarillo: "#d6a53c", Violeta: "#6b4a7a", Marrón: "#79513b", Celeste: "#5b8fa8", Rosa: "#c26b8a" };
+  const COAT_COLOR = { Rojo: "#9b443a", Azul: "#355f82", Verde: "#46735a", Negro: "#343a48", Blanco: "#ddd8cc", Amarillo: "#d6a53c", Violeta: "#6b4a7a", Marrón: "#79513b", Celeste: "#5b8fa8", Rosa: "#c26b8a", Escarlata: "#c23b2e", Turquesa: "#3fa896", Vino: "#7a2f4a", Cobre: "#b06a3c" };
   const armor = String(equipment?.armor || "");
   const weapon = String(equipment?.weapon || "");
-  // vestimenta: cada atuendo es una silueta distinta, no un cambio de color
+  // vestimenta: cada atuendo es una silueta distinta (referencias del mar), no un cambio de color.
+  // El color de la ropa es su propio campo: el tipo y el tono se eligen por separado.
   const VESTIMENTA = {
-    Rojo: { base: "#9b443a", luz: "#c25d4e", osc: "#6f2f28", detalle: "chaleco" },
-    Azul: { base: "#355f82", luz: "#4b7ca3", osc: "#25445f", detalle: "uniforme" },
-    Verde: { base: "#46735a", luz: "#5d9273", osc: "#31513f", detalle: "chaqueta" },
-    Negro: { base: "#343a48", luz: "#4b5364", osc: "#23272f", detalle: "abrigo" },
-    Marrón: { base: "#79513b", luz: "#946a4e", osc: "#573a2b", detalle: "cuero" },
-    Kimono: { base: "#8e4460", luz: "#ab5a78", osc: "#6a3246", detalle: "kimono" },
-    Manto: { base: "#2e3a54", luz: "#41527a", osc: "#1f2838", detalle: "manto" },
-    Gabardina: { base: "#c9a86a", luz: "#ddc084", osc: "#9e824c", detalle: "gabardina" }
+    "chaleco-sol": { base: "#9b443a", luz: "#c25d4e", osc: "#6f2f28", detalle: "chaleco" },
+    "uniforme-justicia": { base: "#355f82", luz: "#4b7ca3", osc: "#25445f", detalle: "uniforme" },
+    "chaqueta-viento": { base: "#46735a", luz: "#5d9273", osc: "#31513f", detalle: "chaqueta" },
+    "abrigo-travesia": { base: "#343a48", luz: "#4b5364", osc: "#23272f", detalle: "abrigo" },
+    "cuero-loguetown": { base: "#79513b", luz: "#946a4e", osc: "#573a2b", detalle: "cuero" },
+    "kimono-wano": { base: "#8e4460", luz: "#ab5a78", osc: "#6a3246", detalle: "kimono" },
+    "manto-voluntad": { base: "#2e3a54", luz: "#41527a", osc: "#1f2838", detalle: "manto" },
+    "gabardina-colmillo": { base: "#c9a86a", luz: "#ddc084", osc: "#9e824c", detalle: "gabardina" }
   };
-  const v = VESTIMENTA[appearance.outfit] || VESTIMENTA.Rojo;
+  // saves viejos: los atuendos por color se mapean a su silueta equivalente
+  const VESTIMENTA_LEGACY = { Rojo: "chaleco-sol", Azul: "uniforme-justicia", Verde: "chaqueta-viento", Negro: "abrigo-travesia", Marrón: "cuero-loguetown", Kimono: "kimono-wano", Manto: "manto-voluntad", Gabardina: "gabardina-colmillo" };
+  const v = VESTIMENTA[appearance.outfit] || VESTIMENTA[VESTIMENTA_LEGACY[appearance.outfit]] || VESTIMENTA["chaleco-sol"];
+  // el color de la ropa elegido manda sobre el tono base de la silueta
+  const outfitColor = COAT_COLOR[appearance.outfitColor];
+  if (outfitColor) { v.base = outfitColor; }
   const coat = /armadura|placa|metal/i.test(armor) ? "#768494"
     : /capa|manto|abrigo/i.test(armor) ? "#36445c"
       : (COAT_COLOR[appearance.coat] || coats[appearance.portrait] || v.base);

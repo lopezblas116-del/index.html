@@ -7,11 +7,13 @@ import {
   renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
 import { initHud, renderHud, setHudVisible } from "./ui/hud.js";
+import { renderGameStateUI } from "../js/ui.js";
+import { sincronizarEstado } from "../js/state.js";
 import { generateRandomOrigin, isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
   draftTestament, ensureAdvancedSystems, performDockyardAction,
-  setClimateZone, suggestNavigation, tavernAction
+  setClimateZone, suggestNavigation, tavernAction, tablonDelPuerto, sugerirEncargo
 } from "./systems.js";
 import { trade } from "./combat_economy.js";
 import { createNetwork } from "./network.js";
@@ -174,6 +176,8 @@ function persistRender(reschedule = false) {
   if (!character) return;
   ensureBlockOneData(character);
   ensureAdvancedSystems(character);
+  sincronizarEstado(character); // el chip del capitán y el chrome reflejan el alma viva
+  renderGameStateUI();
   saveGame(character);
   paint();
   if (reschedule) scheduleTick();
@@ -248,9 +252,9 @@ listen(byId("character-form"), "submit", (event) => {
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   const avatarConfig = {
     skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"),
-    hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"),
-    accessory: String(data.get("accessory") || "Ninguno"), detail: String(data.get("detail") || "Ninguno"),
-    coat: String(data.get("coat") || "Ninguno")
+    hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "chaleco-sol"),
+    outfitColor: String(data.get("outfitColor") || ""), accessory: String(data.get("accessory") || "Ninguno"),
+    detail: String(data.get("detail") || "Ninguno"), coat: String(data.get("coat") || "Ninguno")
   };
   const randomOrigin = generateRandomOrigin();
   // raza y mar pueden venir del Gacha del Destino (3 monedas); si no, azar puro al zarpar
@@ -318,6 +322,15 @@ listen(document, "onepiece:hud-sail-suggest", (event) => {
     persistRender(true); // el zarpe corre en el próximo latido del mar
     window.MAPA?.volar?.(target.x, target.y, 1.5, 700);
   }
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-tablon-suggest", (event) => {
+  // sugerir, no controlar: el encargo viaja al avatar, el mar decide el resto
+  if (!character || character.status === "dead") return;
+  const encargo = tablonDelPuerto(character).find((item) => item.id === event.detail?.encargoId);
+  if (!encargo) return;
+  const result = sugerirEncargo(character, encargo);
+  persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
 listen(document, "onepiece:hud-coliseo-fight", () => {

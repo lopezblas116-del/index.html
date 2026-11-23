@@ -25,8 +25,14 @@ test("race selection keeps rare bloodlines hidden and applies human learning", (
   giant.location.routeIndex = 5;
   giant.mission.status = "complete";
   giant.ship.reinforced = false;
-  performAction(giant, "navigate");
-  assert.equal(giant.location.routeIndex, 5);
+  const randomGate = Math.random;
+  Math.random = () => 0.9; // sin deriva: el test mide el gate del gigante, no el azar
+  try {
+    performAction(giant, "navigate");
+    assert.equal(giant.location.routeIndex, 5);
+  } finally {
+    Math.random = randomGate;
+  }
 });
 
 test("conventional Haki training is locked in the Four Blues and gated by Grand Line survival", () => {

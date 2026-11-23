@@ -14,7 +14,9 @@ const set = (selector, value) => {
 export function renderGameStateUI(estado = gameState) {
   set("[data-hud-day]", estado.reloj);
   set("[data-hud-berries]", `฿ ${fmt(estado.monedas)}`);
-  set("[data-hud-faction]", estado.clase);
+  // el capitán en persona: su nombre manda, la bandera lo acompaña
+  set(".one-hud-captain-name", estado.nombre);
+  set(".one-hud-captain-fac", estado.clase);
 
   // barra de salud / experiencia del HUD
   const vitals = { health: [estado.salud, estado.saludMax], experience: [estado.experiencia, Math.max(100, estado.nivel * 100)] };

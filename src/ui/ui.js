@@ -471,22 +471,34 @@ const TRAITS = [
   { id: "Feroz", opposite: "Noble" }, { id: "Noble", opposite: "Feroz" }
 ];
 // ── El Gacha del Destino: raza y mar salen del azar; tres monedas para intentar ──
+// las razas pesan según el lore: el humano es la base del mundo (87%);
+// el 13% restante se reparte entre las linajes raras que el mar guarda
 const RAZAS_GACHA = [
-  ["human", "Humano", "Voluntad y aprendizaje rápido. El mar no les regaló nada: por eso llegan más lejos."],
-  ["fishman", "Gyojin / Tritón", "Nació bajo el agua y la respiración del abismo. Puertos segregados lo mirarán raro."],
-  ["mink", "Mink", "Pelo y trueno. Agilidad felina y una descarga eléctrica guardada en la sangre."],
-  ["threeeye", "Tres Ojos", "Un tercer ojo que lee lo que otros no ven: glifos antiguos, mentiras, rumores."],
-  ["giant", "Gigante", "El puño es la carta de presentación. Come doble y su casco va reforzado."],
-  ["sky", "Habitante del Cielo", "Cayó del Mar Blanco. Las alturas lo llaman; el Mar Azul le pesa."],
-  ["longlimb", "Extremidades Largas", "Brazos y piernas que alcanzan donde otros no llegan. Alcance marcial puro."],
-  ["tontatta", "Tontatta", "Pequeño como una sombra, fuerte como un andamio. Sigilo nato."]
+  ["human", "Humano", "Voluntad y aprendizaje rápido. El mar no les regaló nada: por eso llegan más lejos.", 87],
+  ["fishman", "Gyojin / Tritón", "Nació bajo el agua y la respiración del abismo. Puertos segregados lo mirarán raro.", 3.2],
+  ["mink", "Mink", "Pelo y trueno. Agilidad felina y una descarga eléctrica guardada en la sangre.", 2.6],
+  ["threeeye", "Tres Ojos", "Un tercer ojo que lee lo que otros no ven: glifos antiguos, mentiras, rumores.", 1.8],
+  ["giant", "Gigante", "El puño es la carta de presentación. Come doble y su casco va reforzado.", 0.9],
+  ["sky", "Habitante del Cielo", "Cayó del Mar Blanco. Las alturas lo llaman; el Mar Azul le pesa.", 1.2],
+  ["longlimb", "Extremidades Largas", "Brazos y piernas que alcanzan donde otros no llegan. Alcance marcial puro.", 1.6],
+  ["tontatta", "Tontatta", "Pequeño como una sombra, fuerte como un andamio. Sigilo nato.", 0.7]
 ];
 const MARES_GACHA = [
-  ["East Blue", "Mar del Este", "El mar de los débiles… dicen. Ahí nacieron los que rompieron el mundo."],
-  ["North Blue", "Mar del Norte", "Frío, ambicioso, cuentos de macetas y gigantes legales."],
-  ["South Blue", "Mar del Sur", "Aguas suaves, puertos tranquilos: el mejor lugar para esconder un sueño."],
-  ["West Blue", "Mar del Oeste", "Mafias del puerto y familias viejas. El que sale de ahí, sale duro."]
+  ["East Blue", "Mar del Este", "El mar de los débiles… dicen. Ahí nacieron los que rompieron el mundo.", 40],
+  ["North Blue", "Mar del Norte", "Frío, ambicioso, cuentos de macetas y gigantes legales.", 20],
+  ["South Blue", "Mar del Sur", "Aguas suaves, puertos tranquilos: el mejor lugar para esconder un sueño.", 20],
+  ["West Blue", "Mar del Oeste", "Mafias del puerto y familias viejas. El que sale de ahí, sale duro.", 20]
 ];
+// sorteo ponderado: el azar respeta el peso del mundo, no una tómbola plana
+function sortearConPeso(tabla) {
+  const total = tabla.reduce((suma, fila) => suma + (fila[3] || 1), 0);
+  let dado = Math.random() * total;
+  for (const fila of tabla) {
+    dado -= fila[3] || 1;
+    if (dado <= 0) return fila;
+  }
+  return tabla[tabla.length - 1];
+}
 // ── constelaciones del carácter: dos rasgos fijan un rumbo con nombre propio ──
 const CONSTELACIONES = {
   "Valiente|Impulsivo": ["Corazón de Tormenta", "No piensa el salto: lo salta. Los mares le temen al entusiasmo."],
@@ -589,8 +601,12 @@ function moveStepContent(step) {
   content.forEach((child) => child.remove());
   return content;
 }
-const COLORES_SWATCH = { Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf", Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Blanco: "#e8e6e0", Amarillo: "#d6a53c", Violeta: "#6b4a7a", Celeste: "#5b8fa8", Rosa: "#c26b8a" };
-const NOMBRES_VESTIMENTA = { Rojo: "Chaleco carmesí", Azul: "Uniforme azul", Verde: "Chaqueta verde", Negro: "Abrigo oscuro", Marrón: "Cuero de puerto", Kimono: "Kimono de Wano", Manto: "Manto pirata", Gabardina: "Gabardina del norte" };
+const COLORES_SWATCH = { Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf", Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Escarlata: "#c23b2e", Turquesa: "#3fa896", Vino: "#7a2f4a", Cobre: "#b06a3c", Blanco: "#e8e6e0", Amarillo: "#d6a53c", Violeta: "#6b4a7a", Celeste: "#5b8fa8", Rosa: "#c26b8a", "": "#8d99b0" };
+const NOMBRES_VESTIMENTA = {
+  "chaleco-sol": "Chaleco del Sombrero", "uniforme-justicia": "Uniforme de la Justicia", "chaqueta-viento": "Chaqueta del Viento Este", "abrigo-travesia": "Abrigo de Travesía", "cuero-loguetown": "Cuero de Loguetown", "kimono-wano": "Kimono de Wano", "manto-voluntad": "Manto de la Voluntad", "gabardina-colmillo": "Gabardina del Colmillo",
+  // legado de los primeros mares: los atuendos por color siguen viéndose bien
+  Rojo: "Chaleco del Sombrero", Azul: "Uniforme de la Justicia", Verde: "Chaqueta del Viento Este", Negro: "Abrigo de Travesía", Marrón: "Cuero de Loguetown", Kimono: "Kimono de Wano", Manto: "Manto de la Voluntad", Gabardina: "Gabardina del Colmillo"
+};
 const NOMBRES_DETALLE = { Bandana: "Bandana roja", "Sombrero de paja": "Sombrero de paja", Tricornio: "Tricornio", "Gorra marina": "Gorra marina", Capucha: "Capucha", Aretes: "Aretes dorados", Collar: "Collar", Cicatriz: "Cicatriz", Ninguno: "Sin detalle" };
 function filaSwatches(form, key, titulo, valores) {
   const fila = document.createElement("div"); fila.className = "swatch-fila";
@@ -620,7 +636,7 @@ function configureWizardLayout(form) {
   const visual = original[0], bandera = original[1], rasgosStep = original[2], destino = original[3], summary = original[4];
   // capturo TODOS los campos ANTES de reemplazar el DOM: replaceChildren los saca del form
   const identity = ["name", "handle"].map(getField).filter(Boolean);
-  const ocultos = ["skin", "eyes", "hair", "outfit", "coat", "accessory", "detail"].map(getField).filter(Boolean);
+  const ocultos = ["skin", "eyes", "hair", "outfit", "outfitColor", "coat", "accessory", "detail"].map(getField).filter(Boolean);
   const campoProfesion = getField("profession"); // el oficio lo revela el mar, no un formulario
   const raceDesc = visual.querySelector("#race-description");
   const preview = visual.querySelector(".avatar-editor-preview");
@@ -650,7 +666,8 @@ function configureWizardLayout(form) {
     ["skin", "Piel", ["Clara", "Bronceada", "Oscura"]],
     ["eyes", "Mirada", ["Marrón", "Azul", "Verde", "Gris"]],
     ["hair", "Cabello", ["Negro", "Moreno", "Rubio", "Rojo", "Blanco"]],
-    ["outfit", "Vestimenta", ["Rojo", "Azul", "Verde", "Negro", "Marrón", "Kimono", "Manto", "Gabardina"]],
+    ["outfit", "Vestimenta", ["chaleco-sol", "uniforme-justicia", "chaqueta-viento", "abrigo-travesia", "cuero-loguetown", "kimono-wano", "manto-voluntad", "gabardina-colmillo"]],
+    ["outfitColor", "Color de la ropa", ["", "Escarlata", "Rojo", "Azul", "Celeste", "Turquesa", "Verde", "Amarillo", "Cobre", "Marrón", "Vino", "Rosa", "Violeta", "Negro", "Blanco"]],
     ["coat", "Abrigo · color propio", ["Ninguno", "Rojo", "Azul", "Verde", "Negro", "Blanco", "Amarillo", "Violeta", "Marrón", "Celeste", "Rosa"]],
     ["accessory", "Cabeza", ["Ninguno", "Bandana", "Sombrero de paja", "Tricornio", "Gorra marina", "Capucha"]],
     ["detail", "Detalle extra", ["Ninguno", "Aretes", "Cicatriz", "Collar", "Aro de metal"]]
@@ -675,15 +692,28 @@ function configureWizardLayout(form) {
   rasgosStep.append(...hiddenTraits);
   const anillo = document.createElement("div"); anillo.className = "anillo-fase";
   const brujula = document.createElement("div"); brujula.className = "anillo-brujula"; brujula.id = "anillo-brujula"; brujula.setAttribute("aria-label", "Brújula del carácter");
-  // rosa de los vientos moderna: aguja de dos puntas (norte encendido, sur apagado), marcas y anillo dorado
+  // rosa de los vientos de precisión: cristal con gradiente, graduación fina de
+  // 60 marcas, cardinales completos, aguja con brillo y lectura de grados viva
   brujula.innerHTML = `<svg viewBox="0 0 120 120" class="anillo-svg" aria-hidden="true">
+    <defs>
+      <radialGradient id="brujula-cristal" cx="50%" cy="35%" r="75%">
+        <stop offset="0%" stop-color="rgba(126,200,255,.16)"/>
+        <stop offset="55%" stop-color="rgba(20,30,55,.10)"/>
+        <stop offset="100%" stop-color="rgba(10,16,32,.28)"/>
+      </radialGradient>
+      <linearGradient id="brujula-oro" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#f4b41a"/><stop offset="100%" stop-color="#c98a10"/>
+      </linearGradient>
+    </defs>
     <circle cx="60" cy="60" r="56" class="brujula-anillo"/>
-    <circle cx="60" cy="60" r="47" class="brujula-anillo-int"/>
-    ${Array.from({ length: 12 }, (_, i) => { const a = (i * 30) * Math.PI / 180; const largo = i % 3 === 0 ? 9 : 4; const x1 = 60 + Math.sin(a) * (52 - largo), y1 = 60 - Math.cos(a) * (52 - largo), x2 = 60 + Math.sin(a) * 52, y2 = 60 - Math.cos(a) * 52; return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="brujula-marca${i % 3 === 0 ? " mayor" : ""}"/>`; }).join("")}
+    <circle cx="60" cy="60" r="47" fill="url(#brujula-cristal)" stroke="rgba(255,255,255,.28)"/>
+    ${Array.from({ length: 60 }, (_, i) => { const a = (i * 6) * Math.PI / 180; const mayor = i % 5 === 0; const largo = i % 3 === 0 && mayor ? 9 : mayor ? 6 : 3; const r1 = 52 - largo, x1 = 60 + Math.sin(a) * r1, y1 = 60 - Math.cos(a) * r1, x2 = 60 + Math.sin(a) * 52, y2 = 60 - Math.cos(a) * 52; return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="brujula-marca${mayor ? " mayor" : ""}"/>`; }).join("")}
+    ${[["N", 0], ["E", 90], ["S", 180], ["O", 270]].map(([letra, deg]) => { const a = deg * Math.PI / 180; const x = 60 + Math.sin(a) * 42.5, y = 60 - Math.cos(a) * 42.5; return `<text x="${x.toFixed(1)}" y="${(y + 3.2).toFixed(1)}" class="brujula-cardenal${letra === "N" ? " norte" : ""}" text-anchor="middle">${letra}</text>`; }).join("")}
     <g class="anillo-aguja"><polygon points="60,18 55,64 60,58 65,64" class="aguja-norte"/><polygon points="60,102 55,56 60,62 65,56" class="aguja-sur"/><circle cx="60" cy="60" r="4.5" class="aguja-pivote"/></g>
-    <text x="60" y="14" class="brujula-n">N</text>
+    <circle cx="60" cy="60" r="18" class="brujula-dial"/>
+    <text id="anillo-grados" x="60" y="63.5" class="brujula-grados" text-anchor="middle">0°</text>
   </svg>`;
-  const centro = document.createElement("span"); centro.className = "anillo-centro"; centro.textContent = "✦";
+  const centro = document.createElement("span"); centro.className = "anillo-centro"; centro.setAttribute("aria-hidden", "true"); centro.textContent = "";
   brujula.append(centro);
   const anilloRasgos = document.createElement("div"); anilloRasgos.className = "anillo-rasgos"; anilloRasgos.id = "anillo-rasgos";
   TRAITS.forEach((trait, i) => {
@@ -709,21 +739,21 @@ function configureWizardLayout(form) {
   const resultado = document.createElement("div"); resultado.className = "resultado-destino"; resultado.id = "resultado-destino"; resultado.hidden = true;
   // las cartas están sobre la mesa: qué puede tocar el destino y qué cuesta cada carta
   const FICHAS_RAZA = {
-    human: { prob: "12,5%", fuerte: "+10% XP por aprender rápido; ningún puerto te cierra la puerta", debil: "Ninguna ventaja física: tu cuerpo es el de cualquiera" },
-    fishman: { prob: "12,5%", fuerte: "+5 vida, +1 fuerza; nada mejor que nadie y cruza la Franja de Calma sin castigo", debil: "Puertos segregados te cobran +50% y pueden cerrarte la taberna" },
-    mink: { prob: "12,5%", fuerte: "+2 agilidad; los rayos casi no te hieren (30% de daño eléctrico)", debil: "El clima seco te agota (-3 HP) y tu luna Sulong depende del calendario" },
-    threeeye: { prob: "12,5%", fuerte: "+1 agilidad; tu tercer ojo abre calcos antiguos y poneglyphs", debil: "Leer glifos exige talento nato: sin él, la ruina se queda muda" },
-    giant: { prob: "12,5%", fuerte: "+40 vida, +4 fuerza; la arena del coliseo te teme", debil: "Come el doble de provisiones y sin casco reforzado no cruzas la Reverse Mountain" },
-    sky: { prob: "12,5%", fuerte: "+1 agilidad; los cielos y las alturas son tu casa", debil: "El Mar Azul te pesa: malestar ocasional (-2 HP)" },
-    longlimb: { prob: "12,5%", fuerte: "+1 fuerza, +1 agilidad y +2 de alcance marcial en combate", debil: "Los espacios estrechos te delatan: infiltrarte es peor" },
-    tontatta: { prob: "12,5%", fuerte: "+2 fuerza, +2 agilidad; sigilo nato para pasar desapercibido", debil: "-10 vida, carga limitada y las lluvias de área te destrozan" }
+    human: { prob: "87%", fuerte: "+10% XP por aprender rápido; ningún puerto te cierra la puerta", debil: "Ninguna ventaja física: tu cuerpo es el de cualquiera" },
+    fishman: { prob: "3,2%", fuerte: "+5 vida, +1 fuerza; nada mejor que nadie y cruza la Franja de Calma sin castigo", debil: "Puertos segregados te cobran +50% y pueden cerrarte la taberna" },
+    mink: { prob: "2,6%", fuerte: "+2 agilidad; los rayos casi no te hieren (30% de daño eléctrico)", debil: "El clima seco te agota (-3 HP) y tu luna Sulong depende del calendario" },
+    threeeye: { prob: "1,8%", fuerte: "+1 agilidad; tu tercer ojo abre calcos antiguos y poneglyphs", debil: "Leer glifos exige talento nato: sin él, la ruina se queda muda" },
+    giant: { prob: "0,9%", fuerte: "+40 vida, +4 fuerza; la arena del coliseo te teme", debil: "Come el doble de provisiones y sin casco reforzado no cruzas la Reverse Mountain" },
+    sky: { prob: "1,2%", fuerte: "+1 agilidad; los cielos y las alturas son tu casa", debil: "El Mar Azul te pesa: malestar ocasional (-2 HP)" },
+    longlimb: { prob: "1,6%", fuerte: "+1 fuerza, +1 agilidad y +2 de alcance marcial en combate", debil: "Los espacios estrechos te delatan: infiltrarte es peor" },
+    tontatta: { prob: "0,7%", fuerte: "+2 fuerza, +2 agilidad; sigilo nato para pasar desapercibido", debil: "-10 vida, carga limitada y las lluvias de área te destrozan" }
   };
   const fichaRow = (raceId, nombre, texto) => {
-    const ficha = FICHAS_RAZA[raceId] || { prob: "12,5%", fuerte: texto, debil: "El mar te pondrá a prueba" };
+    const ficha = FICHAS_RAZA[raceId] || { prob: "—", fuerte: texto, debil: "El mar te pondrá a prueba" };
     return `<tr><td><b>${nombre}</b></td><td>${ficha.prob}</td><td class="pos-fuerte">${ficha.fuerte}</td><td class="pos-debil">${ficha.debil}</td></tr>`;
   };
   const posibilidades = document.createElement("details"); posibilidades.className = "gacha-posibilidades";
-  posibilidades.innerHTML = `<summary>🎲 Ver las posibilidades del destino</summary><p class="muted small-text">Ocho razas, cuatro mares: cada moneda reparte la misma suerte. Lo que el destino elija, se sentirá en el juego: fuertes y débiles de verdad.</p><table class="posibilidades-tabla"><thead><tr><th>Raza</th><th>Probabilidad</th><th>Fortaleza</th><th>Precio</th></tr></thead><tbody>${RAZAS_GACHA.map(([id, nombre, texto]) => fichaRow(id, nombre, texto)).join("")}</tbody></table>`;
+  posibilidades.innerHTML = `<summary>🎲 Ver las posibilidades del destino</summary><p class="muted small-text">Ocho linajes, cuatro mares: el humano es el 87% del mundo porque es el que más lejos llega; lo demás se reparte según lo que cada sangre guarda. Lo que el destino elija, se sentirá en el juego: fuertes y débiles de verdad.</p><table class="posibilidades-tabla"><thead><tr><th>Raza</th><th>Probabilidad</th><th>Fortaleza</th><th>Precio</th></tr></thead><tbody>${RAZAS_GACHA.map(([id, nombre, texto]) => fichaRow(id, nombre, texto)).join("")}</tbody></table>`;
   const notaGacha = document.createElement("p"); notaGacha.className = "muted"; notaGacha.textContent = "Ni tu raza ni tu mar se eligen: se sortean. Tenés tres monedas del destino para observar tu suerte.";
   gacha.append(notaGacha, monedas, rueda, invocar, resultado, posibilidades);
   destino.append(gacha);
@@ -799,7 +829,7 @@ function updateWizardSummary() {
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
-  const avatarConfig = Object.fromEntries(["skin", "eyes", "hair", "outfit", "coat", "accessory", "detail"].map((key) => [key, form.elements.namedItem(key)?.value]));
+  const avatarConfig = Object.fromEntries(["skin", "eyes", "hair", "outfit", "outfitColor", "coat", "accessory", "detail"].map((key) => [key, form.elements.namedItem(key)?.value]));
   avatarConfig.race = form.elements.namedItem("race")?.value || "human";
   for (const id of ["wizard-avatar-preview", "wizard-portrait"]) {
     const canvas = byId(id), ctx = canvas?.getContext("2d");
@@ -850,6 +880,9 @@ function updateTraitButtons() {
       ang = Math.min(a, b) + (delta > 180 ? (360 - delta) / 2 : delta / 2);
     } else if (selectedTraits.length === 1) ang = ANGULOS[selectedTraits[0]];
     brujula.style.setProperty("--compass-angle", `${ang}deg`);
+    // la lectura viva del rumbo: el número que la aguja señala
+    const grados = byId("anillo-grados");
+    if (grados) grados.textContent = `${Math.round(ang) % 360}°`;
   }
   const card = byId("constelacion-card");
   if (card) {
@@ -890,16 +923,16 @@ function girarDestino() {
   let paso = 0;
   const slot = () => {
     if (paso++ < pasos) {
-      const r = RAZAS_GACHA[Math.floor(Math.random() * RAZAS_GACHA.length)];
-      const m = MARES_GACHA[Math.floor(Math.random() * MARES_GACHA.length)];
+      const r = sortearConPeso(RAZAS_GACHA);
+      const m = sortearConPeso(MARES_GACHA);
       const texto = rueda.querySelector(".rueda-texto");
       if (texto) texto.textContent = `${r[1]} · ${m[1]}`;
       setTimeout(slot, 65 + paso * 10);
       return;
     }
     rueda.classList.remove("girando");
-    const [raceId, raceNombre, raceTexto] = RAZAS_GACHA[Math.floor(Math.random() * RAZAS_GACHA.length)];
-    const [seaId, seaNombre, seaTexto] = MARES_GACHA[Math.floor(Math.random() * MARES_GACHA.length)];
+    const [raceId, raceNombre, raceTexto] = sortearConPeso(RAZAS_GACHA);
+    const [seaId, seaNombre, seaTexto] = sortearConPeso(MARES_GACHA);
     const textoFinal = rueda.querySelector(".rueda-texto");
     if (textoFinal) textoFinal.textContent = `${raceNombre} · ${seaNombre}`;
     const form = byId("character-form");

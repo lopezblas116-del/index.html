@@ -78,7 +78,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
   const avatarConfig = {
     skin: appearance.skin || "Clara", hair: appearance.hair || "Negro",
     accessory: appearance.accessory || "Ninguno", eyes: appearance.eyes || "Marrón",
-    outfit: appearance.outfit || "Rojo", detail: appearance.detail || "Ninguno",
+    outfit: appearance.outfit || "chaleco-sol", outfitColor: appearance.outfitColor || "", detail: appearance.detail || "Ninguno",
     coat: appearance.coat || "Ninguno"
   };
   const character = {
@@ -132,7 +132,7 @@ function normalize(character) {
   character.avatarConfig = {
     skin: avatar.skin || "Clara", hair: avatar.hair || "Negro",
     accessory: avatar.accessory || "Ninguno", eyes: avatar.eyes || "Marrón",
-    outfit: avatar.outfit || "Rojo", detail: avatar.detail || "Ninguno",
+    outfit: avatar.outfit || "chaleco-sol", outfitColor: avatar.outfitColor || "", detail: avatar.detail || "Ninguno",
     coat: avatar.coat || "Ninguno"
   };
   character.appearance = { ...character.avatarConfig };
@@ -428,21 +428,27 @@ function applySailRisks(character, random = Math.random) {
   }
   return { drifted: false };
 }
-// la Red Line no negocia: casco reforzado para gigantes y tripulación preparada
-// para todos. Se evalúa ANTES de la deriva: si la travesía no puede emprenderse,
-// la corriente ni siquiera llega a empujar.
+// la Red Line no se negocia: los Cuatro Blues perdonan la improvisación, la
+// Grand Line no. Requisitos de verdad, no un número de nivel:
+//  1) un navegante a bordo (nadie lee la montaña inversa a ojo)
+//  2) un barco preparado: casco reforzado o integridad sana — la montaña
+//     inversa parte cascos rendidos, por mucho nivel que lleves
 function redLineGate(character) {
   const route = routeFor(character.originSea);
   const next = (Number(character.location?.routeIndex) || 0) + 1;
   const reverseMountain = route.indexOf("Reverse Mountain");
-  if (character.race === "giant" && !character.ship?.reinforced && reverseMountain >= 0 && next >= reverseMountain) {
-    return "La carabela no puede cruzar la Reverse Mountain sin un casco reforzado. Consíguelo en un astillero.";
+  if (reverseMountain < 0 || next < reverseMountain) return null; // los Blues: el mar perdona
+  // ir HACIA la Reverse Mountain ya es la travesía: los requisitos aplican antes
+  const navegante = (character.crew || []).some((member) => member.role === "Navegante");
+  if (!navegante) {
+    return "Para cruzar la Reverse Mountain hace falta un navegante: es la preparación mínima de la Grand Line. Recluta al menos uno antes de zarpar.";
   }
-  if (reverseMountain >= 0 && next > reverseMountain) {
-    const hasHaki = Object.values(character.haki || {}).some(Boolean);
-    if ((Number(character.level) || 1) < 3 && !hasHaki && !(character.crew || []).length) {
-      return "La travesía de la Red Line exige preparación: alcanza el nivel 3, despierta Haki o recluta al menos un navegante o carpintero antes de cruzar.";
-    }
+  const casco = Number(character.ship?.health) || 0;
+  if (character.race === "giant" && !character.ship?.reinforced) {
+    return "Un gigante parte el casco viejo contra la montaña inversa: refuérzalo en un astillero. Esa preparación no se salta.";
+  }
+  if (casco < 60 && !character.ship?.reinforced) {
+    return `El casco no aguanta la Reverse Mountain (${casco}% de integridad): repara o refuerza en un astillero. La preparación del barco vale más que cualquier nivel.`;
   }
   return null;
 }

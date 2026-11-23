@@ -31,7 +31,17 @@ function prepareIslands(character) {
   });
 }
 export function getMapIslands(character) {
-  return prepareIslands(character).map((island) => ({ ...island, ...islandDetails(island) }));
+  return prepareIslands(character).map((island) => {
+    const detalles = islandDetails(island);
+    // el id y lo propio de la isla sobreviven: islandDetails no lo trae
+    const merged = { ...island, ...detalles, pois: detalles.pois || island.pois };
+    // el tablón del puerto existe en toda isla: ahí cuelgan los encargos del día
+    if (!(merged.pois || []).some((poi) => poi.id === "puerto-tablon")) {
+      const ancla = (merged.pois || []).find((poi) => poi.type === "dock") || merged.pois?.[0];
+      merged.pois = [...(merged.pois || []), { id: "puerto-tablon", name: "Tablón del Puerto", type: "tablon", x: (ancla?.x || 320) + 34, y: (ancla?.y || 240) + 18 }];
+    }
+    return merged;
+  });
 }
 export function createScenePosition(islandId, avatarId) {
   let seed = 0;

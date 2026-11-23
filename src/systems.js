@@ -168,6 +168,8 @@ export function updateCrewLoyalty(character, arrived, random = Math.random) {
   if (character.status === "dead") return;
   for (const member of character.crew) {
     member.loyalty = clamp(member.loyalty ?? 50);
+    // la desconfianza sembrada por un motín pesa: la lealtad sana más lento
+    member.loyalty = clamp(member.loyalty - (character.distrust ? 2 : 0));
     if (random() < 0.12) member.loyalty = clamp(member.loyalty - 5);
   }
   if (!arrived) return;
@@ -176,6 +178,103 @@ export function updateCrewLoyalty(character, arrived, random = Math.random) {
     character.log.unshift({ time: new Date().toISOString(), message: `⚠️ ${member.name} abandona la tripulación en ${character.location.island} por falta de lealtad.` });
     return false;
   });
+  attemptMutiny(character, random);
+}
+
+// ── en la Grand Line la lealtad se mide en osadía ──
+// si la lealtad media del barco se hunde, el más osado puede usurpar el cargo
+// del capitán: toma el mando de facto, pero la desconfianza queda sembrada —
+// los reclutas futuros llegan mirando de reojo y la lealtad sana más lento.
+export function attemptMutiny(character, random = Math.random) {
+  if (character.status === "dead" || !(character.crew || []).length || character.usurpedBy) return;
+  const media = character.crew.reduce((suma, member) => suma + (member.loyalty || 0), 0) / character.crew.length;
+  const umbral = enGrandLine(character) ? 24 : 15; // en la Grand Line la tenacidad manda más
+  if (media >= umbral || random() > 0.35) return;
+  const rebelde = [...character.crew].sort((a, b) => (b.level || 1) - (a.level || 1))[0];
+  if (!rebelde) return;
+  character.usurpedBy = rebelde.name;
+  character.distrust = true;
+  for (const member of character.crew) member.loyalty = clamp((member.loyalty || 0) - 12);
+  character.log.unshift({ time: new Date().toISOString(), message: `🏴‍☠️ MOTÍN: ${rebelde.name} usurpó el mando del barco. Capitanea de facto; la desconfianza queda sembrada. Desafialo en la taberna para recuperar tu puesto.` });
+  character.whisper ??= {};
+  character.whisper.mutiny = { leader: rebelde.name, time: Date.now() };
+}
+
+export function enGrandLine(character) {
+  return /paraíso|grand line/i.test(String(character?.location?.region || "")) || climateFor(character) === "grand-line";
+}
+
+// ── El Tablón del Puerto: encargos con riesgo, de menor a mayor ──
+// el papel se renueva cada día en cada isla (determinista: la misma isla y el
+// mismo día ofrecen lo mismo — el mar no cambia los encargos por capricho)
+export function tablonDelPuerto(character) {
+  const isla = character?.location?.island || "—";
+  const dia = Number(character?.world?.day) || 1;
+  const semilla = hash(`${isla}:${dia}`);
+  const ENCARGOS = [
+    { id: "muelle", nombre: "Descargar carga en el muelle", riesgo: 1, pago: 45, texto: "Braza y cajas: el trabajo que nadie quiere. Sin gloria y sin heridas." },
+    { id: "vigia", nombre: "Turno de vigía nocturno", riesgo: 1, pago: 55, texto: "Mirar el horizonte por otros: los ojos del puerto pagan por hacerlo." },
+    { id: "escolta", nombre: "Escoltar la carreta mercante", riesgo: 2, pago: 110, texto: "Ladrones barateros rondan el camino viejo: puede terminar a golpes." },
+    { id: "deuda", nombre: "Cobrar una deuda impaga", riesgo: 2, pago: 95, texto: "El deudor no quiere pagar. Los puños convencen; los huesos recuerdan." },
+    { id: "caceria", nombre: "Cazar al ladrón del mercado", riesgo: 3, pago: 220, texto: "Un cuchillo y laberintos de callejones: puede acabar mal, y paga por eso." },
+    { id: "guarida", nombre: "Entrar a la guarida del contrabandista", riesgo: 3, pago: 340, texto: "Dado, ron y mosquetes: la peor combinación de cualquier puerto." }
+  ];
+  const offset = semilla % ENCARGOS.length;
+  return [0, 1, 2, 3].map((i) => ENCARGOS[(offset + i) % ENCARGOS.length]);
+}
+
+// ── sugerir, no controlar: el jugador señala el encargo, el avatar decide ir ──
+export function sugerirEncargo(character, encargo) {
+  if (!character || character.status === "dead") return { ok: false, message: "El capitán no puede sugerir nada desde ese estado." };
+  if (character.location?.atSea) return { ok: false, message: "El avatar está en mar abierto: primero hay que llegar a puerto." };
+  character.localSuggestion = "puerto-tablon";
+  character.encargoSugerido = { ...encargo, isla: character.location?.island };
+  character.location.localVenue = null;
+  character.location.localTarget = null;
+  character.autonomy.paused = false; // la sugerencia vuelve a ponerlo en modo autónomo
+  character.log.unshift({ time: new Date().toISOString(), message: `📋 Le sugerís a ${character.name}: «${encargo.nombre}» (riesgo ${encargo.riesgo}). Camina hacia el Tablón del Puerto cuando el mar lo deje.` });
+  return { ok: true, message: `Sugerencia enviada: ${character.name} irá al tablón por «${encargo.nombre}».` };
+}
+
+// la ejecución del encargo: el avatar ya está en el tablón, el mundo responde
+export function resolverEncargo(character, random = Math.random) {
+  const encargo = character.encargoSugerido;
+  if (!encargo) return { message: "El tablón no guarda ningún encargo sugerido." };
+  delete character.encargoSugerido;
+  const atributo = encargo.riesgo === 3 ? (Number(character.stats?.strength) || 0) : (Number(character.stats?.agility) || 0);
+  const exito = random() < ({ 1: 0.92, 2: 0.78, 3: 0.58 }[encargo.riesgo] || 0.8) + Math.min(0.2, atributo / 400);
+  if (!exito) {
+    const danio = { 1: 5, 2: 12, 3: 22 }[encargo.riesgo] || 8;
+    character.stats.health = Math.max(1, character.stats.health - danio);
+    character.log.unshift({ time: new Date().toISOString(), message: `🩹 «${encargo.nombre}» terminó mal: ${danio} HP menos. El encargo volvió al tablón con sal salada.` });
+    return { message: `«${encargo.nombre}» salió mal (-${danio} HP).` };
+  }
+  character.berries = (Number(character.berries) || 0) + encargo.pago;
+  const experiencia = { 1: 8, 2: 18, 3: 32 }[encargo.riesgo] || 10;
+  character.experience = (Number(character.experience) || 0) + experiencia;
+  character.avatarActivity = "victory";
+  character.log.unshift({ time: new Date().toISOString(), message: `📜 Encargo cumplido: «${encargo.nombre}» (+฿${encargo.pago}, +${experiencia} XP). El tablón anota tu nombre.` });
+  return { message: `Encargo cumplido: +฿${encargo.pago}.` };
+}
+// en los Cuatro Blues cualquiera baja del barco. En la Grand Line la gente que
+// entró contigo espera llegar contigo: despedir o desertar despierta furia, y
+// la respuesta depende de la severidad del capitán — puede ser la muerte.
+export function severidadCapitan(character) {
+  const faccion = String(character.faction || "Pirata");
+  const base = { Marina: 0.22, Pirata: 0.3, Revolucionario: 0.16, Autonomo: 0.14 }[faccion] ?? 0.3;
+  const nivel = (Number(character.level) || 1) / 50; // un capitán curtido no perdona
+  return clamp(base + nivel * 0.1, 0.1, 0.5);
+}
+
+export function desertarEnGrandLine(character, random = Math.random) {
+  if (character.status === "dead" || !enGrandLine(character)) return { riesgo: 0 };
+  const severidad = severidadCapitan(character);
+  const sobrevive = random() >= severidad;
+  const danio = Math.round(10 + severidad * 40);
+  const mensaje = sobrevive
+    ? `🩸 Dejaste la tripulación en la Grand Line: la furia del barco cayó sobre vos y sobreviviste de milagro (-${danio} HP). Nunca más se te olvida.`
+    : `☠ Dejaste la tripulación en la Grand Line y el capitán respondió como responden los severos: la espada cayó. ${character.name} no vuelve a contarla.`;
+  return { riesgo: severidad, sobrevive, mensaje, danio };
 }
 
 export function climateFor(character) {
@@ -233,12 +332,51 @@ export function getTavernCandidates(character) {
   return character.tavern.visitors.filter((visitor) => !recruited.has(visitor.id));
 }
 
-export function tavernAction(character, visitorId, action) {
+export function tavernAction(character, visitorId, action, random = Math.random) {
   ensureAdvancedSystems(character);
+  if (action === "challenge") {
+    // desafío de mando: la única vía limpia para recuperar el puesto usurpado
+    if (!character.usurpedBy) return { ok: false, message: "Tu mando está intacto: nadie usurpó nada." };
+    const rebelde = character.crew.find((member) => member.name === character.usurpedBy);
+    const miNivel = Number(character.level) || 1;
+    const suNivel = Number(rebelde?.level) || miNivel + 1;
+    const prob = clamp(0.4 + (miNivel - suNivel) * 0.12 + 0.15, 0.15, 0.85);
+    if (random() < prob) {
+      character.usurpedBy = null;
+      character.distrust = false;
+      for (const member of character.crew) member.loyalty = clamp((member.loyalty || 0) + 18);
+      character.log.unshift({ time: new Date().toISOString(), message: `⚔ Derrotaste a ${rebelde?.name || "el usurpador"} ante la tripulación: el mando vuelve a tu mano y la lealtad se rinde.` });
+      character.avatarActivity = "victory";
+      return { ok: true, message: "El mando vuelve a tu mano. La desconfianza se disuelve en ron." };
+    }
+    character.stats.health = Math.max(1, character.stats.health - 15);
+    character.log.unshift({ time: new Date().toISOString(), message: `⚔ El desafío falló: ${rebelde?.name || "el usurpador"} te dominó ante la tripulación. La desconfianza crece.` });
+    return { ok: false, message: "El desafío falló. El usurpador sigue al timón y tu orgullo sangra." };
+  }
   const visitor = getTavernCandidates(character).find((candidate) => candidate.id === visitorId);
-  if (!visitor) return { ok: false, message: "Ese nakama ya no está disponible en este puerto." };
+  if (!visitor && action !== "dismiss") return { ok: false, message: "Ese nakama ya no está disponible en este puerto." };
   const island = getMapIslands(character).find((entry) => entry.name === character.location?.island);
   const treatment = raceTreatmentAtPort(character.race, island);
+  if (action === "dismiss") {
+    const idx = character.crew.findIndex((member) => member.visitorId === visitorId || member.id === visitorId || member.name === visitorId);
+    if (idx < 0) return { ok: false, message: "Ese nakama no navega contigo." };
+    // en la Grand Line la gente que entró contigo espera llegar contigo:
+    // despedir es desertar un pedazo del barco, y la severidad del capitán manda
+    const desercion = desertarEnGrandLine(character);
+    if (desercion.riesgo > 0) {
+      character.log.unshift({ time: new Date().toISOString(), message: desercion.mensaje });
+      if (!desercion.sobrevive) {
+        character.status = "dead";
+        character.deathCause = "Deserción en la Grand Line: la severidad del capitán cobró su precio";
+        return { ok: false, message: "La deserción en la Grand Line fue tu fin. El linaje continúa la historia." };
+      }
+      character.stats.health = Math.max(1, character.stats.health - desercion.danio);
+      character.distrust = true;
+    }
+    const [saliente] = character.crew.splice(idx, 1);
+    character.log.unshift({ time: new Date().toISOString(), message: `✋ ${saliente.name} (${saliente.role}) queda en ${character.location?.island || "el puerto"}. El barco sigue su rumbo.` });
+    return { ok: true, message: `${saliente.name} se queda en el puerto.` };
+  }
   if (action === "round") {
     const cost = 25;
     if (character.berries < cost) return { ok: false, message: `Necesitas ฿${cost} para invitar una ronda.` };

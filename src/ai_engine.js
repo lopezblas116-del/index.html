@@ -2,7 +2,7 @@ import { AI_CONFIG } from "./config.js";
 import { dispatchTypedEvent, EVENT_TYPES } from "./event_dispatcher.js";
 import { getMapIslands } from "./map.js";
 import { canReadAncient } from "./archaeology_system.js";
-import { hasNauticalCrew } from "./systems.js";
+import { hasNauticalCrew, resolverEncargo } from "./systems.js";
 import { recordStarterClueVisit } from "./narrative_engine.js";
 import missionData from "./data/missions_data.json" with { type: "json" };
 
@@ -202,8 +202,14 @@ export function resolveLocalActivity(character, random = Math.random, { advanceN
     delete character.location.localTarget;
     delete character.localSuggestion;
     recordStarterClueVisit(character, island, target);
-    const experience = satisfyLocalNeed(character, target);
-    const corrected = `[BITÁCORA · ${psyche.mood}] ${character.name} entra en ${target.name}: ${experience}.`;
+    // el tablón es negocio del puerto: si había encargo sugerido, el mundo responde
+    const esTablon = target.type === "tablon";
+    const experience = esTablon
+      ? resolverEncargo(character).message
+      : satisfyLocalNeed(character, target);
+    const corrected = esTablon
+      ? `[BITÁCORA · ${psyche.mood}] ${character.name} se planta frente al Tablón del Puerto: ${experience}`
+      : `[BITÁCORA · ${psyche.mood}] ${character.name} entra en ${target.name}: ${experience}.`;
     character.log.unshift({ time: new Date().toISOString(), message: corrected });
     character.log = character.log.slice(0, 80);
     psyche.diary.unshift({ day: Number(character.world?.day) || 0, location: island.name, mood: psyche.mood, text: corrected });
