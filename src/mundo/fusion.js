@@ -103,10 +103,17 @@ function installWorldUi() {
   ui.id = "mil-almas-ui";
   ui.innerHTML = `
     <div id="mil-globo-wrap">
-      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Atlas del Alma">
+      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Menú del mundo vivo">
         <span class="mil-globo-ring" aria-hidden="true"></span>
         <span class="mil-globo-icon" aria-hidden="true">🌍</span>
       </button>
+      <nav id="mil-globo-menu" class="mil-globo-menu oculto" aria-label="Paneles del mundo">
+        <button type="button" data-mil-accion="atlas"><span aria-hidden="true">🗺️</span> Atlas del Alma</button>
+        <button type="button" data-mil-accion="alma"><span aria-hidden="true">👤</span> Mi alma</button>
+        <button type="button" data-mil-accion="hemeroteca"><span aria-hidden="true">📰</span> Hemeroteca</button>
+        <button type="button" data-mil-accion="hora"><span aria-hidden="true">🕐</span> Última hora</button>
+        <button type="button" data-mil-accion="ajustes"><span aria-hidden="true">⚙️</span> Ajustes del mundo</button>
+      </nav>
             </div>
     </div>
     <section id="mil-feed-drawer" class="mil-feed-drawer oculto" aria-label="Bitácora del mundo">
@@ -168,18 +175,37 @@ function installWorldUi() {
     </section>
     <div id="toast" class="mil-toast oculto" role="status" aria-live="polite"></div>`;
   document.body.append(ui);
-  // el globo del mundo: una esquina, no una franja — tocás el orbe, se abre; tocás el mar, se va
-  // el globo del mundo: un toque, una acción — si ya existe tu alma abre el
-  // Atlas; si no, te lleva a crearla. Sin menús paralelos: el dock es la única navegación.
+  // el globo del mundo: tocar el orbe despliega la LISTA del mundo —
+  // Atlas del Alma, Mi alma, Hemeroteca, Última hora y Ajustes. Fuera del
+  // orbe (o de la lista), se cierra: el mapa queda limpio.
   const globo = ui.querySelector("#mil-globo");
-  if (globo) globo.addEventListener("click", (event) => {
-    event.stopPropagation();
-    // el globo es la puerta del mundo: abre la Bitácora del Mar COMPLETA
-    // (con la Enciclopedia y el Atlas como pestañas dentro — observación del jugador)
-    const boton = document.querySelector('#bottom-nav [data-hud-panel="news"]');
-    if (boton) boton.click();
-    else window.UI?.abrirFicha?.();
-  });
+  const menuMundo = ui.querySelector("#mil-globo-menu");
+  if (globo && menuMundo) {
+    const cerrarMenu = () => { menuMundo.classList.add("oculto"); globo.setAttribute("aria-expanded", "false"); };
+    globo.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const abierto = !menuMundo.classList.contains("oculto");
+      menuMundo.classList.toggle("oculto", abierto);
+      globo.setAttribute("aria-expanded", String(!abierto));
+    });
+    menuMundo.addEventListener("click", (event) => {
+      const item = event.target.closest("[data-mil-accion]");
+      if (!item) return;
+      cerrarMenu();
+      const accion = item.dataset.milAccion;
+      if (accion === "atlas") window.UI?.abrirAtlas?.();
+      else if (accion === "alma") window.UI?.abrirFicha?.();
+      else if (accion === "hemeroteca") window.UI?.abrirPeriodico?.();
+      else if (accion === "ajustes") window.UI?.abrirAjustes?.();
+      else if (accion === "hora") {
+        const drawer = byId("mil-feed-drawer");
+        if (drawer) { drawer.classList.remove("oculto"); window.UI?.renderFeed?.(true); }
+      }
+    });
+    document.addEventListener("click", (event) => {
+      if (!menuMundo.classList.contains("oculto") && !event.target.closest("#mil-globo-wrap")) cerrarMenu();
+    });
+  }
   // La Bitácora del nav inferior también cuenta como lectura
   document.addEventListener("click", (event) => {
     if (event.target.closest('[data-hud-panel="news"]')) window.UI?.marcarLeidas?.();

@@ -381,3 +381,29 @@ html.boot .app-shell > *:not(#arranque){ display: none !important; }
 .fmar{ display: inline-block; margin-right: 5px; padding: 1px 6px; border: 1px solid rgba(244,193,26,.4); border-radius: 99px; background: rgba(244,193,26,.1); color: rgba(244,208,120,.95); font: 700 9px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .08em; vertical-align: 1px; white-space: nowrap; }
 /* la cortina se baja sola: sin boot, el mar manda */
 html:not(.boot) #arranque{ display: none !important; }
+
+/* ── V11 · el menú del 🌍: tocar el orbe despliega la lista del mundo ── */
+#mil-globo-wrap{ position: fixed; } /* ancla del menú */
+#mil-globo-wrap .mil-globo-menu{
+  position: absolute; top: calc(100% + 12px); left: 0; transform: none;
+  display: grid; gap: 6px; padding: 10px; min-width: min(232px, 74vw);
+  border: 1px solid var(--sao-line); border-radius: var(--sao-radius);
+  background: var(--sao-panel); box-shadow: var(--sao-shadow);
+  backdrop-filter: blur(14px) saturate(1.1); z-index: 1950;
+}
+.mil-globo-menu.oculto{ display: none; }
+.mil-globo-menu button{
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 11px 14px; border: 1px solid rgba(244,193,26,.22); border-radius: var(--sao-radius-sm);
+  background: rgba(9,18,36,.72); color: #eef4ff; cursor: pointer; text-align: left;
+  font: 700 13.5px/1 'Manrope', system-ui, sans-serif; letter-spacing: .02em;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.mil-globo-menu button:hover, .mil-globo-menu button:focus-visible{
+  background: rgba(244,180,26,.16); border-color: rgba(244,193,26,.55);
+  transform: translateX(2px); outline: none;
+}
+.mil-globo-menu button span[aria-hidden]{ font-size: 16px; }
+/* el capitán del encabezado ya no es una puerta: es solo tu nombre en el puente */
+.one-hud-captain{ cursor: default; pointer-events: none; }
+@media (max-width: 640px){ .mil-globo-menu{ min-width: min(210px, 70vw); } }
