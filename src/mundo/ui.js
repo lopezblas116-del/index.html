@@ -43,7 +43,7 @@ import { getMapIslands } from '../map.js';
   }
   function pintaBadges() {
     const n = sinLeer();
-    document.querySelectorAll('.mil-feed-toggle, #mil-globo, #bottom-nav [data-hud-panel="news"]').forEach((el) => {
+    document.querySelectorAll('#bottom-nav [data-hud-panel="news"]').forEach((el) => {
       let b = el.querySelector('.mil-badge');
       if (n <= 0) { if (b) b.remove(); return; }
       if (!b) { b = document.createElement('span'); b.className = 'mil-badge'; el.append(b); }

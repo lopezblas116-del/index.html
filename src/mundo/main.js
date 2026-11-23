@@ -143,22 +143,15 @@
     }, Math.max(60, J.msPorMin));
   }
   function wire() {
-    $('btn-nuevo').addEventListener('click', () => {
-      if (J.sim.user) {
-        G.MIL?.setMapView('vivo');
-        UI.abrirFicha();
-      } else UI.wizardAbrir();
-    });
-    $('btn-peri').addEventListener('click', UI.abrirPeriodico);
-    $('per-cerrar').addEventListener('click', UI.cerrarPeriodico);
-    $('btn-ajustes').addEventListener('click', UI.abrirAjustes);
-    $('aj-cerrar').addEventListener('click', UI.cerrarAjustes);
-    $('btn-sonido').addEventListener('click', () => { const s = G.SFX.toggle(); UI.toast(s ? 'Sonido silenciado' : 'Sonido activado'); });
-    $('ficha-cerrar').addEventListener('click', UI.cerrarFicha);
-    $('pop-cerrar').addEventListener('click', () => UI.abrirIsla(null));
-    $('wz-siguiente').addEventListener('click', UI.wizSiguiente);
-    $('wz-atras').addEventListener('click', UI.wizAtras);
-    $('wz-cerrar').addEventListener('click', UI.wizardCerrar);
+    const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+    // botones del extinto menú globo: sus puertas viven ahora en el dock SAO
+    on('per-cerrar', 'click', UI.cerrarPeriodico);
+    on('aj-cerrar', 'click', UI.cerrarAjustes);
+    on('ficha-cerrar', 'click', UI.cerrarFicha);
+    on('pop-cerrar', 'click', () => UI.abrirIsla(null));
+    on('wz-siguiente', 'click', UI.wizSiguiente);
+    on('wz-atras', 'click', UI.wizAtras);
+    on('wz-cerrar', 'click', UI.wizardCerrar);
     document.querySelectorAll('.filtro').forEach(b => b.addEventListener('click', () => {
       document.querySelectorAll('.filtro').forEach(x => x.classList.remove('sel'));
       b.classList.add('sel');
@@ -170,8 +163,8 @@
       J.ritmo = +b.dataset.r;
       UI.toast('Ritmo ×' + J.ritmo);
     }));
-    $('aj-guardar').addEventListener('click', () => J.guardar(false));
-    $('aj-exportar').addEventListener('click', () => {
+    on('aj-guardar', 'click', () => J.guardar(false));
+    on('aj-exportar', 'click', () => {
       J.guardar(true);
       const raw = localStorage.getItem(CLAVE);
       const blob = new Blob([raw || '{}'], { type: 'application/json' });
@@ -180,8 +173,8 @@
       a.download = 'mundo-pirata-' + Date.now() + '.json';
       a.click();
     });
-    $('aj-importar').addEventListener('click', () => $('aj-fichero').click());
-    $('aj-fichero').addEventListener('change', (e) => {
+    on('aj-importar', 'click', () => $('aj-fichero').click());
+    on('aj-fichero', 'change', (e) => {
       const f = e.target.files[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = () => {
@@ -194,7 +187,7 @@
       };
       rd.readAsText(f);
     });
-    $('aj-borrar').addEventListener('click', () => {
+    on('aj-borrar', 'click', () => {
       if (confirm('¿Empezar un mundo nuevo? Se borra la partida actual.')) { J.borrar(); location.reload(); }
     });
     $('pop-isla').dataset.isl = '';

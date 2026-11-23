@@ -103,21 +103,11 @@ function installWorldUi() {
   ui.id = "mil-almas-ui";
   ui.innerHTML = `
     <div id="mil-globo-wrap">
-      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Mundo vivo: bitácora, alma, atlas y hemeroteca">
+      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Atlas del Alma">
         <span class="mil-globo-ring" aria-hidden="true"></span>
         <span class="mil-globo-icon" aria-hidden="true">🌍</span>
       </button>
-      <div id="mil-globo-menu" class="mil-globo-menu oculto" aria-label="Menú del mundo vivo">
-        <div class="mil-globo-head"><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
-        <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">📖 Bitácora viva</button>
-        <button id="btn-nuevo" type="button">✨ Mi alma</button>
-        <button id="btn-atlas" type="button">🗺️ Atlas</button>
-        <button id="btn-peri" type="button">📰 Hemeroteca</button>
-        <div class="mil-globo-row">
-          <button id="btn-ajustes" type="button" aria-label="Ajustes del mundo">⚙</button>
-          <button id="btn-sonido" type="button" aria-label="Activar o silenciar sonidos">♫</button>
-        </div>
-      </div>
+            </div>
     </div>
     <section id="mil-feed-drawer" class="mil-feed-drawer oculto" aria-label="Bitácora del mundo">
       <div class="mil-feed-heading"><h2>Última hora</h2><button type="button" data-close-feed aria-label="Cerrar bitácora">×</button></div>
@@ -148,7 +138,7 @@ function installWorldUi() {
     <section id="atlas" class="mil-panel mil-atlas oculto" aria-label="Atlas del Alma">
       <button id="atlas-cerrar" type="button" class="mil-close" aria-label="Cerrar atlas">×</button>
       <p class="mil-eyebrow">Tu viaje · Mundo vivo</p>
-      <h2>Atlas del Alma</h2>
+      <h2>Atlas del Alma</h2><div class="mil-globo-head"><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
       <p id="at-progreso"></p>
       <div class="mil-atlas-barra"><i id="at-barra"></i></div>
       <h3>Los Cuatro Cubos Rojos</h3>
@@ -185,39 +175,17 @@ function installWorldUi() {
     </section>`;
   document.body.append(ui);
   // el globo del mundo: una esquina, no una franja — tocás el orbe, se abre; tocás el mar, se va
+  // el globo del mundo: un toque, una acción — si ya existe tu alma abre el
+  // Atlas; si no, te lleva a crearla. Sin menús paralelos: el dock es la única navegación.
   const globo = ui.querySelector("#mil-globo");
-  const globoMenu = ui.querySelector("#mil-globo-menu");
-  if (globo && globoMenu) {
-    const cierraGlobo = () => { globoMenu.classList.add("oculto"); globo.setAttribute("aria-expanded", "false"); };
-    globo.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const oculto = globoMenu.classList.toggle("oculto");
-      globo.setAttribute("aria-expanded", String(!oculto));
-    });
-    globoMenu.addEventListener("click", (event) => {
-      event.stopPropagation();
-      // cada acción del menú cierra el globo: el mundo vuelve a ser mar
-      if (!event.target.classList.contains("mil-feed-toggle")) setTimeout(cierraGlobo, 120);
-    });
-    document.addEventListener("click", cierraGlobo);
-  }
-  ui.querySelector(".mil-feed-toggle").addEventListener("click", (event) => {
-    const drawer = byId("mil-feed-drawer");
-    const opened = drawer.classList.toggle("oculto") === false;
-    event.currentTarget.setAttribute("aria-expanded", String(opened));
-    if (opened) window.UI?.marcarLeidas?.(); // leer la bitácora apaga el aviso rojo
+  if (globo) globo.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (window.JUEGO?.sim?.user) window.UI?.abrirAtlas?.();
+    else window.UI?.wizardAbrir?.();
   });
-  // El Diario del nav inferior también cuenta como lectura
+  // La Bitácora del nav inferior también cuenta como lectura
   document.addEventListener("click", (event) => {
     if (event.target.closest('[data-hud-panel="news"]')) window.UI?.marcarLeidas?.();
-  });
-  ui.querySelector("[data-close-feed]").addEventListener("click", () => {
-    byId("mil-feed-drawer").classList.add("oculto");
-    ui.querySelector(".mil-feed-toggle").setAttribute("aria-expanded", "false");
-  });
-  ui.querySelector("#btn-atlas").addEventListener("click", () => {
-    byId("mil-feed-drawer").classList.add("oculto");
-    window.UI?.abrirAtlas?.();
   });
   ui.querySelector("#atlas-cerrar").addEventListener("click", () => {
     byId("atlas").classList.add("oculto");
