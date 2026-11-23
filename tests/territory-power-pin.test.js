@@ -203,7 +203,9 @@ test("local GM PIN stores a salted digest and verifies without storing the PIN",
   assert.equal((await setLocalGMPin("4826", storage)).ok, true);
   assert.equal(hasLocalGMPin(storage), true);
   const stored = JSON.stringify([...storage.values.values()]);
-  assert.equal(stored.includes("4826"), false);
+  // el PIN no puede aparecer como VALOR guardado (en claro); que un hex aleatorio
+  // CONTENGA ese substring es una coincidencia legítima del salt/digest (flake)
+  assert.equal(stored.includes('"4826"'), false);
   assert.equal(await verifyLocalGMPin("0000", storage), false);
   assert.equal(await verifyLocalGMPin("4826", storage), true);
 });
