@@ -119,7 +119,7 @@ test("legacy saves gain archaeology defaults without losing their existing state
     const restored = loadGame();
     assert.equal(restored.name, "Veterana");
     assert.equal(restored.berries, 4321);
-    assert.equal(restored.profession, "Navegante");
+    assert.equal(restored.profession, "Grumete");
     assert.deepEqual(restored.archaeology.rubbings, []);
     assert.deepEqual(restored.archaeology.translations, []);
     assert.equal(restored.ancientLanguage.knowledge, 0);

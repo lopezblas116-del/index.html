@@ -26,7 +26,28 @@ const ERAS = [
   "Era del Horizonte Final"
 ];
 const { worldNews: WORLD_NEWS, routes: ROUTES, missionNames: MISSION_NAMES, enemies: ENEMIES } = missionData;
-const TRAITS = ["Valiente", "Astuto", "Impulsivo", "Prudente", "Agresivo", "Honrado", "Rebelde", "Leal"];
+const TRAITS = ["Valiente", "Astuto", "Impulsivo", "Prudente", "Agresivo", "Honrado", "Rebelde", "Leal", "Curioso", "Sereno", "Feroz", "Noble"];
+// Oficios canon: el avatar zarpa como Grumete y el mar revela su oficio por lo que HACE
+const OFICIOS = ["Grumete", "Navegante", "Cocinero", "Médico", "Arqueólogo", "Arqueóloga", "Carpintero", "Artillero", "Timonel", "Vigía", "Cartógrafo", "Herrero", "Músico", "Cazarecompensas", "Espadachín"];
+// señales de oficio: venue/acción → oficio que se moldea
+const SENALES_OFICIO = {
+  kitchen: "Cocinero", restaurant: "Cocinero", shipyard: "Carpintero", hospital: "Médico", clinic: "Médico",
+  poneglyph: "Arqueólogo", library: "Arqueólogo", dojo: "Espadachín", weapon_shop: "Herrero", forge: "Herrero",
+  dock: "Timonel", tower: "Vigía", lookout: "Vigía", music: "Músico", instrument: "Músico",
+  navigate: "Navegante", chart: "Cartógrafo", hunt: "Cazarecompensas"
+};
+const UMBALES_OFICIO = 10; // señales acumuladas para que el mar revele el oficio
+function registrarSenalOficio(character, key) {
+  if (!character || character.status === "dead" || character.profession !== "Grumete") return;
+  const oficio = SENALES_OFICIO[key];
+  if (!oficio) return;
+  character.profSignals ??= {};
+  character.profSignals[oficio] = (character.profSignals[oficio] || 0) + 1;
+  if (character.profSignals[oficio] >= UMBALES_OFICIO) {
+    character.profession = oficio;
+    addLog(character, `✨ El mar ha encontrado tu oficio: ${oficio.toUpperCase()}. Lo descubrió en vos, no en un papel.`);
+  }
+}
 export { PULSE_MS };
 export const SAVE_KEY = STORAGE_KEYS.save;
 const rand = (max) => Math.floor(Math.random() * max);
@@ -41,7 +62,7 @@ const missionFor = (character, index = character.location.routeIndex) => {
   return { island, title: details?.mission ?? MISSION_NAMES[Math.min(index, MISSION_NAMES.length - 1)], enemy: ENEMIES[index % ENEMIES.length], reward: 25000 + index * 15000, status: "active" };
 };
 
-export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Navegante", allowRareRace = false, starterChallenge = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
+export function createCharacter({ name, username = "@usuario", faction = "Pirata", originSea, race = "human", profession = "Grumete", allowRareRace = false, starterChallenge = false, dream = "Libertad", alignment = "Libertad", story = "", traits = [], trait, appearance = {} }) {
   const displayName = String(name || "Aventurero").trim().slice(0, 24);
   const backstory = String(story).trim().slice(0, 280);
   const chosenTraits = traits.length ? traits.slice(0, 2) : [trait || "Valiente"];
@@ -85,7 +106,7 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     experience: 0,
     stats: { health: 100 + racial.health, maxHealth: 100 + racial.health, strength: 5 + racial.strength, agility: Math.max(1, 5 + racial.agility), ingenuity: 5 },
     race: species,
-    profession: ["Navegante", "Arqueóloga", "Médico", "Cocinero", "Artillero"].includes(profession) ? profession : "Navegante",
+    profession: OFICIOS.includes(profession) ? profession : "Grumete", // el oficio se REVELA viviendo, no eligiendo
     soulCard: { dream, alignment: ["Poder", "Justicia", "Libertad", "Caos"].includes(alignment) ? alignment : "Libertad", traits: { pros: chosenTraits, cons: [] }, latentTrait: inferLatentTrait(backstory) || pick(randomTraits), latentHaki: false, hiddenTalent: pick(["Cartografía", "Instinto de Tormenta", "Oído Antiguo"]) },
     lineage: { family, generation: 1, inheritedFrom: null, legacyChest: [], inheritedReputation: 0 },
     autonomy: { mode: "active", paused: false, tickCount: 0 },
@@ -129,7 +150,7 @@ function normalize(character) {
   character.soulCard.latentHaki ??= Boolean(character.haki?.conquerorPotential);
   character.haki = ensureHakiProfile(character.haki);
   character.race = normalizeRace(character.race, { allowRare: true });
-  if (!["Navegante", "Arqueóloga", "Médico", "Cocinero", "Artillero"].includes(character.profession)) character.profession = "Navegante";
+  if (!OFICIOS.includes(character.profession)) character.profession = "Grumete";
   character.raceHunt ??= { exposed: isRacePursued(character.race), alertLevel: character.race === "lunarian" ? "active" : "latent" };
   character.racialLearning ??= { talentBonus: character.race === "human" ? 0.1 : 0 };
   character.ship ??= { health: 100, maxHealth: 100, reinforced: character.race !== "giant" };
@@ -567,6 +588,19 @@ export function resolveAutonomousBranch(character) {
   const help = traits.some((trait) => ["leal", "honrado", "valiente"].includes(trait)) && character.inventory.water > 0;
   return resolveBranch(character, help ? "help" : "pass", "avatar");
 }
+// la bandera "El avatar elige": cinco días de actos deciden, no el clic inicial
+function resolverBandera(character) {
+  character.autonomoActs ??= { day0: Number(character.world?.day) || 0 };
+  const dia = Number(character.world?.day) || 0;
+  if (dia < character.autonomoActs.day0 + 5) return;
+  const dream = character.soulCard?.dream;
+  const bounty = Number(character.bounty) || 0;
+  let bandera = "Aventurero";
+  if (bounty > 30000 || dream === "Poder" || dream === "Destrucción") bandera = "Pirata";
+  else if (dream === "Justicia" || (character.crew?.length && dream === "Lazos" && bounty <= 30000 && Math.random() < 0.4)) bandera = "Marina";
+  character.faction = bandera;
+  addLog(character, `🏴 La bandera por fin ondea sola: ${bandera.toUpperCase()}. La pintaron tus actos; nadie la eligió por vos.`);
+}
 export function autonomousTick(character, { interactive = false, now = Date.now(), availableFruitIds } = {}) {
   if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
   character.autonomy.tickCount += 1;
@@ -596,6 +630,37 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
     member.loyalty = clamp((Number(member.loyalty) || 0) + change, 0, 100);
     addLog(character, `📓 ${member.name} ${change < 0 ? "se inquieta por la tensión a bordo" : "comparte una guardia tranquila"}; lealtad ${member.loyalty}%.`);
   }
+  // ── voluntad propia de la tripulación NPC ──
+  // zarpar sin navegante: permitido, pero el mar cobra caro y los NPC tienen criterio
+  const conNavegante = character.crew?.some((m) => /navegante|carpintero/i.test(m.profession || ""));
+  if (character.status !== "dead" && !character.autonomy.paused) {
+    if (character.location?.atSea && !conNavegante) {
+      character.nauticalStress ??= { value: 15 };
+      character.nauticalStress.value = clamp(character.nauticalStress.value + 4, 0, 100);
+      if (character.crew?.length && Math.random() < 0.18) {
+        const npc = pick(character.crew);
+        if ((Number(npc.loyalty) || 0) < 40) addLog(character, `⚓ ${npc.name} no entiende el rumbo que llevás: sin navegante, cada día a la deriva le pesa (lealtad ${npc.loyalty}%).`);
+        else addLog(character, `⚓ ${npc.name} tomó el timón esta guardia: "yo sé hacia dónde, capitán".`);
+      }
+    }
+    if (!character.location?.atSea && character.crew?.length) {
+      for (const npc of [...character.crew]) {
+        if ((Number(npc.loyalty) || 0) < 22 && Math.random() < 0.3) {
+          character.crew = character.crew.filter((m) => m !== npc);
+          addLog(character, `🌊 ${npc.name} eligió su propio rumbo y desembarcó en ${character.location?.island || "un puerto lejano"}: nadie lo ató a esta bandera.`);
+        } else if ((Number(npc.loyalty) || 0) < 35 && Math.random() < 0.1) {
+          addLog(character, `🌊 ${npc.name} habla de irse en el próximo puerto si las cosas no cambian.`);
+        }
+      }
+    }
+  }
+  // ── el oficio se moldea: cada decisión real deja una señal que el mar registra ──
+  if (character.status !== "dead") {
+    registrarSenalOficio(character, localActivity?.action);
+    if (!localActivity) registrarSenalOficio(character, action === "navigate" ? (Math.random() < 0.5 ? "navigate" : "chart") : action === "searchFruit" ? "hunt" : action === "train" ? "dojo" : null);
+  }
+  // ── bandera "El avatar elige": los actos la revelan ──
+  if (character.status !== "dead" && character.faction === "Autonomo") resolverBandera(character);
   if (character.status !== "dead" && !character.autonomy.pendingBranch && Math.random() < 0.025) {
     character.autonomy.pendingBranch = { kind: "castaways", deadline: now + 60_000 };
     addLog(character, "📓 Una señal de náufragos aparece en el horizonte.");

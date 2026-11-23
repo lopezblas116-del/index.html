@@ -51,16 +51,31 @@ export function npcAppearanceFor(text) {
 }
 
 function avatarLayers(appearance, options) {
-  const { x, y, scale, fullBody, action, frame, blink, equipment, emotion } = options;
+  const { x, y, scale, fullBody, action, frame, blink, equipment, emotion, race } = options;
   const skin = ({ Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Azul: "#639fa8" })[appearance.skin] || "#e4b991";
-  const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8" })[appearance.hair] || "#1c1b22";
+  const skinSombra = ({ Clara: "#c89a70", Bronceada: "#93592e", Oscura: "#5c3625", Azul: "#4c7f88" })[appearance.skin] || "#c89a70";
+  const hair = ({ Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Gris: "#b9c9c8", Blanco: "#e8e6e0", Verde: "#3d7a5c" })[appearance.hair] || "#1c1b22";
+  const hairLuz = ({ Negro: "#3d3b49", Moreno: "#7d5533", Rubio: "#f2c96a", Rojo: "#cc5f4a", Gris: "#dde8e7", Blanco: "#ffffff", Verde: "#5ca37f" })[appearance.hair] || "#3d3b49";
   const coats = { makino: "#728d72", morgan: "#576c89", zeff: "#e2d7b6", arlong: "#d09b55", smoker: "#718796" };
   const armor = String(equipment?.armor || "");
   const weapon = String(equipment?.weapon || "");
+  // vestimenta: cada atuendo es una silueta distinta, no un cambio de color
+  const VESTIMENTA = {
+    Rojo: { base: "#9b443a", luz: "#c25d4e", osc: "#6f2f28", detalle: "chaleco" },
+    Azul: { base: "#355f82", luz: "#4b7ca3", osc: "#25445f", detalle: "uniforme" },
+    Verde: { base: "#46735a", luz: "#5d9273", osc: "#31513f", detalle: "chaqueta" },
+    Negro: { base: "#343a48", luz: "#4b5364", osc: "#23272f", detalle: "abrigo" },
+    Marrón: { base: "#79513b", luz: "#946a4e", osc: "#573a2b", detalle: "cuero" },
+    Kimono: { base: "#8e4460", luz: "#ab5a78", osc: "#6a3246", detalle: "kimono" },
+    Manto: { base: "#2e3a54", luz: "#41527a", osc: "#1f2838", detalle: "manto" },
+    Gabardina: { base: "#c9a86a", luz: "#ddc084", osc: "#9e824c", detalle: "gabardina" }
+  };
+  const v = VESTIMENTA[appearance.outfit] || VESTIMENTA.Rojo;
   const coat = /armadura|placa|metal/i.test(armor) ? "#768494"
     : /capa|manto|abrigo/i.test(armor) ? "#36445c"
-      : coats[appearance.portrait] || ({ Azul: "#355f82", Rojo: "#9b443a", Verde: "#46735a", Negro: "#343a48", Marrón: "#79513b" })[appearance.outfit] || "#c65f4c";
+      : coats[appearance.portrait] || v.base;
   const eyes = ({ Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf" })[appearance.eyes] || "#0b1329";
+  const OUT = "rgba(14,10,9,0.4)"; // la misma tinta que bordea el mundo pixel
   const pixel = (px, py, w, h, color) => box(options.ctx, x + px * scale, y + py * scale, w * scale, h * scale, color);
 
   const victoryAura = () => {
@@ -69,50 +84,81 @@ function avatarLayers(appearance, options) {
       pixel(px, py, 2, 2, "#f4b41a");
     }
   };
+  const rasgosRaza = () => {
+    // lo que la sangre marca, detrás del cuerpo
+    if (race === "sky") { pixel(6, 14, 2, 5, "#eef2f7"); pixel(6, 12, 2, 2, "#d9e2ec"); pixel(24, 14, 2, 5, "#eef2f7"); pixel(24, 12, 2, 2, "#d9e2ec"); }
+    if (race === "lunarian") {
+      const f = frame % 2 ? 1 : 0;
+      pixel(24 + f, 12, 3, 4, "#f2a03c"); pixel(25 + f, 10, 2, 2, "#f6c26a"); pixel(24 + f, 17, 2, 2, "#c96a1e");
+    }
+  };
   const body = () => {
     const breath = action === "idle" && frame % 4 === 1 ? -1 : 0;
+    // sombra al piso: el avatar está EN el suelo, no flotando
+    if (fullBody) pixel(9, 30, 14, 2, "rgba(6,14,26,0.32)");
+    // torso con luz del norte y sombra lateral: volumen, no un rectángulo plano
     pixel(11, 16 + breath, 10, 7, coat);
-    pixel(12, 22 + breath, 8, 2, "#f4b41a");
-    pixel(10, 23 + breath, 12, 1, "#49382d");
-    if (/armadura|placa|metal/i.test(armor)) {
-      pixel(12, 17 + breath, 3, 5, "#a9b5bd");
-      pixel(17, 17 + breath, 3, 5, "#a9b5bd");
-    }
+    pixel(11, 16 + breath, 10, 2, v.luz);
+    pixel(20, 17 + breath, 1, 5, v.osc);
+    pixel(10, 16 + breath, 1, 7, OUT); pixel(21, 16 + breath, 1, 7, OUT);
+    // silueta por atuendo
+    if (v.detalle === "chaleco") { pixel(13, 18 + breath, 2, 4, skin); pixel(17, 18 + breath, 2, 4, skin); pixel(12, 23 + breath, 8, 1, "#f4b41a"); }
+    else if (v.detalle === "uniforme") { pixel(13, 17 + breath, 1, 5, v.luz); pixel(18, 17 + breath, 1, 5, v.luz); pixel(15, 19 + breath, 2, 2, "#f4b41a"); pixel(12, 23 + breath, 8, 1, v.osc); }
+    else if (v.detalle === "chaqueta") { for (let i = 0; i < 6; i++) pixel(12 + i, 17 + i, 1, 1, v.osc); pixel(12, 23 + breath, 8, 1, v.osc); }
+    else if (v.detalle === "abrigo") { pixel(11, 16 + breath, 10, 1, v.osc); pixel(13, 15 + breath, 6, 2, "#e8e4d8"); pixel(12, 23 + breath, 8, 1, v.osc); }
+    else if (v.detalle === "cuero") { pixel(12, 22 + breath, 8, 2, "#3b2822"); pixel(15, 22 + breath, 2, 2, "#e1c46d"); pixel(11, 17 + breath, 1, 5, v.luz); }
+    else if (v.detalle === "kimono") { pixel(11, 16 + breath, 3, 7, v.luz); pixel(19, 16 + breath, 3, 7, v.osc); pixel(15, 19 + breath, 2, 2, "#e1c46d"); }
+    else if (v.detalle === "manto") { pixel(9, 16 + breath, 2, 8, v.osc); pixel(21, 16 + breath, 2, 8, v.osc); pixel(14, 16 + breath, 4, 1, "#f4b41a"); }
+    else if (v.detalle === "gabardina") { pixel(12, 22 + breath, 8, 2, v.osc); pixel(15, 22 + breath, 2, 2, "#6e5a35"); pixel(13, 16 + breath, 1, 6, v.luz); }
+    // brazos con sombra interior; el metal lleva hombreras pulidas
+    pixel(10, 17 + breath, 2, 6, skinSombra); pixel(20, 17 + breath, 2, 6, skin);
+    if (/armadura|placa|metal/i.test(armor)) { pixel(10, 16 + breath, 3, 3, "#a9b5bd"); pixel(19, 16 + breath, 3, 3, "#a9b5bd"); }
+    // lo que la sangre marca por delante: branquias, colmillos, tercer ojo
+    if (race === "fishman") { pixel(12, 20 + breath, 1, 1, "#7fb5b6"); pixel(12, 22 + breath, 1, 1, "#7fb5b6"); pixel(19, 20 + breath, 1, 1, "#7fb5b6"); pixel(19, 22 + breath, 1, 1, "#7fb5b6"); }
+    if (race === "giant") { pixel(9, 16 + breath, 2, 6, coat); pixel(21, 16 + breath, 2, 6, coat); }
+    if (race === "threeeye") { pixel(15, 7 + breath, 2, 2, "#c9683a"); pixel(15, 7 + breath, 2, 1, "#8c3a22"); }
     if (fullBody) {
       const step = ["navigating", "walking"].includes(action) && frame % 2 ? 2 : 0;
-      pixel(8, 17 + breath, 3, 6, skin);
-      pixel(21, 17 + breath, 3, 6, skin);
-      pixel(11 + step, 24, 4, 4, "#35455c");
-      pixel(18 - step, 24, 4, 4, "#35455c");
-      pixel(11 + step, 28, 4, 3, "#3b2822");
-      pixel(18 - step, 28, 4, 3, "#3b2822");
+      pixel(11 + step, 24, 4, 4, "#35455c"); pixel(18 - step, 24, 4, 4, "#35455c");
+      pixel(11 + step, 24, 1, 4, "#2a3848"); pixel(18 - step, 24, 1, 4, "#2a3848");
+      pixel(11 + step, 28, 4, 3, "#3b2822"); pixel(18 - step, 28, 4, 3, "#3b2822");
+      pixel(11 + step, 30, 4, 1, "#241813"); pixel(18 - step, 30, 4, 1, "#241813");
     }
   };
   const face = () => {
     pixel(11, 7, 10, 10, skin);
+    pixel(19, 8, 2, 8, skinSombra); // perfil sombreado: volumen
+    pixel(11, 7, 10, 1, OUT); pixel(11, 16, 10, 1, OUT); pixel(11, 7, 1, 10, OUT); pixel(20, 7, 1, 10, OUT);
+    // cejas: la actitud antes que la palabra
+    pixel(12, 9, 3, 1, hair); pixel(17, 9, 3, 1, hair);
     if (emotion === "exhausted") {
       pixel(12, 12, 3, 1, "#30251f");
       pixel(18, 12, 3, 1, "#30251f");
       pixel(15, 15, 3, 2, "#66392f");
     } else if (blink) pixel(12, 12, 8, 1, "#30251f");
     else {
-      pixel(12, 11, 2, 2, eyes);
-      pixel(18, 11, 2, 2, eyes);
+      pixel(12, 11, 3, 2, "#f4f0ea"); pixel(18, 11, 3, 2, "#f4f0ea");
+      pixel(13, 11, 2, 2, eyes); pixel(18, 11, 2, 2, eyes);
     }
-    if (emotion !== "exhausted") pixel(15, 15, 3, emotion === "victory" ? 2 : 1, emotion === "victory" ? "#8c3328" : "#a14a36");
+    if (emotion !== "exhausted") pixel(14, 14, 4, 1, emotion === "victory" ? "#8c3328" : "#a14a36");
+    if (emotion === "victory") { pixel(12, 13, 1, 1, "#d9a06b"); pixel(19, 13, 1, 1, "#d9a06b"); }
     if (emotion === "exhausted") pixel(22, 8, 2, 3, "#64c9e8");
   };
   const hairLayer = () => {
     const wind = action === "idle" && frame % 4 === 2 ? 1 : 0;
     pixel(10 + wind, 4, 12, 4, hair);
-    pixel(8 + wind, 7, 4, 7, hair);
-    pixel(20 + wind, 7, 4, 5, hair);
+    pixel(9 + wind, 5, 3, 6, hair); pixel(20 + wind, 5, 3, 6, hair);
+    pixel(10 + wind, 4, 4, 1, hairLuz); // mechón iluminado
+    pixel(13 + wind, 4, 3, 1, hairLuz);
+    if (race === "mink") { pixel(9, 2, 3, 4, hair); pixel(20, 2, 3, 4, hair); pixel(10, 2, 1, 2, hairLuz); pixel(21, 2, 1, 2, hairLuz); }
     if (appearance.portrait === "makino") {
       pixel(8, 11, 3, 7, hair); pixel(21, 11, 3, 7, hair); pixel(10, 15, 2, 2, "#f4b41a");
     } else if (appearance.portrait === "zeff") {
       pixel(9, 1, 14, 4, "#f4efdf"); pixel(8, 5, 16, 2, "#d4ccb9"); pixel(13, 16, 7, 2, hair);
     } else if (appearance.portrait === "morgan") {
       pixel(8, 16, 5, 3, "#c9ad67"); pixel(20, 16, 5, 3, "#c9ad67"); pixel(16, 16, 5, 2, "#8b9695");
+    } else if (race === "lunarian") {
+      pixel(10 + wind, 2, 3, 3, "#f2e8dc"); pixel(19 + wind, 2, 3, 3, "#f2e8dc");
     }
   };
   const outfit = () => {
@@ -125,10 +171,15 @@ function avatarLayers(appearance, options) {
   };
   const accessories = () => {
     const hat = String(equipment?.accessory || appearance.accessory || "").toLocaleLowerCase("es");
-    if (hat.includes("sombrero") || hat.includes("hat")) { pixel(6, 5, 20, 2, "#8b6038"); pixel(10, 1, 12, 4, "#c79a54"); }
-    else if (appearance.accessory === "Bandana") { pixel(9, 5, 14, 3, "#c84237"); pixel(22, 6, 4, 2, "#c84237"); }
+    if (hat.includes("tricornio")) { pixel(8, 3, 16, 2, "#2b2f38"); pixel(10, 0, 12, 3, "#3a4048"); pixel(10, 3, 12, 1, "#e1c46d"); }
+    else if (hat.includes("gorra marina")) { pixel(10, 2, 12, 3, "#e8e6e0"); pixel(9, 5, 14, 2, "#3a5578"); pixel(15, 1, 3, 1, "#3a5578"); }
+    else if (hat.includes("sombrero") || hat.includes("hat")) { pixel(6, 5, 20, 2, "#8b6038"); pixel(6, 6, 20, 1, "#6d4a2b"); pixel(10, 1, 12, 4, "#c79a54"); pixel(10, 4, 12, 1, "#b03a3a"); }
+    else if (appearance.accessory === "Bandana") { pixel(9, 5, 14, 3, "#c84237"); pixel(22, 6, 4, 2, "#c84237"); pixel(9, 5, 14, 1, "#e0655a"); }
+    else if (appearance.accessory === "Capucha") { pixel(9, 4, 14, 4, coat); pixel(8, 8, 2, 5, coat); pixel(22, 8, 2, 5, coat); }
     else if (appearance.accessory === "Aro de metal") pixel(22, 13, 2, 3, "#e1c46d");
     else if (appearance.accessory === "Collar") { pixel(14, 16, 6, 2, "#e1c46d"); pixel(16, 18, 2, 3, "#f4b41a"); }
+    else if (appearance.accessory === "Aretes") { pixel(10, 14, 1, 1, "#e1c46d"); pixel(10, 16, 1, 1, "#e1c46d"); pixel(21, 14, 1, 1, "#e1c46d"); pixel(21, 16, 1, 1, "#e1c46d"); }
+    else if (appearance.accessory === "Cicatriz") { pixel(17, 12, 1, 3, "#8c5a48"); pixel(18, 13, 1, 2, "#8c5a48"); }
     if (appearance.glasses) { pixel(10, 11, 5, 2, "#26394b"); pixel(18, 11, 5, 2, "#26394b"); pixel(15, 11, 3, 1, "#d5b66e"); }
     if (appearance.eyepatch) { pixel(17, 10, 4, 4, "#211c1a"); pixel(17, 9, 5, 1, "#3b3028"); }
     if (weapon || action === "combat") {
@@ -146,7 +197,7 @@ function avatarLayers(appearance, options) {
     if (action === "tavern") { pixel(24, 19, 5, 6, "#bd8641"); pixel(25, 17, 3, 2, "#f3d37a"); }
     if (action === "resting" && frame % 4 === 0) { pixel(23, 3, 3, 2, "#e8d9ad"); pixel(27, 1, 3, 2, "#e8d9ad"); }
   };
-  return [victoryAura, body, face, hairLayer, outfit, accessories];
+  return [victoryAura, rasgosRaza, body, face, hairLayer, outfit, accessories];
 }
 
 export function avatarEmotion(character) {
@@ -182,7 +233,8 @@ export function drawPixelAvatar(ctx, appearance = {}, options = {}) {
     frame: Math.floor(time / 300) % 8,
     blink: time > 0 && time % 4200 < 150,
     emotion: options.emotion || "neutral",
-    equipment
+    equipment,
+    race: options.race || appearance.race || null
   };
   const bob = state.action === "resting" ? 0 : state.action === "idle" ? (state.frame % 4 === 1 ? -1 : 0) : state.frame % 2;
   state.y += bob * state.scale;

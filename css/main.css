@@ -533,3 +533,65 @@ body.wizard-active #wizard-container>.wizard-card{animation:panel-in .34s ease-o
 /* 7. Respeto absoluto al movimiento reducido. */
 @media(prefers-reduced-motion:reduce){#game-container:not([hidden]),body.game-active .one-hud-brand,body.game-active .one-hud-nav,body.game-active .one-hud-controls,body.game-active .one-hud-vitals,body.wizard-active #wizard-container>.wizard-card,.overlay-dialog[open],.one-hud-backdrop.open .one-hud-dialog{animation:none!important}}
 body.reduced-motion #game-container:not([hidden]),body.reduced-motion .one-hud-backdrop.open .one-hud-dialog,body.reduced-motion .one-hud-brand,body.reduced-motion .one-hud-nav,body.reduced-motion .one-hud-controls,body.reduced-motion .one-hud-vitals,body.reduced-motion .wizard-card{animation:none!important}
+
+/* ── Bitácora de Zarpe: anillo del carácter, gacha del destino, swatches ── */
+.fase-paso { display: flex; align-items: center; gap: 6px; padding: 6px 2px; font-size: .82rem; color: var(--muted); border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
+.fase-paso:not(:last-child)::after { content: "›"; margin-left: 6px; color: rgba(244,180,26,.4); }
+.fase-paso.active { color: var(--gold); border-bottom-color: var(--gold); }
+.fase-cara { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 12px; align-items: start; }
+.cara-preview { display: grid; justify-items: center; gap: 8px; }
+.cara-preview .avatar-editor-preview { width: 100%; }
+.cara-preview .avatar-editor-preview canvas { width: 100%; max-width: 200px; height: auto; image-rendering: pixelated; background: #0b1329; border: 1px solid var(--line); border-radius: 10px; }
+.dado-historia { width: 100%; font-size: .85rem; }
+.cara-swatches { display: grid; gap: 8px; }
+.swatch-fila { display: grid; gap: 4px; }
+.swatch-titulo { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.swatch-grupo { display: flex; flex-wrap: wrap; gap: 5px; }
+.swatch { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-size: .78rem; cursor: pointer; transition: border-color .15s, background .15s; }
+.swatch:hover { border-color: rgba(244,180,26,.55); }
+.swatch.selected { border-color: var(--gold); background: var(--card-raised); box-shadow: 0 0 0 1px var(--gold) inset; }
+.swatch-chip { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.4); }
+.fase-historia { margin-top: 4px; }
+.fase-historia textarea { width: 100%; }
+/* anillo del carácter */
+.anillo-fase { position: relative; display: grid; place-items: center; min-height: 260px; }
+.anillo-brujula { position: relative; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #16233f, #0b1329 72%); border: 2px solid rgba(244,180,26,.55); box-shadow: 0 0 22px rgba(244,180,26,.18), 0 6px 18px rgba(0,0,0,.35); }
+.anillo-aguja { position: absolute; left: 50%; top: 50%; width: 3px; height: 40px; background: linear-gradient(#f4b41a, rgba(244,180,26,.15)); border-radius: 2px; transform-origin: 50% 100%; transform: translate(-50%, -100%) rotate(var(--compass-angle, 0deg)); transition: transform .7s cubic-bezier(.3,1.5,.5,1); }
+.anillo-aguja::before { content: ""; position: absolute; top: -4px; left: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px rgba(244,180,26,.8); }
+.anillo-centro { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(244,180,26,.85); font-size: .9rem; }
+.anillo-rasgos { position: absolute; width: 236px; height: 236px; pointer-events: none; }
+.rasgo-orbita { position: absolute; left: 50%; top: 50%; width: 62px; margin: -31px; display: grid; gap: 1px; justify-items: center; padding: 6px 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); cursor: pointer; pointer-events: auto; transform: rotate(var(--ang)) translateY(-104px) rotate(calc(-1 * var(--ang))); transition: border-color .18s, background .18s, box-shadow .18s, opacity .18s; }
+.rasgo-orbita strong { font-size: .74rem; color: var(--gold); }
+.rasgo-orbita small { font-size: .6rem; color: var(--muted); text-align: center; line-height: 1.1; }
+.rasgo-orbita:hover { border-color: rgba(244,180,26,.6); }
+.rasgo-orbita.selected { border-color: var(--gold); background: var(--card-raised); box-shadow: 0 0 10px rgba(244,180,26,.28); }
+.rasgo-orbita.disabled { opacity: .34; filter: grayscale(.8); pointer-events: none; }
+.constelacion-card { margin: 10px auto 0; max-width: 420px; padding: 12px 14px; border: 1px solid rgba(244,180,26,.5); border-radius: 12px; background: linear-gradient(160deg, rgba(244,180,26,.08), rgba(11,19,41,.9)); }
+.constelacion-card strong { color: var(--gold); font-size: .95rem; letter-spacing: .04em; }
+.constelacion-card p { margin: 6px 0 4px; color: var(--text); font-size: .86rem; }
+.constelacion-card small { color: var(--muted); }
+.constelacion-card.revelada { animation: revelacion .6s ease; }
+@keyframes revelacion { 0% { transform: scale(.94); opacity: 0; } 60% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+/* gacha del destino */
+.fase-gacha { display: grid; gap: 12px; justify-items: center; }
+.monedas-destino { display: flex; gap: 10px; }
+.moneda { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 36% 32%, #ffe08a, #d99b1f 68%, #8f6412); border: 1px solid #6e4c0e; box-shadow: 0 2px 6px rgba(0,0,0,.4); transition: opacity .3s, filter .3s, transform .3s; }
+.moneda.gastada { opacity: .22; filter: grayscale(1); transform: scale(.82); }
+.rueda-destino { display: grid; place-items: center; min-height: 74px; width: min(92%, 420px); padding: 14px; text-align: center; border: 1px dashed rgba(244,180,26,.45); border-radius: 14px; background: rgba(11,19,41,.8); }
+.rueda-texto { color: var(--text); font-size: .95rem; letter-spacing: .03em; }
+.rueda-destino.girando { animation: girarDestino .5s linear infinite; border-style: solid; border-color: var(--gold); }
+.rueda-destino.girando .rueda-texto { color: var(--gold); }
+@keyframes girarDestino { 0% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } 100% { transform: rotate(-1.2deg); } }
+.resultado-destino { width: min(92%, 430px); padding: 13px 15px; border: 1px solid rgba(244,180,26,.55); border-radius: 12px; background: linear-gradient(155deg, rgba(244,180,26,.1), rgba(11,19,41,.92)); animation: revelacion .5s ease; }
+.resultado-destino strong { color: var(--gold); font-size: 1.02rem; }
+.resultado-destino p { margin: 6px 0; font-size: .86rem; color: var(--text); }
+.resultado-destino small { color: var(--muted); }
+.destino-final { display: block; margin-top: 8px; font-style: italic; color: rgba(244,180,26,.8); font-size: .8rem; }
+.bandera-autonoma { border-color: rgba(244,180,26,.6) !important; background: linear-gradient(160deg, rgba(244,180,26,.1), var(--panel)); }
+@media (max-width: 700px) {
+  .fase-cara { grid-template-columns: 1fr; }
+  .cara-preview { justify-items: center; }
+  .anillo-rasgos { width: 200px; height: 200px; }
+  .rasgo-orbita { width: 56px; margin: -28px; transform: rotate(var(--ang)) translateY(-84px) rotate(calc(-1 * var(--ang))); }
+  .rasgo-orbita small { display: none; }
+}

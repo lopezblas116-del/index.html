@@ -7,7 +7,7 @@
 
   // Zoom: 0.5 = globo completo (esfera), 0.62 = aterrizando en el mar, 6.0 = dioramas.
   // La rueda y los botones mueven un OBJETIVO (zT) y la cámara lo persigue: zoom lupa, no salto.
-  const Z_MIN = 0.5, Z_MAX = 8.0, UMBRAL_GLOBO = 0.62; // Z_MAX 8 = 1:1 con el sprite (8 px/unidad): la isla LLENA la pantalla, píxel perfecto
+  const Z_MIN = 0.42, Z_MAX = 9.5, UMBRAL_GLOBO = 0.48; // el globo solo entra en la franja 0.42-0.48: alejar desde una isla vuelve al MAR, nunca te expulsa a la esfera
   MAPA.LOD_ZOOM = 1.5;          // entrar al diorama
   MAPA.LOD_SALIDA = 1.12;       // salir del diorama (histéresis: alejarse un poco no te expulsa)
   let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: Z_MIN }, ancho = 0, alto = 0;
@@ -88,7 +88,7 @@
       const js = document.createElement('div'); js.className = 'mil-joystick-stick';
       jw.appendChild(js);
       jw.setAttribute('aria-hidden', 'true');
-      jw.style.cssText = 'position:absolute;left:16px;bottom:150px;width:104px;height:104px;border-radius:50%;background:rgba(10,18,34,0.55);border:2px solid rgba(244,193,26,0.5);z-index:6;touch-action:none;backdrop-filter:blur(2px)';
+      jw.style.cssText = 'position:absolute;left:16px;bottom:150px;width:104px;height:104px;border-radius:50%;background:rgba(10,18,34,0.55);border:2px solid rgba(244,193,26,0.5);z-index:6;touch-action:none;backdrop-filter:blur(2px);opacity:0.5;transition:opacity .6s';
       js.style.cssText = 'position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(244,193,26,0.85);box-shadow:0 2px 10px rgba(0,0,0,0.45);pointer-events:none;transition:transform .05s';
       cv.parentElement.appendChild(jw);
       const jst = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
@@ -102,9 +102,9 @@
         jst.x = dx / mx; jst.y = dy / mx;
         e.preventDefault();
       };
-      jw.addEventListener('pointerdown', (e) => { jst.id = e.pointerId; jst.cx = e.clientX; jst.cy = e.clientY; toca(); cancelaVuelo(); try { jw.setPointerCapture(e.pointerId); } catch (err) {} reacciona(e); });
+      jw.addEventListener('pointerdown', (e) => { jst.id = e.pointerId; jst.cx = e.clientX; jst.cy = e.clientY; toca(); cancelaVuelo(); jw.style.opacity = '0.95'; try { jw.setPointerCapture(e.pointerId); } catch (err) {} reacciona(e); });
       jw.addEventListener('pointermove', reacciona);
-      const suelta = (e) => { if (e.pointerId !== jst.id) return; jst.id = null; jst.x = 0; jst.y = 0; js.style.transform = 'translate(0,0)'; };
+      const suelta = (e) => { if (e.pointerId !== jst.id) return; jst.id = null; jst.x = 0; jst.y = 0; js.style.transform = 'translate(0,0)'; jw.style.opacity = '0.5'; };
       jw.addEventListener('pointerup', suelta);
       jw.addEventListener('pointercancel', suelta);
     }
@@ -243,6 +243,18 @@
   };
 
   MAPA.clickEn = function (wx, wy) {
+    // tu capitán camina: toque sobre TU isla con zoom cercano = caminar hasta el punto
+    const u = MAPA._sim && MAPA._sim.user;
+    if (u && u.isl && cam.z >= DETALLE_Z && !MAPA._sim._fusionAtSea) {
+      const propia = D.ISLA[u.isl];
+      if (propia && dist(wx, wy, propia.x, propia.y) < propia.r * 1.15) {
+        MAPA._caminar = {
+          x: clamp((wx - propia.x) / (propia.r * 0.7), -1, 1),
+          y: clamp((wy - propia.y) / (propia.r * 0.5), -1, 1)
+        };
+        return;
+      }
+    }
     // islas (con envoltura horizontal)
     for (const i of D.ISLAS) {
       for (const off of [0, -D.W, D.W]) {
@@ -1066,8 +1078,17 @@
     if (!u || !u.isl || sim._fusionAtSea || u.plan) return;
     const isl = D.ISLA[u.isl];
     if (!isl) return;
+    // el capitán PISA la isla: camina hacia el punto tocado (tap-to-walk), no flota
+    let caminando = false;
+    if (MAPA._caminar) {
+      const dx = MAPA._caminar.x - u.pos.x, dy = MAPA._caminar.y - u.pos.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0.015) { const paso = Math.min(d, 0.006); u.pos.x += (dx / d) * paso; u.pos.y += (dy / d) * paso; caminando = true; }
+      else MAPA._caminar = null;
+    }
+    const pasoX = caminando && Math.floor(t / 150) % 2 ? 1 : -1;
     const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5 + bobIsla(isl, t);
-    const bob = Math.sin(t / 650) * 0.4;
+    const bob = caminando ? Math.sin(t / 150) * 0.16 : 0; // en tierra NO flota: solo el vaivén del paso
     ctx.save();
     if (cam.z >= DETALLE_Z) {
       // sombra + mini capitán en la MISMA tinta del mundo: outline, luz del norte,
@@ -1080,11 +1101,11 @@
       ctx.fillStyle = 'rgba(6,26,48,0.35)';
       ctx.fill();
       ctx.restore();
-      // pantalón azul corto + botas con puntas
-      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s); ctx.fillRect(px + 0.05 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s);
-      ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      // pantalón azul corto + botas con puntas: las piernas alternan al caminar
+      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s + pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s);
+      ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
       ctx.strokeStyle = O; ctx.lineWidth = 0.35;
-      ctx.strokeRect(px - 1.1 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      ctx.strokeRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
       // torso: camisa roja con luz del norte y dos botones
       ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 0.4 * s);

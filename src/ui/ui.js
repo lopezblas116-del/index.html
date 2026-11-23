@@ -466,7 +466,65 @@ const TRAITS = [
   { id: "Valiente", opposite: "Prudente" }, { id: "Astuto", opposite: "Impulsivo" },
   { id: "Impulsivo", opposite: "Prudente" }, { id: "Prudente", opposite: "Impulsivo" },
   { id: "Agresivo", opposite: "Honrado" }, { id: "Honrado", opposite: "Rebelde" },
-  { id: "Rebelde", opposite: "Honrado" }, { id: "Leal", opposite: "Rebelde" }
+  { id: "Rebelde", opposite: "Honrado" }, { id: "Leal", opposite: "Rebelde" },
+  { id: "Curioso", opposite: "Sereno" }, { id: "Sereno", opposite: "Curioso" },
+  { id: "Feroz", opposite: "Noble" }, { id: "Noble", opposite: "Feroz" }
+];
+// ── El Gacha del Destino: raza y mar salen del azar; tres monedas para intentar ──
+const RAZAS_GACHA = [
+  ["human", "Humano", "Voluntad y aprendizaje rápido. El mar no les regaló nada: por eso llegan más lejos."],
+  ["fishman", "Gyojin / Tritón", "Nació bajo el agua y la respiración del abismo. Puertos segregados lo mirarán raro."],
+  ["mink", "Mink", "Pelo y trueno. Agilidad felina y una descarga eléctrica guardada en la sangre."],
+  ["threeeye", "Tres Ojos", "Un tercer ojo que lee lo que otros no ven: glifos antiguos, mentiras, rumores."],
+  ["giant", "Gigante", "El puño es la carta de presentación. Come doble y su casco va reforzado."],
+  ["sky", "Habitante del Cielo", "Cayó del Mar Blanco. Las alturas lo llaman; el Mar Azul le pesa."],
+  ["longlimb", "Extremidades Largas", "Brazos y piernas que alcanzan donde otros no llegan. Alcance marcial puro."],
+  ["tontatta", "Tontatta", "Pequeño como una sombra, fuerte como un andamio. Sigilo nato."]
+];
+const MARES_GACHA = [
+  ["East Blue", "Mar del Este", "El mar de los débiles… dicen. Ahí nacieron los que rompieron el mundo."],
+  ["North Blue", "Mar del Norte", "Frío, ambicioso, cuentos de macetas y gigantes legales."],
+  ["South Blue", "Mar del Sur", "Aguas suaves, puertos tranquilos: el mejor lugar para esconder un sueño."],
+  ["West Blue", "Mar del Oeste", "Mafias del puerto y familias viejas. El que sale de ahí, sale duro."]
+];
+// ── constelaciones del carácter: dos rasgos fijan un rumbo con nombre propio ──
+const CONSTELACIONES = {
+  "Valiente|Impulsivo": ["Corazón de Tormenta", "No piensa el salto: lo salta. Los mares le temen al entusiasmo."],
+  "Valiente|Prudente": ["Ojo del Huracán", "Ve la tormenta entera y entra igual, pero por la puerta buena."],
+  "Astuto|Rebelde": ["Zorro del Archipiélago", "Nadie le dice por dónde; roba rutas como quien roba sonrisas."],
+  "Astuto|Impulsivo": ["Chispa y Navaja", "Primero la idea, después el tajo. O al revés. Da igual: duele."],
+  "Astuto|Prudente": ["Cartógrafo de Sombras", "Mide dos veces, corta ninguna. El peligro lo esquiva con mapa propio."],
+  "Agresivo|Honrado": ["Lanza Justa", "Golpea primero, pide perdón nunca; su código es la única ley que reconoce."],
+  "Agresivo|Rebelde": ["Bandido de Sal", "Contra toda bandera, contra toda corona. La revolución tiene su cara."],
+  "Honrado|Leal": ["Juramento de Sal", "Su palabra pesa más que el ancla. Los que caen a su lado vuelven a casa."],
+  "Honrado|Noble": ["Escudo del Puerto", "Protege antes de preguntar. Los débiles durmieron gracias a él."],
+  "Leal|Noble": ["Farol del Linaje", "Una promesa no se rompe ni en calma belt. Ese es su destino y su arresto."],
+  "Curioso|Astuto": ["Ojo del Siglo Perdido", "Cada ruina es una carta y cada rumor, un mapa. Poneglyphs le susurran."],
+  "Curioso|Valiente": ["Brisa Exploradora", "Donde el mapa dice 'aquí hay dragones', él anota: 'descubrí uno'."],
+  "Sereno|Noble": ["Calma del Faro", "Nada lo enciende ni lo apaga: sostiene. Su tripulación respira cuando él está."],
+  "Sereno|Prudente": ["Vela Paciente", "Los vientos malos no lo frustran: los espera. Llega tarde, pero llega."],
+  "Feroz|Impulsivo": ["Colmillo del Wano", "Ataca como si el arma fuera parte de la mano. Quizá lo sea."],
+  "Feroz|Agresivo": ["Torbellino Rojo", "El combate es su idioma materno. La paz le hace ruido."],
+  "Valiente|Leal": ["Espada de la Compañía", "Se lanza al agua si alguien cayó. No lo piensa: no es un pensamiento."],
+  "Curioso|Sereno": ["Marea Contemplativa", "Observa el mar hasta que el mar explica. Sabe leer entre olas."],
+  "Feroz|Rebelde": ["Colmillo Sin Amo", "No sirve a nadie, no teme a nada. Los emperadores lo conocen por nombre."],
+  "Astuto|Noble": ["Moneda del Puerto", "Trata limpio, mide justo: hasta los piratas le firman contratos."]
+};
+const ATRIBUCION_RASGO = { Valiente: "Afronta peligros", Astuto: "Busca oportunidades", Impulsivo: "Ataca con decisión", Prudente: "Se retira a tiempo", Agresivo: "Presiona en combate", Honrado: "Sigue su código", Rebelde: "Defiende su autonomía", Leal: "Protege a los suyos", Curioso: "Investiga todo", Sereno: "Resiste la presión", Feroz: "Duplica su arrojo", Noble: "Inspirará lealtad" };
+// ── trasfondo con dado: el mar te dio un pasado ──
+export const HISTORIAS_DADO = [
+  "Crecí en un astillero podrido de sal; sé de madera antes que de letras.",
+  "Mi pueblo quemó una noche entera. Desde entonces no creo en casas: creo en barcos.",
+  "Un viejo cocinero me enseñó a pelear con una cuchara. Nunca perdí el hambre.",
+  "Fui marino de la Marina. Vi la justicia de cerca y preferí la libertad.",
+  "Robé un mapa a un mercader sin saber qué era. El mapa me eligió.",
+  "Mi familia pescaba calamares. Yo pesqué un rumor sobre una isla que no existe.",
+  "Sobreviví a un naufragio con una tabla y una promesa. Ambas floran todavía.",
+  "El tío que crió a mi padre era arpónero. La mar es un pariente entrometido.",
+  "Robé fruta de una cuba sin saber qué era. El estómago me delató primero.",
+  "Un sensei del dojo me echó por pelear sin honor. Volví cada día hasta que me abrió.",
+  "Crecí escuchando historias al fuego sobre la Grand Line. Nunca creí: hasta que zarpé.",
+  "Un mercader me compró siendo niño. Me escapé con su mejor traje y sin arrepentirme."
 ];
 let wizardInitialized = false;
 let selectedTraits = [];
@@ -502,144 +560,184 @@ function moveStepContent(step) {
   content.forEach((child) => child.remove());
   return content;
 }
+const COLORES_SWATCH = { Clara: "#e4b991", Bronceada: "#b77a4b", Oscura: "#754b35", Marrón: "#483126", Azul: "#2585a5", Verde: "#4b8c55", Gris: "#aab7bf", Negro: "#1c1b22", Moreno: "#543320", Rubio: "#d6a53c", Rojo: "#a43d2e", Blanco: "#e8e6e0" };
+const NOMBRES_VESTIMENTA = { Rojo: "Chaleco carmesí", Azul: "Uniforme azul", Verde: "Chaqueta verde", Negro: "Abrigo oscuro", Marrón: "Cuero de puerto", Kimono: "Kimono de Wano", Manto: "Manto pirata", Gabardina: "Gabardina del norte" };
+const NOMBRES_DETALLE = { Bandana: "Bandana roja", "Sombrero de paja": "Sombrero de paja", Tricornio: "Tricornio", "Gorra marina": "Gorra marina", Capucha: "Capucha", Aretes: "Aretes dorados", Collar: "Collar", Cicatriz: "Cicatriz", Ninguno: "Sin detalle" };
+function filaSwatches(form, key, titulo, valores) {
+  const fila = document.createElement("div"); fila.className = "swatch-fila";
+  const label = document.createElement("span"); label.className = "swatch-titulo"; label.textContent = titulo;
+  const grupo = document.createElement("div"); grupo.className = "swatch-grupo"; grupo.dataset.swatch = key;
+  const select = form.elements.namedItem(key);
+  for (const valor of valores) {
+    const boton = document.createElement("button"); boton.type = "button"; boton.className = "swatch"; boton.dataset.valor = valor;
+    boton.title = NOMBRES_VESTIMENTA[valor] || NOMBRES_DETALLE[valor] || valor;
+    if (COLORES_SWATCH[valor]) { const chip = document.createElement("span"); chip.className = "swatch-chip"; chip.style.background = COLORES_SWATCH[valor]; boton.append(chip); }
+    const texto = document.createElement("small"); texto.textContent = NOMBRES_VESTIMENTA[valor] || NOMBRES_DETALLE[valor] || valor;
+    boton.append(texto);
+    if (select && select.value === valor) boton.classList.add("selected");
+    boton.addEventListener("click", () => {
+      if (select) { select.value = valor; select.dispatchEvent(new Event("change", { bubbles: true })); }
+      grupo.querySelectorAll(".swatch").forEach((s) => s.classList.toggle("selected", s === boton));
+    });
+    grupo.append(boton);
+  }
+  fila.append(label, grupo);
+  return fila;
+}
 function configureWizardLayout(form) {
   const original = [...form.querySelectorAll(".wizard-step")];
   if (original.length !== 5) return;
-  const appearanceGrid = original[0].querySelector(".appearance-grid");
   const getField = (name) => form.elements.namedItem(name)?.closest("label");
-  const visual = original[0], race = original[1], story = original[2], direction = original[3];
-  const summary = original[4];
-  const choiceSections = [
-    { source: original[1], title: "Bando", content: moveStepContent(original[1]) },
-    { source: original[2], title: "Rasgos de conducta", content: moveStepContent(original[2]) },
-    { source: direction, title: "Motivación y alineación", content: moveStepContent(direction) },
-    { source: summary, title: "Retrato del alma", content: moveStepContent(summary) }
-  ];
-  const visualFields = ["name", "handle", "skin", "eyes", "hair", "outfit", "accessory"].map(getField).filter(Boolean);
-  const raceFields = ["profession"].map(getField).filter(Boolean);
+  const visual = original[0], bandera = original[1], rasgosStep = original[2], destino = original[3], summary = original[4];
+  // capturo TODOS los campos ANTES de reemplazar el DOM: replaceChildren los saca del form
+  const identity = ["name", "handle"].map(getField).filter(Boolean);
+  const ocultos = ["skin", "eyes", "hair", "outfit", "accessory"].map(getField).filter(Boolean);
+  const campoProfesion = getField("profession"); // el oficio lo revela el mar, no un formulario
+  const raceDesc = visual.querySelector("#race-description");
+  const preview = visual.querySelector(".avatar-editor-preview");
   const storyField = getField("story");
-  const raceDescription = appearanceGrid?.querySelector("#race-description");
-  const preview = appearanceGrid?.querySelector(".avatar-editor-preview");
+  const viejaGrid = rasgosStep.querySelector(".trait-grid"); // el anillo reemplaza la grilla
+  const hiddenTraits = [...rasgosStep.querySelectorAll('input[type="hidden"]')]; // traitPrimary/traitSecondary sobreviven al replace
+  const factionList = bandera.querySelector("#faction-list");
+  const dreamList = destino.querySelector("#dream-list");
+  const aligFieldset = destino.querySelector(".alignment-field");
 
-  const visualGrid = document.createElement("div");
-  visualGrid.className = "appearance-grid";
-  visualFields.forEach((field) => visualGrid.append(field));
-  if (preview) visualGrid.append(preview);
-  visual.replaceChildren(stepHeader(1, "Aspecto visual"));
-  visual.append(visualGrid);
-
-  const raceContent = document.createElement("div");
-  raceContent.className = "appearance-grid";
-  if (raceDescription) raceDescription.textContent = "La raza y el mar se asignan al azar al pulsar ¡Zarpar!.";
-  raceContent.append(...raceFields, ...(raceDescription ? [raceDescription] : []));
-  race.replaceChildren(stepHeader(2, "Raza y origen al azar"), raceContent);
-
-  const storyContent = document.createElement("div");
-  storyContent.className = "story-phase";
-  const storyHeading = document.createElement("p");
-  storyHeading.className = "muted";
-  storyHeading.textContent = "Resume tu origen en hasta 280 caracteres. Algunas palabras pueden moldear un rasgo oculto de conducta.";
-  const storyCount = document.createElement("p");
-  storyCount.id = "story-character-count";
-  storyCount.className = "muted small-text";
-  storyCount.textContent = "0 / 280";
+  // ── FASE 1 · Tu cara ante el mar ──
+  visual.replaceChildren(stepHeader(1, "Tu cara ante el mar"));
+  const cara = document.createElement("div"); cara.className = "fase-cara";
+  const caraIzq = document.createElement("div"); caraIzq.className = "cara-preview";
+  if (preview) caraIzq.append(preview);
+  const dado = document.createElement("button"); dado.type = "button"; dado.className = "button button-secondary dado-historia"; dado.textContent = "🎲 El mar te dio un pasado";
+  dado.addEventListener("click", () => {
+    const ta = storyField?.querySelector("textarea");
+    if (ta) { ta.value = HISTORIAS_DADO[Math.floor(Math.random() * HISTORIAS_DADO.length)]; ta.dispatchEvent(new Event("input", { bubbles: true })); }
+  });
+  caraIzq.append(dado);
+  const caraDer = document.createElement("div"); caraDer.className = "cara-swatches";
+  for (const [key, titulo, valores] of [
+    ["skin", "Piel", ["Clara", "Bronceada", "Oscura"]],
+    ["eyes", "Mirada", ["Marrón", "Azul", "Verde", "Gris"]],
+    ["hair", "Cabello", ["Negro", "Moreno", "Rubio", "Rojo", "Blanco"]],
+    ["outfit", "Vestimenta", ["Rojo", "Azul", "Verde", "Negro", "Marrón", "Kimono", "Manto", "Gabardina"]],
+    ["accessory", "Detalle", ["Bandana", "Sombrero de paja", "Tricornio", "Gorra marina", "Capucha", "Aretes", "Collar", "Cicatriz", "Ninguno"]]
+  ]) caraDer.append(filaSwatches(form, key, titulo, valores));
+  cara.append(caraIzq, caraDer);
   if (storyField) {
-    const textarea = storyField.querySelector("textarea");
-    if (textarea) {
-      textarea.maxLength = 280;
-      textarea.required = true;
-    }
-    storyContent.append(storyField, storyCount);
+    const ta = storyField.querySelector("textarea");
+    if (ta) ta.required = false; // el dado puede contarlo; no es un formulario obligatorio
+    const bloque = document.createElement("div"); bloque.className = "fase-historia";
+    const p = document.createElement("p"); p.className = "muted"; p.textContent = "Tu pasado moldea conductas ocultas. Escribilo o dejá que el dado lo cuente.";
+    const contador = document.createElement("p"); contador.id = "story-character-count"; contador.className = "muted small-text"; contador.textContent = "0 / 280";
+    bloque.append(p, storyField, contador);
+    cara.append(bloque);
   }
-  story.replaceChildren(stepHeader(3, "Trasfondo escrito"), storyHeading, storyContent);
+  // los selects ocultos vuelven al paso 1: son la fuente de verdad que leen los swatches
+  for (const campo of ocultos) if (campo) { campo.hidden = true; visual.append(campo); }
+  if (campoProfesion) { campoProfesion.hidden = true; visual.append(campoProfesion); }
+  if (raceDesc) { raceDesc.hidden = true; visual.append(raceDesc); }
+  identity.forEach((campo) => visual.append(campo));
+  visual.append(cara);
 
-  const directionContent = document.createElement("div");
-  directionContent.className = "direction-phase";
-  for (const { title, content } of choiceSections) {
-    const section = document.createElement("section");
-    section.className = "wizard-choice-section";
-    const heading = document.createElement("h4");
-    heading.textContent = title;
-    section.append(heading, ...content);
-    directionContent.append(section);
+  // ── FASE 2 · El Anillo del Carácter ──
+  rasgosStep.replaceChildren(stepHeader(2, "El Anillo del Carácter"));
+  rasgosStep.append(...hiddenTraits);
+  const anillo = document.createElement("div"); anillo.className = "anillo-fase";
+  const brujula = document.createElement("div"); brujula.className = "anillo-brujula"; brujula.id = "anillo-brujula"; brujula.setAttribute("aria-label", "Brújula del carácter");
+  const aguja = document.createElement("span"); aguja.className = "anillo-aguja"; aguja.setAttribute("aria-hidden", "true");
+  const centro = document.createElement("span"); centro.className = "anillo-centro"; centro.textContent = "✦";
+  brujula.append(aguja, centro);
+  const anilloRasgos = document.createElement("div"); anilloRasgos.className = "anillo-rasgos"; anilloRasgos.id = "anillo-rasgos";
+  TRAITS.forEach((trait, i) => {
+    const orbita = document.createElement("button"); orbita.type = "button"; orbita.className = "rasgo-orbita"; orbita.dataset.trait = trait.id;
+    orbita.style.setProperty("--ang", `${i * (360 / TRAITS.length)}deg`);
+    orbita.innerHTML = `<strong>${trait.id}</strong><small>${ATRIBUCION_RASGO[trait.id]}</small>`;
+    anilloRasgos.append(orbita);
+  });
+  const constelacion = document.createElement("div"); constelacion.className = "constelacion-card"; constelacion.id = "constelacion-card"; constelacion.hidden = true;
+  const pista = document.createElement("p"); pista.className = "muted"; pista.textContent = "Tocá dos rasgos: la brújula fijará tu rumbo y el mar le pondrá nombre.";
+  anillo.append(brujula, anilloRasgos);
+  rasgosStep.append(anillo, pista, constelacion);
+
+  // ── FASE 3 · El Destino (gacha de tres monedas) ──
+  destino.replaceChildren(stepHeader(3, "El Destino"));
+  const gacha = document.createElement("div"); gacha.className = "fase-gacha";
+  const monedas = document.createElement("div"); monedas.className = "monedas-destino"; monedas.id = "monedas-destino";
+  for (let i = 0; i < 3; i++) { const m = document.createElement("span"); m.className = "moneda"; m.setAttribute("aria-hidden", "true"); monedas.append(m); }
+  const rueda = document.createElement("div"); rueda.className = "rueda-destino"; rueda.id = "rueda-destino";
+  const ruedaTexto = document.createElement("span"); ruedaTexto.className = "rueda-texto"; ruedaTexto.textContent = "El destino está por girar…";
+  rueda.append(ruedaTexto);
+  const invocar = document.createElement("button"); invocar.type = "button"; invocar.id = "invocar-destino"; invocar.className = "button button-primary"; invocar.textContent = "Invocar el destino";
+  const resultado = document.createElement("div"); resultado.className = "resultado-destino"; resultado.id = "resultado-destino"; resultado.hidden = true;
+  const notaGacha = document.createElement("p"); notaGacha.className = "muted"; notaGacha.textContent = "Ni tu raza ni tu mar se eligen: se sortean. Tenés tres monedas del destino para observar tu suerte.";
+  gacha.append(notaGacha, monedas, rueda, invocar, resultado);
+  destino.append(gacha);
+
+  // ── FASE 4 · La Bandera del Alma (bando + sueños + tarjeta) ──
+  bandera.replaceChildren(stepHeader(4, "La Bandera del Alma"));
+  const fase4 = document.createElement("div"); fase4.className = "fase-bandera";
+  if (factionList && !factionList.querySelector('[value="Autonomo"]')) {
+    const opcion = document.createElement("label"); opcion.className = "option-card selected bandera-autonoma";
+    const radio = document.createElement("input"); radio.type = "radio"; radio.name = "faction"; radio.value = "Autonomo"; radio.checked = true;
+    opcion.append(radio, Object.assign(document.createElement("span"), { textContent: "🌫 El avatar elige" }), Object.assign(document.createElement("small"), { textContent: "Sus actos eligen la bandera. Nadie la pone por vos." }));
+    factionList.prepend(opcion);
   }
-  direction.replaceChildren(stepHeader(4, "Bando y brújula"), directionContent);
-  original[4].remove();
+  const motivationDescription = document.createElement("p"); motivationDescription.id = "dream-description"; motivationDescription.className = "muted";
+  const secBandera = document.createElement("section"); secBandera.className = "wizard-choice-section";
+  const hBandera = document.createElement("h4"); hBandera.textContent = "¿Bajo qué bandera zarpás?";
+  secBandera.append(hBandera, ...(factionList ? [factionList] : []));
+  const secSueno = document.createElement("section"); secSueno.className = "wizard-choice-section";
+  const hSueno = document.createElement("h4"); hSueno.textContent = "El sueño que tira del hilo";
+  secSueno.append(hSueno, ...(dreamList ? [dreamList] : []), motivationDescription);
+  const secGuia = document.createElement("section"); secGuia.className = "wizard-choice-section";
+  const hGuia = document.createElement("h4"); hGuia.textContent = "La estrella que guía";
+  if (aligFieldset) secGuia.append(aligFieldset);
+  const secTarjeta = document.createElement("section"); secTarjeta.className = "wizard-choice-section";
+  const hTarjeta = document.createElement("h4"); hTarjeta.textContent = "Tu Tarjeta del Alma";
+  secTarjeta.append(hTarjeta, ...[...summary.children]);
+  fase4.append(secBandera, secSueno, secGuia, secTarjeta);
+  bandera.append(fase4);
+  summary.remove();
+  destino.hidden = false; rasgosStep.hidden = false; bandera.hidden = false;
 
+  // orden físico de las fases en el DOM: cara → carácter → destino → bandera
+  const acciones = form.querySelector(".wizard-actions");
+  if (acciones) { form.insertBefore(rasgosStep, acciones); form.insertBefore(destino, acciones); form.insertBefore(bandera, acciones); }
+
+  // navegación de fases: barra fina, sin círculos ni numeración que tickea
   const nav = form.closest("#wizard-container")?.querySelector(".wizard-progress");
   nav?.replaceChildren();
-  for (const [index, label] of ["Aspecto", "Raza y origen", "Trasfondo", "Brújula"].entries()) {
-    const button = document.createElement("button");
-    button.className = "progress-step";
-    button.type = "button";
-    button.dataset.stepNav = String(index + 1);
-    if (index === 0) button.classList.add("active");
-    const number = document.createElement("span");
-    number.className = "step-number";
-    number.textContent = String(index + 1);
-    const text = document.createElement("span");
-    text.className = "step-label";
-    text.textContent = label;
-    button.append(number, text);
-    nav?.append(button);
+  for (const [index, label] of ["Tu cara", "El carácter", "El destino", "La bandera"].entries()) {
+    const paso = document.createElement("span"); paso.className = "fase-paso"; paso.dataset.stepNav = String(index + 1);
+    paso.textContent = label;
+    if (index === 0) paso.classList.add("active");
+    nav?.append(paso);
   }
-
-  const compass = document.createElement("div");
-  compass.className = "ideology-compass";
-  compass.id = "ideology-compass";
-  compass.setAttribute("aria-label", "Brújula ideológica animada");
-  const needle = document.createElement("span");
-  needle.className = "ideology-compass-needle";
-  needle.setAttribute("aria-hidden", "true");
-  compass.append(needle);
-  directionContent.prepend(compass);
-  const motivationDescription = document.createElement("p");
-  motivationDescription.id = "dream-description";
-  motivationDescription.className = "muted";
-  const dreamList = directionContent.querySelector("#dream-list");
-  const factionList = directionContent.querySelector("#faction-list");
-  if (factionList && !factionList.querySelector('[value="Revolucionario"]')) {
-    const option = document.createElement("label");
-    option.className = "option-card";
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "faction";
-    radio.value = "Revolucionario";
-    const label = document.createElement("span");
-    label.textContent = "🕊 Revolucionario";
-    option.append(radio, label);
-    factionList.append(option);
-  }
-  if (dreamList && !dreamList.querySelector('[value="Justicia"]')) {
-    const justice = document.createElement("label");
-    justice.className = "option-card";
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "dream";
-    radio.value = "Justicia";
-    const label = document.createElement("span");
-    label.textContent = "⚖ Justicia";
-    justice.append(radio, label);
-    dreamList.append(justice);
-  }
-  dreamList?.after(motivationDescription);
 }
 function updateWizardSummary() {
   const form = byId("character-form");
   if (!form) return;
+  const factionElegida = form.querySelector('[name="faction"]:checked')?.value || "Autonomo";
+  const resultado = byId("resultado-destino");
+  let traitsResumen = selectedTraits.join(" + ") || "Elige dos rasgos";
+  if (selectedTraits.length === 2) {
+    const buscar = (a, b) => CONSTELACIONES[`${a}|${b}`] || CONSTELACIONES[`${b}|${a}`];
+    const hit = buscar(selectedTraits[0], selectedTraits[1]);
+    if (hit) traitsResumen = `${hit[0]} (${selectedTraits.join(" + ")})`;
+  }
   const values = {
     "summary-name": form.elements.namedItem("name")?.value.trim() || "Aventurero",
     "summary-handle": form.elements.namedItem("handle")?.value.trim() || "@usuario",
-    "summary-faction": form.querySelector('[name="faction"]:checked')?.value || "Pirata",
-    "summary-race": "Azar al zarpar",
-    "summary-profession": form.querySelector('[name="profession"] option:checked')?.textContent || "Navegante",
-    "summary-sea": "Azar al zarpar",
-    "summary-traits": selectedTraits.join(" / ") || "Elige dos rasgos",
+    "summary-faction": factionElegida === "Autonomo" ? "La revelan sus actos" : factionElegida,
+    "summary-race": resultado?.dataset.raceNombre || "Azar al zarpar",
+    "summary-profession": "Lo revelará el mar",
+    "summary-sea": resultado?.dataset.seaNombre || "Azar al zarpar",
+    "summary-traits": traitsResumen,
     "summary-dream": form.querySelector('[name="dream"]:checked')?.value || "Libertad",
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
   const avatarConfig = Object.fromEntries(["skin", "eyes", "hair", "outfit", "accessory"].map((key) => [key, form.elements.namedItem(key)?.value]));
+  avatarConfig.race = form.elements.namedItem("race")?.value || "human";
   for (const id of ["wizard-avatar-preview", "wizard-portrait"]) {
     const canvas = byId(id), ctx = canvas?.getContext("2d");
     if (!ctx) continue;
@@ -647,14 +745,11 @@ function updateWizardSummary() {
     ctx.fillStyle = "#0b1329";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const scale = canvas.width / 128 * 1.15;
-    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 32 * scale, y: canvas.height * .06, scale, fullBody: true, size: 64, time: Date.now() });
+    drawPixelAvatar(ctx, avatarConfig, { x: canvas.width / 2 - 32 * scale, y: canvas.height * .06, scale, fullBody: true, size: 64, time: Date.now(), race: avatarConfig.race });
   }
   const story = form.elements.namedItem("story")?.value || "";
   if (byId("story-character-count")) byId("story-character-count").textContent = `${story.length} / 280`;
-  updateMotivationCompass(form);
-}
-function updateMotivationCompass(form) {
-  const motivation = form.querySelector('[name="dream"]:checked')?.value || "Libertad";
+  const dream = form.querySelector('[name="dream"]:checked')?.value || "Libertad";
   const motivationText = {
     Libertad: "Abrir rutas nuevas y proteger la autonomía de la tripulación.",
     Poder: "Entrenar, superar rivales y buscar una posición de mando.",
@@ -665,15 +760,96 @@ function updateMotivationCompass(form) {
     Destrucción: "Hundir lo que te encadenó; que el mar recuerde tu nombre por el estruendo.",
     Justicia: "Defender a quienes no pueden protegerse."
   };
-  if (byId("dream-description")) byId("dream-description").textContent = motivationText[motivation] || "Tu sueño influirá en las decisiones autónomas.";
-  // Aguja: la alineación fija el rumbo y el sueño le da el último giro fino
-  const rumbo = { Libertad: 0, Justicia: 90, Poder: 180, Caos: 270 }[form.querySelector('[name="alignment"]:checked')?.value || "Libertad"] || 0;
-  const fino = { Libertad: 0, Justicia: 10, Poder: -10, Riqueza: 14, Fama: -14, Lazos: 22, Conocimiento: -22, Destrucción: 18, Caos: -18 }[motivation] || 0;
-  byId("ideology-compass")?.style.setProperty("--compass-angle", `${rumbo + fino}deg`);
+  if (byId("dream-description")) byId("dream-description").textContent = motivationText[dream] || "Tu sueño influirá en las decisiones autónomas.";
+}
+function updateTraitButtons() {
+  const orbitas = [...document.querySelectorAll(".rasgo-orbita")];
+  orbitas.forEach((card) => {
+    const id = card.dataset.trait;
+    const selected = selectedTraits.includes(id);
+    const blocked = !selected && (selectedTraits.some((chosen) => TRAITS.find((t) => t.id === chosen)?.opposite === id || TRAITS.find((t) => t.id === id)?.opposite === chosen) || selectedTraits.length >= 2);
+    card.classList.toggle("selected", selected);
+    card.classList.toggle("disabled", blocked);
+    card.disabled = blocked;
+  });
+  const form = byId("character-form");
+  if (form?.elements.namedItem("traitPrimary")) form.elements.namedItem("traitPrimary").value = selectedTraits[0] ?? "";
+  if (form?.elements.namedItem("traitSecondary")) form.elements.namedItem("traitSecondary").value = selectedTraits[1] ?? "";
+  // la aguja del anillo: un rasgo fija el rumbo, dos rasgos apuntan al punto medio
+  const brujula = byId("anillo-brujula");
+  if (brujula) {
+    const ANGULOS = {};
+    TRAITS.forEach((t, i) => { ANGULOS[t.id] = i * (360 / TRAITS.length); });
+    let ang = 0;
+    if (selectedTraits.length === 2) {
+      const a = ANGULOS[selectedTraits[0]], b = ANGULOS[selectedTraits[1]];
+      const delta = Math.abs(a - b);
+      ang = Math.min(a, b) + (delta > 180 ? (360 - delta) / 2 : delta / 2);
+    } else if (selectedTraits.length === 1) ang = ANGULOS[selectedTraits[0]];
+    brujula.style.setProperty("--compass-angle", `${ang}deg`);
+  }
+  const card = byId("constelacion-card");
+  if (card) {
+    if (selectedTraits.length === 2) {
+      const buscar = (a, b) => CONSTELACIONES[`${a}|${b}`] || CONSTELACIONES[`${b}|${a}`];
+      const hit = buscar(selectedTraits[0], selectedTraits[1]);
+      const nombre = hit ? hit[0] : `Rumbo sin mapa · ${selectedTraits[0]} y ${selectedTraits[1]}`;
+      const texto = hit ? hit[1] : "Nadie más lleva exactamente este rumbo: el mar lo anotará en tu bitácora.";
+      card.innerHTML = `<strong>✦ ${nombre}</strong><p>${texto}</p><small>${ATRIBUCION_RASGO[selectedTraits[0]]} · ${ATRIBUCION_RASGO[selectedTraits[1]]}</small>`;
+      card.hidden = false; card.classList.add("revelada");
+    } else { card.hidden = true; card.classList.remove("revelada"); }
+  }
+  updateWizardSummary();
+}
+let monedasRestantes = 3;
+function actualizarMonedas() {
+  const invocarBtn = byId("invocar-destino");
+  const monedas = [...(byId("monedas-destino")?.children || [])];
+  monedas.forEach((m, i) => m.classList.toggle("gastada", i >= monedasRestantes));
+  if (invocarBtn) {
+    invocarBtn.textContent = monedasRestantes > 1 ? `Invocar el destino · ${monedasRestantes} monedas` : monedasRestantes === 1 ? "Última moneda del destino" : "El destino no cambia tres veces";
+    invocarBtn.disabled = monedasRestantes <= 0;
+  }
+}
+function girarDestino() {
+  const rueda = byId("rueda-destino");
+  if (!rueda || monedasRestantes <= 0) return;
+  monedasRestantes -= 1;
+  actualizarMonedas();
+  rueda.classList.add("girando");
+  const pasos = 12 + Math.floor(Math.random() * 6);
+  let paso = 0;
+  const slot = () => {
+    if (paso++ < pasos) {
+      const r = RAZAS_GACHA[Math.floor(Math.random() * RAZAS_GACHA.length)];
+      const m = MARES_GACHA[Math.floor(Math.random() * MARES_GACHA.length)];
+      const texto = rueda.querySelector(".rueda-texto");
+      if (texto) texto.textContent = `${r[1]} · ${m[1]}`;
+      setTimeout(slot, 65 + paso * 10);
+      return;
+    }
+    rueda.classList.remove("girando");
+    const [raceId, raceNombre, raceTexto] = RAZAS_GACHA[Math.floor(Math.random() * RAZAS_GACHA.length)];
+    const [seaId, seaNombre, seaTexto] = MARES_GACHA[Math.floor(Math.random() * MARES_GACHA.length)];
+    const textoFinal = rueda.querySelector(".rueda-texto");
+    if (textoFinal) textoFinal.textContent = `${raceNombre} · ${seaNombre}`;
+    const form = byId("character-form");
+    if (form.elements.namedItem("race")) form.elements.namedItem("race").value = raceId;
+    if (form.elements.namedItem("originSea")) form.elements.namedItem("originSea").value = seaId;
+    const resultado = byId("resultado-destino");
+    if (resultado) {
+      resultado.dataset.raceNombre = raceNombre;
+      resultado.dataset.seaNombre = seaNombre;
+      resultado.hidden = false;
+      resultado.innerHTML = `<strong>${raceNombre}</strong><p>${raceTexto}</p><small>Mar de origen: <b>${seaNombre}</b> — ${seaTexto}</small>${monedasRestantes === 0 ? `<em class="destino-final">El destino no cambia tres veces: zarpá con lo que te dio.</em>` : ""}`;
+    }
+    updateWizardSummary();
+  };
+  setTimeout(slot, 80);
 }
 function showWizardStep(index) {
   const steps = [...document.querySelectorAll(".wizard-step")];
-  const nav = [...document.querySelectorAll(".progress-step")];
+  const nav = [...document.querySelectorAll(".fase-paso")];
   if (!steps.length) return;
   currentStep = Math.max(0, Math.min(steps.length - 1, index));
   steps.forEach((step, i) => {
@@ -681,24 +857,10 @@ function showWizardStep(index) {
     step.classList.toggle("active", i === currentStep);
     step.setAttribute("aria-hidden", String(i !== currentStep));
   });
-  nav.forEach((button, i) => { button.classList.toggle("active", i === currentStep); button.setAttribute("aria-current", i === currentStep ? "step" : "false"); });
+  nav.forEach((paso, i) => paso.classList.toggle("active", i === currentStep));
   if (byId("prev-step")) byId("prev-step").hidden = currentStep === 0;
   if (byId("next-step")) byId("next-step").hidden = currentStep === steps.length - 1;
   if (byId("submit-step")) byId("submit-step").hidden = currentStep !== steps.length - 1;
-  updateWizardSummary();
-}
-function updateTraitButtons() {
-  document.querySelectorAll(".trait-card").forEach((card) => {
-    const id = card.dataset.trait;
-    const selected = selectedTraits.includes(id);
-    const blocked = selectedTraits.some((chosen) => TRAITS.find((trait) => trait.id === chosen)?.opposite === id || TRAITS.find((trait) => trait.id === id)?.opposite === chosen);
-    card.classList.toggle("selected", selected);
-    card.classList.toggle("disabled", !selected && (blocked || selectedTraits.length >= 2));
-    card.disabled = !selected && (blocked || selectedTraits.length >= 2);
-  });
-  const form = byId("character-form");
-  if (form?.elements.namedItem("traitPrimary")) form.elements.namedItem("traitPrimary").value = selectedTraits[0] ?? "";
-  if (form?.elements.namedItem("traitSecondary")) form.elements.namedItem("traitSecondary").value = selectedTraits[1] ?? "";
   updateWizardSummary();
 }
 export function initWizard() {
@@ -708,7 +870,8 @@ export function initWizard() {
   if (!form) return;
   configureWizardLayout(form);
   selectedTraits = [];
-  document.querySelectorAll(".trait-card").forEach((button) => {
+  // el Anillo del Carácter: cada orbe es un rasgo
+  document.querySelectorAll(".rasgo-orbita").forEach((button) => {
     if (!button) return;
     button.addEventListener("click", () => {
       const id = button.dataset.trait;
@@ -720,6 +883,7 @@ export function initWizard() {
       updateTraitButtons();
     });
   });
+  byId("invocar-destino")?.addEventListener("click", girarDestino);
   const nextButton = byId("next-step");
   if (nextButton) nextButton.addEventListener("click", () => {
     if (currentStep === 0) {
@@ -733,26 +897,21 @@ export function initWizard() {
         return;
       }
     }
-    if (currentStep === 2) {
-      const story = form.elements.namedItem("story");
-      if (story && !isBiographyValid(story.value)) {
-        story.setCustomValidity("Escribe tu historia de origen en un máximo de 280 caracteres.");
-        story.reportValidity();
-        return;
-      }
+    if (currentStep === 1 && selectedTraits.length !== 2) {
+      const card = byId("constelacion-card");
+      if (card) { card.hidden = false; card.classList.add("revelada"); card.innerHTML = `<strong>El anillo espera dos rasgos</strong><p>Tocá dos orbes del anillo: la brújula gira con cada uno.</p>`; }
+      return;
     }
-    if (currentStep === 3 && selectedTraits.length !== 2) { window.alert("Selecciona exactamente dos rasgos."); return; }
+    if (currentStep === 2 && !form.elements.namedItem("race")?.value) {
+      girarDestino(); // si no invocaste el destino, el destino te invoca: una tirada gratis
+      if (monedasRestantes <= 0) { showWizardStep(currentStep + 1); return; }
+      return;
+    }
     showWizardStep(currentStep + 1);
   });
   const prevButton = byId("prev-step");
   if (prevButton) prevButton.addEventListener("click", () => showWizardStep(currentStep - 1));
-  document.querySelectorAll(".progress-step").forEach((button) => {
-    if (button) button.addEventListener("click", () => { const target = Number(button.dataset.stepNav) - 1; if (target <= currentStep) showWizardStep(target); });
-  });
-  form.addEventListener("input", (event) => {
-    if (event.target.name === "story") event.target.setCustomValidity("");
-    updateWizardSummary();
-  });
+  form.addEventListener("input", (event) => updateWizardSummary());
   form.addEventListener("change", (event) => {
     if (event.target.matches('input[name="faction"], input[name="dream"], input[name="alignment"]')) {
       const list = `${event.target.name}-list`;
@@ -762,18 +921,31 @@ export function initWizard() {
   });
   showWizardStep(0);
   updateTraitButtons();
+  actualizarMonedas();
 }
 export function resetWizard() {
   selectedTraits = [];
+  monedasRestantes = 3;
   const form = byId("character-form");
   form?.reset();
   form?.elements.namedItem("story")?.setCustomValidity("");
-  document.querySelectorAll(".trait-card").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
+  if (form?.elements.namedItem("race")) form.elements.namedItem("race").value = "";
+  if (form?.elements.namedItem("originSea")) form.elements.namedItem("originSea").value = "";
+  document.querySelectorAll(".rasgo-orbita").forEach((card) => { card.classList.remove("selected", "disabled"); card.disabled = false; });
   document.querySelectorAll("#faction-list .option-card, #dream-list .option-card, #alignment-list .option-card").forEach((card) => {
     card.classList.toggle("selected", Boolean(card.querySelector('input[type="radio"]')?.checked));
   });
+  const resultado = byId("resultado-destino");
+  if (resultado) { resultado.hidden = true; delete resultado.dataset.raceNombre; delete resultado.dataset.seaNombre; resultado.innerHTML = ""; }
+  const rueda = byId("rueda-destino");
+  if (rueda) { rueda.classList.remove("girando"); const texto = rueda.querySelector(".rueda-texto"); if (texto) texto.textContent = "El destino está por girar…"; }
+  const brujula = byId("anillo-brujula");
+  if (brujula) brujula.style.setProperty("--compass-angle", "0deg");
+  const card = byId("constelacion-card");
+  if (card) { card.hidden = true; card.classList.remove("revelada"); }
   showWizardStep(0);
   updateWizardSummary();
+  actualizarMonedas();
   byId("wizard-container")?.scrollTo({ top: 0 });
   document.querySelector(".wizard-card")?.scrollTo({ top: 0 });
 }

@@ -3,7 +3,7 @@ import {
   loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline
 } from "./game.js";
 import {
-  closeLegacyModal, closePantheon, initWizard, openPantheon,
+  closeLegacyModal, closePantheon, HISTORIAS_DADO, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
 import { initHud, renderHud, setHudVisible } from "./ui/hud.js";
@@ -239,15 +239,18 @@ if (character) {
 listen(byId("character-form"), "submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
-  if (!isBiographyValid(data.get("story"))) {
-    window.alert("Escribe tu historia de origen en un máximo de 280 caracteres.");
-    return;
-  }
+  // la historia es opcional: si quedó vacía, el dado del mar cuenta una por vos
+  let historia = String(data.get("story") || "").trim();
+  if (!historia) historia = HISTORIAS_DADO[Math.floor(Math.random() * HISTORIAS_DADO.length)];
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
   const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
   const randomOrigin = generateRandomOrigin();
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), ...randomOrigin, starterChallenge: true, profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  // raza y mar pueden venir del Gacha del Destino (3 monedas); si no, azar puro al zarpar
+  const raceGacha = String(data.get("race") || "");
+  const seaGacha = String(data.get("originSea") || "");
+  const faction = String(data.get("faction") || "Pirata");
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: faction === "Autonomo" ? "Autonomo" : faction, originSea: seaGacha || randomOrigin.originSea, race: raceGacha || randomOrigin.race, starterChallenge: true, profession: "Grumete", dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: historia, traits, appearance: avatarConfig });
   registerCharacter(character);
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
