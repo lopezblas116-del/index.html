@@ -38,7 +38,7 @@ export function getMapIslands(character) {
     // el tablón del puerto existe en toda isla: ahí cuelgan los encargos del día
     if (!(merged.pois || []).some((poi) => poi.id === "puerto-tablon")) {
       const ancla = (merged.pois || []).find((poi) => poi.type === "dock") || merged.pois?.[0];
-      merged.pois = [...(merged.pois || []), { id: "puerto-tablon", name: "Tablón del Puerto", type: "tablon", x: (ancla?.x || 320) + 34, y: (ancla?.y || 240) + 18 }];
+      merged.pois = [...(merged.pois || []), { id: "puerto-tablon", name: "Tablón de Puerto", type: "tablon", x: (ancla?.x || 320) + 34, y: (ancla?.y || 240) + 18 }];
     }
     return merged;
   });

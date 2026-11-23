@@ -208,7 +208,7 @@ export function resolveLocalActivity(character, random = Math.random, { advanceN
       ? resolverEncargo(character).message
       : satisfyLocalNeed(character, target);
     const corrected = esTablon
-      ? `[BITÁCORA · ${psyche.mood}] ${character.name} se planta frente al Tablón del Puerto: ${experience}`
+      ? `[BITÁCORA · ${psyche.mood}] ${character.name} se planta frente al Tablón de Puerto: ${experience}`
       : `[BITÁCORA · ${psyche.mood}] ${character.name} entra en ${target.name}: ${experience}.`;
     character.log.unshift({ time: new Date().toISOString(), message: corrected });
     character.log = character.log.slice(0, 80);

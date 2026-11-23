@@ -204,7 +204,7 @@ export function enGrandLine(character) {
   return /paraíso|grand line/i.test(String(character?.location?.region || "")) || climateFor(character) === "grand-line";
 }
 
-// ── El Tablón del Puerto: encargos con riesgo, de menor a mayor ──
+// ── El Tablón de Puerto: encargos con riesgo, de menor a mayor ──
 // el papel se renueva cada día en cada isla (determinista: la misma isla y el
 // mismo día ofrecen lo mismo — el mar no cambia los encargos por capricho)
 export function tablonDelPuerto(character) {
@@ -232,7 +232,7 @@ export function sugerirEncargo(character, encargo) {
   character.location.localVenue = null;
   character.location.localTarget = null;
   character.autonomy.paused = false; // la sugerencia vuelve a ponerlo en modo autónomo
-  character.log.unshift({ time: new Date().toISOString(), message: `📋 Le sugerís a ${character.name}: «${encargo.nombre}» (riesgo ${encargo.riesgo}). Camina hacia el Tablón del Puerto cuando el mar lo deje.` });
+  character.log.unshift({ time: new Date().toISOString(), message: `📋 Le sugerís a ${character.name}: «${encargo.nombre}» (riesgo ${encargo.riesgo}). Camina hacia el Tablón de Puerto cuando el mar lo deje.` });
   return { ok: true, message: `Sugerencia enviada: ${character.name} irá al tablón por «${encargo.nombre}».` };
 }
 

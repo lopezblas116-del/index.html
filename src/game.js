@@ -551,7 +551,7 @@ function rest(character) {
 }
 export function performAction(character, action, { availableFruitIds } = {}) {
   if (character.status === "dead") return "El avatar está en el Panteón; crea un heredero para continuar.";
-  if (character.captured) return "El avatar está cautivo; rescátalo desde el menú Más.";
+  if (character.captured) return "El avatar está cautivo; rescátalo desde el panel del Barco.";
   const handlers = { navigate, train, rest };
   const previousIsland = character.location?.island;
   const previousAtSea = Boolean(character.location?.atSea);

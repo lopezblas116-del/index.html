@@ -153,6 +153,14 @@
 .one-hud-stats strong{ color: var(--sao-text); font-size: .84rem; font-weight: 700; }
 .one-hud-stats span, .one-hud-stats > div{ color: var(--sao-muted); font-size: .72rem; }
 .one-hud-meter progress, progress[data-vital]{ accent-color: var(--sao-gold); }
+/* las barras dejan de ser mudas: HP y XP rotuladas en oro, alineadas al dato */
+.one-hud-vital-tag{
+  align-self: center; justify-self: end;
+  font-size: 8.5px; font-weight: 800; letter-spacing: .18em;
+  color: var(--sao-gold); opacity: .9; user-select: none;
+}
+.one-hud-vitals{ grid-template-columns: auto 1fr !important; column-gap: 5px; }
+.one-hud-vitals progress{ width: 100%; }
 
 /* ── EL GLOBO DEL MUNDO: mismo cristal, mismo borde ── */
 #mil-globo{
