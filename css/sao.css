@@ -1,0 +1,234 @@
+/* ============================================================
+   SAO UI · SISTEMA DE INTERFAZ UNIFICADO
+   Una sola gramática visual para todo el juego:
+   · paneles de cristal oscuro con borde fino claro y esquinas marcadas
+   · títulos dorados en versalitas espaciadas
+   · botones píldora y comandos circulares con brillo suave
+   · tipografía Manrope en todo, jerarquía clara, nada suelto
+   ============================================================ */
+
+/* ── los tokens del sistema ── */
+:root{
+  --sao-panel: rgba(8,13,26,.88);
+  --sao-panel-soft: rgba(14,21,40,.92);
+  --sao-line: rgba(255,255,255,.22);
+  --sao-line-soft: rgba(255,255,255,.12);
+  --sao-gold: #f4b41a;
+  --sao-gold-soft: rgba(244,180,26,.5);
+  --sao-text: #eef4ff;
+  --sao-muted: #9fb0cc;
+  --sao-radius: 16px;
+  --sao-radius-sm: 10px;
+  --sao-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+  --sao-glow: 0 0 14px rgba(244,180,26,.28);
+}
+
+/* ── el mundo vivo vuelve a ser tocable: el shell es transparente al clic,
+      sus ventanas no (el globo con el badge 9+ moría aquí) ── */
+#mil-globo-wrap, #mil-globo, #mil-globo-menu, #mil-feed-drawer,
+#ov-wizard, #mil-almas-ui .mil-panel{ pointer-events: auto; }
+
+/* ── PANEL CANÓNICO: un cristal, unas esquinas, un encabezado ── */
+.one-hud-dialog,
+.mil-panel, #mil-feed-drawer, #mil-globo-menu, #pop-isla{
+  background: var(--sao-panel);
+  border: 1px solid var(--sao-line);
+  border-radius: var(--sao-radius);
+  box-shadow: var(--sao-shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+/* las cuatro esquinas marcadas: la firma de la interfaz */
+.one-hud-dialog::before, .mil-panel::before, #mil-feed-drawer::before,
+#mil-globo-menu::before, #pop-isla::before{
+  content: ""; position: absolute; top: 7px; left: 7px; width: 20px; height: 20px;
+  border-top: 2px solid var(--sao-gold); border-left: 2px solid var(--sao-gold);
+  border-top-left-radius: 8px; pointer-events: none; opacity: .85;
+}
+.one-hud-dialog::after, .mil-panel::after, #mil-feed-drawer::after,
+#mil-globo-menu::after, #pop-isla::after{
+  content: ""; position: absolute; bottom: 7px; right: 7px; width: 20px; height: 20px;
+  border-bottom: 2px solid var(--sao-gold); border-right: 2px solid var(--sao-gold);
+  border-bottom-right-radius: 8px; pointer-events: none; opacity: .85;
+}
+.one-hud-dialog{ position: relative; }
+
+/* ── ENCABEZADOS: oro en versalitas, nada fuera de jerarquía ── */
+.one-hud-heading{ border-bottom: 1px solid var(--sao-line-soft); }
+.one-hud-heading-title{
+  font-family: 'Manrope', system-ui, sans-serif !important;
+  font-weight: 800; font-size: clamp(.82rem, 2.4vw, .95rem) !important;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--sao-text);
+}
+.one-hud-heading-title::first-letter{ color: var(--sao-gold); }
+.one-hud-content h3, .mil-panel h2, .mil-panel h3{
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+  color: var(--sao-gold); font-size: .72rem;
+}
+.one-hud-content h3{ margin: 14px 0 8px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
+.mil-panel h2, #mil-feed-drawer h2{
+  font-size: .9rem; letter-spacing: .18em; margin-bottom: 8px;
+}
+.mil-panel h3{ margin: 16px 0 6px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
+
+/* ── BOTONES: una sola píldora para todos los sistemas ── */
+.one-hud-action, #mil-almas-ui button, .mil-encuentro button, .filtro, .ritmo, .sus{
+  font-family: 'Manrope', system-ui, sans-serif;
+  min-height: 40px; padding: 8px 14px;
+  border: 1px solid var(--sao-line); border-radius: 999px;
+  background: rgba(255,255,255,.05); color: var(--sao-text);
+  font-size: .82rem; font-weight: 700; letter-spacing: .03em;
+  cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s, transform .1s;
+}
+.one-hud-action:hover:not(:disabled), #mil-almas-ui button:hover:not(:disabled),
+.mil-encuentro button:hover, .filtro:hover, .ritmo:hover, .sus:hover{
+  border-color: var(--sao-gold); background: rgba(244,180,26,.12); box-shadow: var(--sao-glow);
+}
+.one-hud-action:active:not(:disabled), #mil-almas-ui button:active{ transform: translateY(1px); }
+.one-hud-action:disabled, #mil-almas-ui button:disabled{
+  opacity: .42; cursor: not-allowed; filter: grayscale(.5);
+}
+.one-hud-action{ min-height: 38px; padding: 7px 13px; }
+
+/* botones primarios: la variante dorada, para la acción más importante */
+.one-hud-nav button[aria-expanded="true"],
+.one-hud-action.sao-primary{
+  background: var(--sao-gold); border-color: var(--sao-gold); color: #0b1329;
+  box-shadow: 0 6px 18px rgba(244,180,26,.3);
+}
+
+/* ── EL DOCK DE COMANDOS: seis órdenes, un solo lugar, orden SAO ── */
+#one-hud .one-hud-nav, #bottom-nav{
+  border: 1px solid var(--sao-line) !important;
+  background: var(--sao-panel) !important;
+  border-radius: 20px !important;
+  backdrop-filter: blur(14px) saturate(1.1) !important;
+  box-shadow: var(--sao-shadow) !important;
+  padding: 8px 10px !important;
+}
+#one-hud .one-hud-nav button, #bottom-nav button{
+  display: grid; place-items: center; align-content: center; gap: 3px;
+  flex: 1 1 0; min-width: 44px; min-height: 50px; padding: 4px 2px;
+  border: 1px solid transparent; border-radius: 14px;
+  background: transparent; color: var(--sao-muted);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  white-space: nowrap; overflow: visible;
+  transition: background .15s, color .15s, border-color .15s;
+}
+#one-hud .one-hud-nav button span:first-child, #bottom-nav button span:first-child{ color: var(--sao-text); font-size: 0; }
+#one-hud .one-hud-nav .one-hud-nav-icon, #bottom-nav .one-hud-nav-icon{ display: grid; place-items: center; }
+#one-hud .one-hud-nav .nautical-icon, #bottom-nav .nautical-icon{
+  width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6px;
+  color: var(--sao-text); transition: color .15s;
+}
+#one-hud .one-hud-nav button:hover, #bottom-nav button:hover{ background: rgba(255,255,255,.07); color: var(--sao-text); }
+#one-hud .one-hud-nav button[aria-expanded="true"], #bottom-nav button[aria-expanded="true"]{
+  background: rgba(244,180,26,.14) !important; border-color: var(--sao-gold-soft) !important;
+  color: var(--sao-gold) !important; box-shadow: var(--sao-glow) !important;
+}
+#one-hud .one-hud-nav button[aria-expanded="true"] .nautical-icon,
+#bottom-nav button[aria-expanded="true"] .nautical-icon{ color: var(--sao-gold) !important; }
+
+/* ── CHIPS DE IDENTIDAD: la misma píldora de cristal ── */
+.one-hud-captain, .mil-chip{
+  border: 1px solid var(--sao-line) !important;
+  background: var(--sao-panel-soft) !important;
+  border-radius: 999px !important;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sao-shadow);
+}
+.one-hud-captain .one-hud-captain-name{ letter-spacing: .1em; }
+.one-hud-captain .one-hud-captain-fac{
+  color: var(--sao-muted); font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
+}
+
+/* ── DATOS: filas y mediciones con la misma caligrafía ── */
+.one-hud-stats{
+  display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px;
+}
+.one-hud-stats > div{
+  border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
+  background: rgba(255,255,255,.04); padding: 7px 10px;
+}
+.one-hud-stats strong{ color: var(--sao-text); font-size: .84rem; font-weight: 700; }
+.one-hud-stats span, .one-hud-stats > div{ color: var(--sao-muted); font-size: .72rem; }
+.one-hud-meter progress, progress[data-vital]{ accent-color: var(--sao-gold); }
+
+/* ── EL GLOBO DEL MUNDO: mismo cristal, mismo borde ── */
+#mil-globo{
+  border: 1px solid var(--sao-line) !important;
+  background: var(--sao-panel-soft) !important;
+  box-shadow: var(--sao-shadow) !important;
+}
+#mil-globo-menu{ padding: 12px; gap: 6px; min-width: 230px; }
+#mil-globo-menu .mil-globo-head{
+  border-bottom: 1px solid var(--sao-line-soft); padding-bottom: 8px; margin-bottom: 6px;
+}
+#mil-globo-menu .mil-globo-head strong{
+  font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--sao-gold);
+}
+#mil-globo-menu .mil-globo-head span{ color: var(--sao-muted); font-size: .72rem; }
+#mil-globo-menu button, #mil-feed-drawer .mil-feed-heading button{ width: 100%; }
+
+/* la bitácora viva: mismo cristal */
+#mil-feed-drawer{ padding: 14px; }
+#mil-feed-drawer h2{ color: var(--sao-gold); }
+#mil-feed-drawer #feed .fe{ border-bottom: 1px solid rgba(255,255,255,.05); }
+#mil-feed-drawer #feed .fh{ color: var(--sao-muted); }
+
+/* las ventanas del alma: ficha, atlas, hemeroteca, ajustes, wizard */
+.mil-panel{ padding: 16px; color: var(--sao-text); }
+.mil-panel .mil-close{
+  position: absolute; top: 10px; right: 10px;
+  width: 34px; height: 34px; min-height: 0; padding: 0;
+  display: grid; place-items: center; border-radius: 50% !important;
+  font-size: 15px;
+}
+.mil-panel .mil-eyebrow{
+  font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: var(--sao-muted);
+}
+.mil-panel p, .mil-panel small{ color: #c7d3e6; }
+.mil-panel .obj{ border-color: var(--sao-line-soft); }
+
+/* ── ENCUENTROS DE ISLA: tarjetas de la misma casa ── */
+.mil-encuentro{
+  border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
+  background: rgba(255,255,255,.04);
+}
+.mil-encuentro b{ color: var(--sao-gold); }
+.mil-encuentro small{ color: var(--sao-muted); }
+
+/* ── SECCIONES ESPECIALES DEL HUD: Gobierno, tablón, planos ── */
+.one-hud-gobierno, .one-hud-tablon, .one-hud-noble, .one-hud-planos{
+  border-color: var(--sao-line-soft) !important;
+  background: rgba(255,255,255,.04) !important;
+}
+.one-hud-gobierno h3{ margin-top: 0; }
+.one-hud-warning{ color: #ffb3a6; }
+.one-hud-muted{ color: var(--sao-muted); }
+
+/* ── el ajuste del sistema también es SAO ── */
+.one-hud-settings{
+  border: 1px solid var(--sao-line) !important;
+  background: var(--sao-panel-soft) !important;
+  border-radius: 50% !important; box-shadow: var(--sao-shadow) !important;
+  backdrop-filter: blur(10px);
+}
+.one-hud-backdrop{ background: rgba(3,7,17,.6); backdrop-filter: blur(4px); }
+.one-hud-toast{
+  border: 1px solid var(--sao-gold-soft) !important;
+  background: var(--sao-panel-soft) !important; border-radius: 999px !important;
+  box-shadow: var(--sao-shadow) !important;
+}
+
+/* ── móvil: el dock respira y nada se aprieta ── */
+@media (max-width: 640px){
+  #one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; letter-spacing: .04em; min-height: 46px; }
+  #one-hud .one-hud-nav .nautical-icon, #bottom-nav .nautical-icon{ width: 17px; height: 17px; }
+  .one-hud-stats{ grid-template-columns: 1fr 1fr; }
+  .mil-panel{ padding: 14px; }
+  #mil-globo-menu{ min-width: 210px; }
+}
+@media (max-width: 600px){
+  #one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; }
+}
