@@ -304,7 +304,6 @@ body.wizard-active .masthead{display:none}
 .psychology-card h3{color:#f4b41a;font-size:.8rem}
 
 
-.one-hud-vitals progress{height:5px;border:1px solid rgba(244,180,26,.48);background:#07101f}
 
 
 
@@ -524,8 +523,6 @@ body[data-atmosphere="mist"]{transition:background-color 1.1s ease}
 /* 6. Wizard: la tarjeta de zarpe llega al ancla con calma. */
 body.wizard-active #wizard-container>.wizard-card{animation:panel-in .34s ease-out}
 /* 7. Respeto absoluto al movimiento reducido. */
-@media(prefers-reduced-motion:reduce){#game-container:not([hidden]),body.game-active .one-hud-brand,body.game-active .one-hud-nav,body.game-active .one-hud-controls,body.game-active .one-hud-vitals,body.wizard-active #wizard-container>.wizard-card,.overlay-dialog[open],.one-hud-backdrop.open .one-hud-dialog{animation:none!important}}
-body.reduced-motion #game-container:not([hidden]),body.reduced-motion .one-hud-backdrop.open .one-hud-dialog,body.reduced-motion .one-hud-brand,body.reduced-motion .one-hud-nav,body.reduced-motion .one-hud-controls,body.reduced-motion .one-hud-vitals,body.reduced-motion .wizard-card{animation:none!important}
 
 /* ── Bitácora de Zarpe: anillo del carácter, gacha del destino, swatches ── */
 .fase-paso { display: flex; align-items: center; gap: 6px; padding: 6px 2px; font-size: .82rem; color: var(--muted); border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
@@ -656,7 +653,6 @@ body.reduced-motion #game-container:not([hidden]),body.reduced-motion .one-hud-b
 .one-hud-backdrop .one-hud-dialog::after{ bottom:8px; right:8px; border-bottom-width:2px; border-right-width:2px; border-radius:0 0 6px 0; }
 
 /* --- vitales: llenado con vida, no con ruido --- */
-.one-hud-vitals progress{ transition: value .9s cubic-bezier(.2,.8,.2,1); }
 @keyframes vital-shimmer{ from{ background-position:-140% 0 } to{ background-position:240% 0 } }
 
 /* --- nav: el panel activo se declara, no se grita --- */

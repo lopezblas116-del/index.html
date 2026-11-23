@@ -160,7 +160,6 @@ body.mil-cine #mil-salir-cine { opacity: 1; pointer-events: auto; }
 #mil-almas-ui .mil-world-bar, #bottom-nav { transition: opacity .5s ease; }
 body.mil-cine #mil-almas-ui .mil-world-bar,
 body.mil-cine #hud-header,
-body.mil-cine #one-hud .one-hud-vitals,
 body.mil-cine #one-hud .one-hud-settings,
 body.mil-cine #bottom-nav,
 body.mil-cine .mil-chip,

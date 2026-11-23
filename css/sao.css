@@ -159,8 +159,6 @@
   font-size: 8.5px; font-weight: 800; letter-spacing: .18em;
   color: var(--sao-gold); opacity: .9; user-select: none;
 }
-.one-hud-vitals{ grid-template-columns: auto 1fr !important; column-gap: 5px; }
-.one-hud-vitals progress{ width: 100%; }
 
 /* ── EL GLOBO DEL MUNDO: mismo cristal, mismo borde ── */
 #mil-globo{
