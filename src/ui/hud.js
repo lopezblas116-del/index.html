@@ -1,5 +1,6 @@
 import { listChestItems } from "../block1.js";
 import { climateLabel, getTavernCandidates, hasNauticalCrew, enGrandLine, tablonDelPuerto } from "../systems.js";
+import { resumenGobierno, filosofoDeIsla, planosDeArquitecto, pagarTributo, desoibirTributo } from "../world_government.js";
 import { marketPrices } from "../combat_economy.js";
 import { renderNewspaper, renderPsychology } from "./ui.js";
 import { getMapIslands } from "../map.js";
@@ -217,6 +218,49 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       }
       if(c.encargoSugerido){const pendiente=document.createElement("p");pendiente.className="one-hud-muted";pendiente.textContent=`📋 Encargo en curso: «${c.encargoSugerido.nombre}» — ${c.name||"el avatar"} va camino del tablón.`;tablon.append(pendiente)}
       content.append(tablon);
+    }
+    // ── El Gobierno Mundial: decretos de los Cinco Ancianos, nobles, CP9 y la conspiración del Arquitecto ──
+    if(!c.location?.atSea&&c.status!=="dead"){
+      const gobierno=document.createElement("section");gobierno.className="one-hud-gobierno";
+      const govH=document.createElement("h3");govH.textContent="🏛 El Gobierno Mundial";gobierno.append(govH);
+      const decreto=document.createElement("p");decreto.className="one-hud-muted";decreto.textContent=resumenGobierno(c);gobierno.append(decreto);
+      // el desfile celestial: pagar el tributo o desafiar al noble
+      if(c.desfilePendiente){
+        const noble=document.createElement("div");noble.className="one-hud-noble";
+        const nobleInfo=document.createElement("span");nobleInfo.textContent=`👑 ${c.desfilePendiente.noble} exige ฿${c.desfilePendiente.tributo}`;
+        const nobleBtns=document.createElement("div");nobleBtns.className="one-hud-noble-btns";
+        const pagar=document.createElement("button");pagar.type="button";pagar.className="one-hud-action";pagar.textContent="Pagar tributo";
+        pagar.disabled=(Number(c.berries)||0)<c.desfilePendiente.tributo;
+        pagar.addEventListener("click",()=>emit("tributo-action",{action:"pagar"}));
+        const desoir=document.createElement("button");desoir.type="button";desoir.className="one-hud-action";desoir.textContent="Desoír · +recompensa";
+        desoir.addEventListener("click",()=>emit("tributo-action",{action:"desoir"}));
+        nobleBtns.append(pagar,desoir);noble.append(nobleInfo,nobleBtns);gobierno.append(noble);
+      }
+      if(c.cp9?.vigilando){const cp9=document.createElement("p");cp9.className="one-hud-warning";cp9.textContent=`👁 CP9 te vigila desde ${c.cp9.isla}: ${c.cp9.agente}, "${c.cp9.apodo}". Zarpar puede costarte una emboscada.`;gobierno.append(cp9)}
+      // el filósofo del puerto: teoría del Vacío y, a veces, un plano del Arquitecto
+      const filosofo=filosofoDeIsla(c);
+      const filaFilosofo=document.createElement("div");filaFilosofo.className="one-hud-encargo";
+      const infoFilosofo=document.createElement("div");infoFilosofo.className="one-hud-encargo-info";
+      const headFilosofo=document.createElement("div");headFilosofo.className="one-hud-encargo-head";
+      const badgeFilosofo=document.createElement("span");badgeFilosofo.className="one-hud-riesgo riesgo-bajo";badgeFilosofo.textContent="Filósofo";
+      const nombreFilosofo=document.createElement("strong");nombreFilosofo.textContent=filosofo.nombre;
+      headFilosofo.append(badgeFilosofo,nombreFilosofo);
+      const textoFilosofo=document.createElement("small");textoFilosofo.textContent=`«${filosofo.teoria}» · consulta ฿${filosofo.precio}`;
+      infoFilosofo.append(headFilosofo,textoFilosofo);
+      const btnFilosofo=document.createElement("button");btnFilosofo.type="button";btnFilosofo.className="one-hud-action";btnFilosofo.textContent="Consultar";
+      btnFilosofo.disabled=(Number(c.berries)||0)<filosofo.precio;
+      btnFilosofo.addEventListener("click",()=>emit("filosofo-consult"));
+      filaFilosofo.append(infoFilosofo,btnFilosofo);gobierno.append(filaFilosofo);
+      // los planos del Arquitecto: la conspiración que se dibuja
+      const planos=planosDeArquitecto(c);
+      if(planos.some((p)=>p.tenido)){
+        const planosBox=document.createElement("div");planosBox.className="one-hud-planos";
+        const planosH=document.createElement("strong");planosH.textContent=`📐 Los planos del Arquitecto · ${planos.filter((p)=>p.tenido).length}/${planos.length}`;
+        planosBox.append(planosH);
+        for(const plano of planos.filter((p)=>p.tenido)){const linea=document.createElement("small");linea.textContent=`${plano.nombre}: ${plano.texto}`;planosBox.append(linea)}
+        gobierno.append(planosBox);
+      }
+      content.append(gobierno);
     }
     const verMapa=document.createElement("button");verMapa.type="button";verMapa.className="one-hud-action";
     verMapa.textContent="Ver mi isla en el mapa vivo";

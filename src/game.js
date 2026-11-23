@@ -1,4 +1,5 @@
 import { advanceAdvancedSystems, discoverAtSea, draftTestament, generateTreasureMap, hasNauticalCrew, updateCrewLoyalty } from "./systems.js";
+import { governmentPulse } from "./world_government.js";
 import { resolvePortContracts, resolvePortSuggestions } from "./block1.js";
 import { seaEncounter } from "./combat_economy.js";
 import { createScenePosition, getMapIslands } from "./map.js";
@@ -739,6 +740,7 @@ export function autonomousTick(character, { interactive = false, now = Date.now(
   advanceIslandStory(character);
   if (newDay) writeDailyReflection(character);
   advanceGM(character);
+  governmentPulse(character, Math.random); // el Gobierno Mundial decide una vez por día: decretos, desfiles, CP9 y planos
   const news = (newDay && character.world.day % 7 === 0) || Math.random() < 0.06 ? `Día ${character.world.day}, ${character.world.era}: ${pick(WORLD_NEWS)}` : null;
   if (news) { character.world.news.unshift({ day: character.world.day, era: character.world.era, text: news }); character.world.news = character.world.news.slice(0, 30); addLog(character, `🗞 ${news}`); }
   if (character.autonomy.tickCount % 3 === 0 && Math.random() < 0.55) factionEvent(character);

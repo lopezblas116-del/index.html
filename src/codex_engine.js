@@ -10,9 +10,19 @@ const categories = [
   ["fruits", "Akuma no Mi"],
   ["races", "Razas"],
   ["poneglyphs", "Poneglyphs"],
-  ["ships", "Modelos de barcos"]
+  ["ships", "Modelos de barcos"],
+  ["gobierno", "El Gobierno Mundial"]
 ];
-const silhouettes = Object.freeze({ islands: "◼", fruits: "●", races: "♟", poneglyphs: "▮", ships: "◆" });
+const silhouettes = Object.freeze({ islands: "◼", fruits: "●", races: "♟", poneglyphs: "▮", ships: "◆", gobierno: "🏛" });
+
+// los rostros del poder: lo que el Gobierno no pone en ningún libro
+const GOBIERNO_CATALOGO = [
+  { id: "gorosei", name: "Los Cinco Ancianos", texto: "Los máximos líderes del Gobierno Mundial. Decretan la cacería, el tributo y el silencio; nadie ha visto firmar nada: los decretos aparecen, y el mundo obedece." },
+  { id: "tenryuubito", name: "Tenryuubito · Nobles Mundiales", texto: "Descendientes de los fundadores. Pasean bajo burbujas para no respirar el mismo aire que la gente, cobran tributo y toman esclavos. Desoírlos sube tu recompensa y tu leyenda." },
+  { id: "cp9", name: "Cipher Pol 9", texto: "La agencia que no existe: espionaje y ejecución silenciosa. Sus agentes dominan el Rokushiki; si tu recompensa crece, uno de ellos ya lee tus cartas." },
+  { id: "filosofos", name: "Los Filósofos del Vacío", texto: "Leen lo que el Gobierno quemó. Conversan en linterna baja y cobran poco por lo mucho que saben: cada teoría es un recuerdo del siglo que no existe." },
+  { id: "arquitecto", name: "El Arquitecto", texto: "Seis planos que reescriben el mundo: la ciudad-puente, el camino de las estrellas, el sello del silencio. Reúnelos todos y la conspiración se dibuja sola: el Gobierno no teme piratas — teme mapas nuevos." }
+];
 
 export const CODEX_CATALOG = Object.freeze({
   islands: Object.entries(islandData).map(([id, island]) => ({ id, name: island.name })),
@@ -22,7 +32,8 @@ export const CODEX_CATALOG = Object.freeze({
   })),
   races: Object.entries(RACES).map(([id, race]) => ({ id, name: race.name })),
   poneglyphs: loreData.poneglyphTopics.map((topic) => ({ id: topic.id, name: topic.title, type: topic.type })),
-  ships: catalogData.ships
+  ships: catalogData.ships,
+  gobierno: GOBIERNO_CATALOGO
 });
 
 export function codexProgress(character) {
@@ -115,6 +126,13 @@ export function renderCodex(container, character) {
         lock.setAttribute("aria-hidden", "true");
         lock.textContent = entry.unlocked ? "✦" : "🔒";
         item.append(silhouette, name, lock);
+        // el lore que el Gobierno no pone en libros: se lee al descubrir
+        if (entry.unlocked && entry.texto) {
+          const lore = document.createElement("small");
+          lore.className = "one-hud-codex-lore";
+          lore.textContent = entry.texto;
+          item.append(lore);
+        }
         list.append(item);
       }
       section.append(title, list);

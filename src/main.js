@@ -15,6 +15,7 @@ import {
   draftTestament, ensureAdvancedSystems, performDockyardAction,
   setClimateZone, suggestNavigation, tavernAction, tablonDelPuerto, sugerirEncargo
 } from "./systems.js";
+import { pagarTributo, desoibirTributo, consultarFilosofo } from "./world_government.js";
 import { trade } from "./combat_economy.js";
 import { createNetwork } from "./network.js";
 import { SUPABASE_CONFIG } from "./network-config.js";
@@ -330,6 +331,23 @@ listen(document, "onepiece:hud-tablon-suggest", (event) => {
   const encargo = tablonDelPuerto(character).find((item) => item.id === event.detail?.encargoId);
   if (!encargo) return;
   const result = sugerirEncargo(character, encargo);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-tributo-action", (event) => {
+  // el desfile celestial: la cortesía o la leyenda, con las consecuencias incluidas
+  if (!character || character.status === "dead") return;
+  const desfile = character.desfilePendiente;
+  if (!desfile) return;
+  const result = event.detail?.action === "desoir" ? desoibirTributo(character, desfile) : pagarTributo(character, desfile);
+  if (result.ok) delete character.desfilePendiente;
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-filosofo-consult", () => {
+  // los Filósofos del Vacío: teoría del siglo perdido y, a veces, un plano
+  if (!character || character.status === "dead") return;
+  const result = consultarFilosofo(character);
   persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });

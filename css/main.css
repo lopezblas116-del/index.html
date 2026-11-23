@@ -832,3 +832,17 @@ body.reduced-motion #game-container:not([hidden]),body.reduced-motion .one-hud-b
 .one-hud-riesgo.riesgo-bajo{color:#9fd8a8;border:1px solid rgba(126,200,120,.4);background:rgba(126,200,120,.1)}
 .one-hud-riesgo.riesgo-medio{color:#f4c941;border:1px solid rgba(244,180,26,.45);background:rgba(244,180,26,.12)}
 .one-hud-riesgo.riesgo-alto{color:#f2918a;border:1px solid rgba(228,80,80,.45);background:rgba(228,80,80,.12)}
+
+/* ============================================================
+   EL GOBIERNO MUNDIAL — decretos, nobles y conspiraciones
+   ============================================================ */
+.one-hud-gobierno{margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(24,16,12,.55)}
+.one-hud-gobierno h3{margin:0 0 6px;color:var(--color-gold,#f4b41a);font-size:14px}
+.one-hud-noble{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid rgba(212,175,85,.35);border-radius:10px;margin-bottom:7px;background:rgba(212,175,85,.08)}
+.one-hud-noble span{color:#efe3c2;font-size:12.5px}
+.one-hud-noble-btns{display:flex;gap:6px}
+.one-hud-noble .one-hud-action{white-space:nowrap;font-size:11.5px;padding:5px 9px}
+.one-hud-planos{margin-top:8px;padding:8px 10px;border:1px solid rgba(126,200,255,.3);border-radius:10px;background:rgba(126,200,255,.07);display:flex;flex-direction:column;gap:3px}
+.one-hud-planos strong{color:#9fd0ee;font-size:12.5px}
+.one-hud-planos small{color:#b8cbe0;font-size:11.5px;line-height:1.35}
+.one-hud-codex-lore{display:block;color:#9fb0cc;font-size:11.5px;line-height:1.4;margin-top:4px;max-width:52ch}
