@@ -37,6 +37,7 @@ import { registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo
 import "./mundo/index.js";
 
 let character = loadGame();
+document.documentElement.classList.remove("boot"); // el juego arrancó: adiós pantalla de espera
 initVfx();
 initUIBinding(); // conecta gameState → pantalla (js/state.js + js/ui.js)
 const network = createNetwork();

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="boot">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="./css/main.css">
   <link rel="stylesheet" href="./css/ui.css">
   <link rel="stylesheet" href="./css/world.css">
-  <link rel="stylesheet" href="./css/sao.css?v=9">
+  <link rel="stylesheet" href="./css/sao.css?v=10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,14 @@
   <script type="module" src="./src/main.js"></script>
 </head>
 <body data-theme="nautical">
+<noscript><p style="padding:18px;color:#f4b41a;font:600 15px system-ui">El mar necesita JavaScript: activalo para zarpar.</p></noscript>
 <main class="app-shell">
+  <div id="arranque" role="status" aria-label="Cargando el juego">
+    <span class="arranque-marca" aria-hidden="true">⚓</span>
+    <p class="arranque-titulo">ONE-LATAM <span>RPG</span></p>
+    <p class="arranque-linea">Izando las velas del mundo vivo…</p>
+    <span class="arranque-ola" aria-hidden="true"></span>
+  </div>
   <header class="masthead">
     <div class="brand-lockup"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-7 5 3 5-3M5 13a7 7 0 0 0 14 0m-16 5q9 6 18 0"/></svg></span><div class="brand-copy"><p class="eyebrow">Bitácora del mar · Beta</p><h1>One-Latam <span>RPG</span></h1></div></div>
     <div class="header-right"><span id="game-clock" class="game-clock">Día 1 · 00:00</span><span id="header-avatar-status" class="header-status" role="status">● Avatar activo</span><button id="reset-button" class="button button-secondary" type="button" hidden>Nueva partida</button></div>

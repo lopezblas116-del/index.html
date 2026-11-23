@@ -361,3 +361,23 @@
   #izada-escena .izada-tela{ width: 176px; height: 105px; }
 }
 #izada-escena .izada-tela{ outline: 1px solid rgba(244,180,26,.4); outline-offset: -1px; }
+
+/* ── V10 · arranque sin esqueleto + canon de mares ── */
+html.boot .app-shell > *:not(#arranque){ display: none !important; }
+#arranque{
+  position: fixed; inset: 0; z-index: 5000; display: grid; place-content: center; justify-items: center; gap: 10px;
+  background: radial-gradient(120% 90% at 50% 108%, #0e2a4a 0%, #071226 44%, #030814 100%);
+  color: #eef4ff; text-align: center; padding: 24px;
+}
+.arranque-marca{ font-size: clamp(2.4rem, 8vw, 3.6rem); filter: drop-shadow(0 4px 14px rgba(244,180,26,.35)); animation: arranqueFlote 2.6s ease-in-out infinite; }
+@keyframes arranqueFlote{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-8px);} }
+.arranque-titulo{ margin: 0; font: 800 clamp(1.4rem, 6vw, 2rem) 'Anton', sans-serif; letter-spacing: .12em; color: #f4b41a; }
+.arranque-titulo span{ color: #eef4ff; }
+.arranque-linea{ margin: 0; font: 600 clamp(.8rem, 3vw, .95rem) 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
+.arranque-ola{ width: min(220px, 60vw); height: 3px; border-radius: 99px; background: linear-gradient(90deg, transparent, #f4b41a, transparent); animation: olaAvanza 1.6s ease-in-out infinite; }
+@keyframes olaAvanza{ 0%{ transform: scaleX(.3); opacity:.4;} 50%{ transform: scaleX(1); opacity:1;} 100%{ transform: scaleX(.3); opacity:.4;} }
+@media (prefers-reduced-motion: reduce){ .arranque-marca, .arranque-ola{ animation: none; } }
+/* etiqueta del mar en cada línea del feed: la geografía se ve */
+.fmar{ display: inline-block; margin-right: 5px; padding: 1px 6px; border: 1px solid rgba(244,193,26,.4); border-radius: 99px; background: rgba(244,193,26,.1); color: rgba(244,208,120,.95); font: 700 9px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .08em; vertical-align: 1px; white-space: nowrap; }
+/* la cortina se baja sola: sin boot, el mar manda */
+html:not(.boot) #arranque{ display: none !important; }

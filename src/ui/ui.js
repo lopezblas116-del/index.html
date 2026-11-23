@@ -81,11 +81,39 @@ export function renderPsychology(container, character, selection, onSuggest) {
   container.append(card);
 }
 
+function marDeTexto(texto, mapa) {
+  const t = String(texto || "");
+  for (const [nombre, reg] of Object.entries(mapa)) if (nombre && t.includes(nombre)) return reg;
+  return null;
+}
+// la región del mundo vivo en la que está el personaje (canon de mares)
+function regionDelPersonaje(character) {
+  const D = globalThis.D;
+  if (!D?.MAR_POR_ISLA) return null;
+  const isla = String(character?.location?.island || "");
+  if (!isla) return null;
+  for (const [nombre, reg] of Object.entries(D.MAR_POR_ISLA)) if (nombre && (isla.includes(nombre) || nombre.includes(isla))) return reg;
+  return null;
+}
 export function renderNewspaper(container, character, onInvestigate, onSuggest) {
   const world = character.world ?? {};
   const shared = world.shared?.world;
   const globalEvents = shared?.global_events ?? [];
+  // EL HUESO DEL CANON: "Mi mar" narra solo lo que ocurre en TU mar.
+  // Lo que pasa en otro Blue queda en "Lo importante", no inunda tu bitácora.
+  const marDelJugador = regionDelPersonaje(character);
+  const mapaMares = globalThis.D?.MAR_POR_ISLA ?? {};
+  const nombreMar = (globalThis.D?.NOMBRE_MAR || {})[marDelJugador] || "";
+  const fuentesMundo = [
+    ...globalEvents.filter((entry) => entry.type !== "global_chat"),
+    ...(world.news ?? [])
+  ];
+  const eventosMiMar = marDelJugador ? fuentesMundo.filter((entry) => {
+    const reg = marDeTexto(entry.text, mapaMares);
+    return !reg || reg === marDelJugador || isPersonalNews(entry, character);
+  }) : fuentesMundo;
   const sections = [
+    { key: "mimar", label: nombreMar ? `Mi mar · ${nombreMar}` : "Mi mar", items: aggregateSmartFeed(eventosMiMar, { location: character.location?.island || "", name: character.name }), empty: "En tu mar reina la calma… por ahora. Navegá para que el mundo te cuente cosas." },
     { key: "important", label: "Lo importante", items: aggregateSmartFeed([
       ...globalEvents.filter((entry) => entry.type !== "global_chat"),
       ...(world.news ?? []),
@@ -114,7 +142,8 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   sections.forEach((section, index) => {
     const tab = document.createElement("button");
     tab.type = "button";
-    tab.append(iconNode(section.key === "important" ? "news" : "ship"), document.createTextNode(section.label));
+    const iconoPestaña = { mimar: "bounty", important: "news", personal: "ship" }[section.key] || "news";
+    tab.append(iconNode(iconoPestaña), document.createTextNode(section.label));
     tab.setAttribute("aria-selected", String(index === 0));
     const panel = document.createElement("section");
     panel.className = "one-hud-tab-panel";

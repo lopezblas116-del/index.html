@@ -50,6 +50,7 @@
     eraDorada: { t: '{a} alcanzó la isla final con el Cubo Dorado. Nace una Era Dorada que no será de la Marina.', imp: 8 },
     seRev: { t: '{a} abandona su bandera en {isla} y se une al {crew}. La llama revolucionaria se extiende.', imp: 4 },
     tirano: { t: 'Un gobernador tirano se apodera de {isla}. El tributo celestial pesa sobre cada casa.', imp: 4 },
+    tiranoCanon: { t: 'Un tirano destrona a {gobernante} y se apodera de {isla}. El puerto tiembla y el tributo celestial pesa sobre cada casa.', imp: 5 },
     liberada: { t: 'El {crew} libera {isla}: el gobernador tirano huye y la bandera nueva ondea en el puerto.', imp: 6 },
     tributo: { t: 'Los vecinos de {isla} entregan el tributo al gobernador tirano. Silencio en el puerto.', imp: 2 },
     sube: { t: 'El cartel de {a} sube a {recompensa}.', imp: 4 },

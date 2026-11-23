@@ -163,7 +163,7 @@ function installWorldUi() {
         <input id="aj-fichero" type="file" accept="application/json" hidden>
         <button id="aj-borrar" type="button">Nuevo mundo</button>
       </div>
-      <div><button class="filtro sel" data-f="todo" type="button">Todo</button><button class="filtro" data-f="importante" type="button">Importante</button><button class="filtro" data-f="mio" type="button">Mi alma</button></div>
+      <div><button class="filtro sel" data-f="mimar" type="button">Mi mar</button><button class="filtro" data-f="todo" type="button">Todo</button><button class="filtro" data-f="importante" type="button">Importante</button><button class="filtro" data-f="mio" type="button">Mi alma</button></div>
       <div><button class="ritmo sel" data-r="1" type="button">×1</button><button class="ritmo" data-r="4" type="button">×4</button><button class="ritmo" data-r="12" type="button">×12</button></div>
     </section>
     <div id="toast" class="mil-toast oculto" role="status" aria-live="polite"></div>`;

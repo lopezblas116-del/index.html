@@ -198,7 +198,10 @@ import { rollLineageRace } from '../races.js';
     const tpl = D.TXT[key]; if (!tpl) return;
     let t = fill(tpl.t, vars);
     const imp = (opts && opts.impAdd ? tpl.imp + opts.impAdd : tpl.imp) + ((vars && vars.esJugador) ? 2 : 0);
-    const rec = { i: ++this.evId, t: this.t, txt: t, imp, ids: (opts && opts.ids) || [], key };
+    // cada evento sabe en qué mar ocurrió: el feed puede filtrar por región (canon)
+    const islaMencionada = vars && (vars.isla || vars.dest);
+    const reg = (islaMencionada && D.MAR_POR_ISLA[islaMencionada]) || null;
+    const rec = { i: ++this.evId, t: this.t, txt: t, imp, ids: (opts && opts.ids) || [], key, reg };
     this.feed.push(rec);
     if (this.feed.length > 500) this.feed.splice(0, this.feed.length - 500);
     if (imp >= 5) { this.archive.push(rec); if (this.archive.length > 400) this.archive.splice(0, this.archive.length - 400); }
@@ -608,7 +611,9 @@ import { rollLineageRace } from '../races.js';
     if (!libres.length) return;
     const isl = this.rng.pick(libres);
     this.control[isl.id] = 'tirano';
-    this.ev('tirano', { isla: isl.n }, {});
+    // canon: si la isla tiene gobernante establecido, el golpe lo nombra (Iceburg, Cobra...)
+    if (D.GOBERNANTES[isl.id]) this.ev('tiranoCanon', { isla: isl.n, gobernante: D.GOBERNANTES[isl.id] }, {});
+    else this.ev('tirano', { isla: isl.n }, {});
   };
   Sim.prototype.liberarIsla = function (islId, agentes) {
     const isl = D.ISLA[islId]; if (!isl || this.control[islId] !== 'tirano') return false;

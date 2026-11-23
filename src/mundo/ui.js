@@ -35,7 +35,7 @@ import { getMapIslands } from '../map.js';
   };
 
   // ── Feed ──
-  let filtro = 'todo';
+  let filtro = 'mimar'; // canon por defecto: tu feed narra TU mar, no el mundo entero
   let leidasHasta = -1; // último id de evento leído: lo que llegó después enciende el aviso rojo
   function sinLeer() {
     if (!sim) return 0;
@@ -61,12 +61,17 @@ import { getMapIslands } from '../map.js';
     const caja = $('feed');
     if (!caja) return;
     let lista = sim.feed.slice(-120).reverse();
+    const usuario = sim.user;
+    const marDelUsuario = usuario && D.ISLA[usuario.isl] ? D.ISLA[usuario.isl].reg : null;
+    if (filtro === 'mimar') lista = marDelUsuario ? lista.filter(e => e.reg === marDelUsuario || !e.reg || (usuario && e.ids.includes(usuario.id))) : lista;
     if (filtro === 'importante') lista = lista.filter(e => e.imp >= 4);
-    if (filtro === 'mio') lista = lista.filter(e => sim.user && e.ids.includes(sim.user.id));
+    if (filtro === 'mio') lista = lista.filter(e => usuario && e.ids.includes(usuario.id));
     const html = lista.map(e => {
       const cls = e.imp >= 6 ? 'imp-alta' : e.imp >= 4 ? 'imp-media' : '';
       const marca = e.imp >= 4 ? '★' : '·';
-      return '<div class="fe ' + cls + '"><span class="fh">' + 'D' + Math.floor(e.t / 1440) + ' ' + hhmm(e.t % 1440) + '</span><span class="fi">' + marca + '</span> ' + esc(e.txt) + '</div>';
+      const mar = e.reg && D.NOMBRE_MAR[e.reg] ? D.NOMBRE_MAR[e.reg] : '';
+      const tag = mar ? '<span class="fmar">' + esc(mar) + '</span>' : '';
+      return '<div class="fe ' + cls + '"><span class="fh">' + 'D' + Math.floor(e.t / 1440) + ' ' + hhmm(e.t % 1440) + '</span><span class="fi">' + marca + '</span>' + tag + ' ' + esc(e.txt) + '</div>';
     }).join('');
     caja.innerHTML = html || '<div class="fe vacio">Silencio en el mar…</div>';
     const abierta = !($('mil-feed-drawer')?.classList.contains('oculto'));

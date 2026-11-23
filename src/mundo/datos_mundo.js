@@ -98,6 +98,15 @@ import { getMapIslands } from '../map.js';
     ennies: 'enies', ohara: 'ohara', reverse: 'reverse', kano: 'kano', torino: 'torino', wano: 'wano'
   };
   const REGION_MAR = { 'East Blue': 'EB', 'West Blue': 'WB', 'North Blue': 'NB', 'South Blue': 'SB', 'Grand Line': 'PAR', 'Paraíso': 'PAR', 'Nuevo Mundo': 'NW' };
+  // nombre legible de cada región del mapa (etiqueta del feed, filtros)
+  D.NOMBRE_MAR = { EB: 'East Blue', WB: 'West Blue', NB: 'North Blue', SB: 'South Blue', PAR: 'Paraíso', NW: 'Nuevo Mundo', RL: 'Línea Roja', BM: 'Bajo el Mar' };
+  // canon: gobernantes establecidos — el sim los respeta al narrar golpes de estado
+  D.GOBERNANTES = {
+    water7: 'Iceburg', arabasta: 'Nefertari Cobra', dressrosa: 'Riku Dold III',
+    wano: 'Kozuki Momonosuke', marineford: 'el Almirantazgo', geoise: 'los Tenryuubito'
+  };
+  // isla (por nombre exacto) -> región: el feed del juego la usa para etiquetar el mar
+  D.MAR_POR_ISLA = {};
   const TEMA_MAR = { EB: 'verde', WB: 'rocosa', NB: 'blanco', SB: 'tropical', PAR: 'puerto', NW: 'jungla' };
   const norm = (t) => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -348,6 +357,8 @@ import { getMapIslands } from '../map.js';
     { k: 'zarpar', n: 'Zarpa a otra isla', fx: { zarpar: 4 } },
     { k: 'amigos', n: 'Haz amigos', fx: { taberna: 1.8, charla: 2.4 } }
   ];
+  // una vez definidas las islas: mapa nombre -> región (para etiquetar y filtrar el feed)
+  for (const isla of D.ISLAS) D.MAR_POR_ISLA[isla.n] = isla.reg;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 export const islaDeJuego = (nombre) => (typeof window !== 'undefined' ? window : globalThis).D.islaDeJuego(nombre);
