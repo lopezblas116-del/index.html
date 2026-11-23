@@ -303,12 +303,12 @@ body.wizard-active .masthead{display:none}
 .psychology-card,.news-card-detail{margin:10px 0;padding:12px;border:1px solid #f4b41a;border-radius:8px;background:#0b1329}
 .psychology-card h3{color:#f4b41a;font-size:.8rem}
 
-.one-hud-vitals{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 104px);left:50%;display:grid;grid-template-columns:1fr 1fr;gap:4px;width:min(180px,42vw);transform:translateX(-50%);pointer-events:none}
+
 .one-hud-vitals progress{height:5px;border:1px solid rgba(244,180,26,.48);background:#07101f}
-.one-hud-vitals [data-vital="health"]::-webkit-progress-value{background:linear-gradient(90deg,#c74442,#ff7771)}
-.one-hud-vitals [data-vital="experience"]::-webkit-progress-value{background:linear-gradient(90deg,#2679b8,#58c7ff)}
-.one-hud-vitals [data-vital="health"]::-moz-progress-bar{background:linear-gradient(90deg,#c74442,#ff7771)}
-.one-hud-vitals [data-vital="experience"]::-moz-progress-bar{background:linear-gradient(90deg,#2679b8,#58c7ff)}
+
+
+
+
 #health-bar::-webkit-progress-value,#xp-bar::-webkit-progress-value{background-size:100% 100%,220% 100%;animation:bar-shimmer 3.2s linear infinite}
 #health-bar::-webkit-progress-value{background-image:linear-gradient(90deg,#c74442,#f4b41a),linear-gradient(110deg,transparent 30%,rgba(255,255,255,.7) 49%,transparent 68%)}
 #xp-bar::-webkit-progress-value{background-image:linear-gradient(90deg,#2679b8,#58c7ff),linear-gradient(110deg,transparent 30%,rgba(255,255,255,.7) 49%,transparent 68%)}
@@ -353,9 +353,9 @@ body.wizard-active .masthead{display:none}
 @keyframes loot-glow{to{opacity:.52;transform:scale(1.25)}}
 @keyframes loot-fade{from{opacity:0}to{opacity:1}}
 body.reduced-motion #health-bar,body.reduced-motion #xp-bar{animation:none}
-body.reduced-motion #one-hud .one-hud-vitals progress{animation:none}
+
 body.reduced-motion .vfx-popup,body.reduced-motion .vfx-loot-backdrop,body.reduced-motion .vfx-chest-light,body.reduced-motion .vfx-chest{animation:none}
-@media(max-width:520px){.one-hud-vitals{top:50px;width:min(150px,40vw)}.one-hud-codex-grid{grid-template-columns:1fr}.vfx-loot-dialog{padding:22px 16px}}
+@media(max-width:520px){.one-hud-codex-grid{grid-template-columns:1fr}.vfx-loot-dialog{padding:22px 16px}}
 @media(prefers-reduced-motion:reduce){#health-bar,#xp-bar,.wanted-number-roll,.vfx-popup,.vfx-loot-backdrop,.vfx-chest-light,.vfx-chest{animation:none!important;scroll-behavior:auto!important}}
 .psychology-card label{display:grid;gap:6px;color:#fff}
 .psychology-card select{background:#162238;border-color:#f4b41a;color:#fff}
@@ -507,7 +507,7 @@ body.game-active #game-container:not([hidden]){z-index:1}
 /* 3. HUD: la interfaz toma su puesto de mando en el zarpe. */
 body.game-active .one-hud-brand{animation:brand-descend .5s ease-out}
 body.game-active .one-hud-nav{animation:nav-ascend .5s .08s ease-out backwards}
-body.game-active .one-hud-vitals{animation:brand-descend .5s .12s ease-out backwards}
+
 @keyframes brand-descend{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes nav-ascend{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
 /* La marca del HUD usa la tipografía display del navío. */
