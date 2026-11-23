@@ -65,6 +65,9 @@ test("item warnings, sale, refusal and priority are persistent suggestions", () 
 
 test("an actual navigation arrival resolves port suggestions", () => {
   const c = character();
+  c.ship = { model: "Bote de pruebas", acquired: true, health: 100 }; // sin barco el mar no suelta amarras (por diseño)
+  c.crew = [{ name: "Fara", role: "Navegante", loyalty: 80 }]; // sin Navegante la deriva (30%) arrastra: el test mide llegadas, no riesgos
+  c.inventory.provisions = 4; // zarpar con el estómago vacío castiga la salud y nubla el propósito del test
   suggestTraining(c, "strength");
   c.mission.status = "complete";
   const random = Math.random;

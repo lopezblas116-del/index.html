@@ -113,6 +113,10 @@ test("surviving a critical Grand Line battle awakens Conqueror Haki and advances
   captain.stats.health = 10;
   captain.level = 50;
   captain.fruit = { id: "test-fruit", name: "Fruta de prueba", bonus: 0 };
+  captain.ship = { model: "Bote de pruebas", acquired: true, health: 100 }; // sin barco el mar no suelta amarras
+  captain.crew = [{ name: "Fara", role: "Navegante", loyalty: 80 }]; // sin Navegante, la deriva (30%) impide toda llegada
+  captain.inventory ??= {}; // sin ensureBlockOneData el inventario aún no existe
+  captain.inventory.provisions = 6; // provisiones: el estómago vacío nubla el propósito del test
 
   const originalRandom = Math.random;
   try {

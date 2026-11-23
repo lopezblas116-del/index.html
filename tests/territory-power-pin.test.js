@@ -62,15 +62,22 @@ test("periodic naval invasions can be resisted or capture a weakly defended isla
 
 test("crossing the Red Line requires level, Haki, or crew preparation", () => {
   const captain = createCharacter({ name: "Navegante", originSea: "East Blue" });
+  captain.ship = { model: "Carabela de pruebas", acquired: true, health: 100 }; // sin barco el mar no suelta amarras
   captain.location.routeIndex = 6;
   captain.location.island = "Reverse Mountain";
   captain.mission.status = "complete";
-  const blocked = performAction(captain, "navigate");
-  assert.match(blocked, /preparación/);
-  assert.equal(captain.location.routeIndex, 6);
-  captain.level = 3;
-  performAction(captain, "navigate");
-  assert.equal(captain.location.routeIndex, 7);
+  const originalRandom = Math.random;
+  Math.random = () => 0.9; // sin deriva: el test mide el gate de preparación, no el azar
+  try {
+    const blocked = performAction(captain, "navigate");
+    assert.match(blocked, /preparación/);
+    assert.equal(captain.location.routeIndex, 6);
+    captain.level = 3;
+    performAction(captain, "navigate");
+    assert.equal(captain.location.routeIndex, 7);
+  } finally {
+    Math.random = originalRandom;
+  }
 });
 
 test("local market taxes are assessed only after a purchase can be paid", () => {

@@ -248,7 +248,7 @@ function addReputation(character, base, reason = "acción destacada") {
     }
     if (Math.floor(oldBounty / 100000) < Math.floor(character.bounty / 100000)) {
       addLog(character, `📜 ¡Nuevo cartel SE BUSCA! La recompensa de ${character.name} sube a ฿${formatNum(character.bounty)} por ${reason}.`);
-      window.dispatchEvent(new CustomEvent("onepiece:hud-wanted", { detail: { bounty: character.bounty } }));
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("onepiece:hud-wanted", { detail: { bounty: character.bounty } }));
     }
   }
   return amount;
@@ -325,8 +325,8 @@ function resolveCombat(character, rivalType = "piratas rivales", dangerous = fal
     const fruit = character.fruit;
     fruit.masteryLevel = Math.max(1, Number(fruit.masteryLevel) || 1);
     fruit.masteryPoints = Math.max(0, Number(fruit.masteryPoints) || 0) + 1;
-    if (fruit.masteryPoints >= 3 && fruit.masteryLevel < 5) {
-      fruit.masteryPoints -= 3;
+    if (fruit.masteryPoints >= 2 && fruit.masteryLevel < 5) {
+      fruit.masteryPoints -= 2;
       fruit.masteryLevel += 1;
       fruit.bonus = (Number(fruit.bonus) || 0) + 2;
       addLog(character, `🍈 ${fruit.name} alcanza maestría ${fruit.masteryLevel}; su poder de combate aumenta.`);
@@ -428,6 +428,24 @@ function applySailRisks(character, random = Math.random) {
   }
   return { drifted: false };
 }
+// la Red Line no negocia: casco reforzado para gigantes y tripulación preparada
+// para todos. Se evalúa ANTES de la deriva: si la travesía no puede emprenderse,
+// la corriente ni siquiera llega a empujar.
+function redLineGate(character) {
+  const route = routeFor(character.originSea);
+  const next = (Number(character.location?.routeIndex) || 0) + 1;
+  const reverseMountain = route.indexOf("Reverse Mountain");
+  if (character.race === "giant" && !character.ship?.reinforced && reverseMountain >= 0 && next >= reverseMountain) {
+    return "La carabela no puede cruzar la Reverse Mountain sin un casco reforzado. Consíguelo en un astillero.";
+  }
+  if (reverseMountain >= 0 && next > reverseMountain) {
+    const hasHaki = Object.values(character.haki || {}).some(Boolean);
+    if ((Number(character.level) || 1) < 3 && !hasHaki && !(character.crew || []).length) {
+      return "La travesía de la Red Line exige preparación: alcanza el nivel 3, despierta Haki o recluta al menos un navegante o carpintero antes de cruzar.";
+    }
+  }
+  return null;
+}
 function navigate(character, random = Math.random) {
   if (!character.ship?.acquired) return "No puedes zarpar sin conseguir primero un barco en el astillero.";
   const route = routeFor(character.originSea);
@@ -463,6 +481,10 @@ function navigate(character, random = Math.random) {
     }
     return `La carabela regresa a ${character.location.island} y retoma su expedición.`;
   }
+  // la preparación náutica se exigió antes de soltar amarras (redLineGate):
+  // aquí solo queda alinear el Log Pose y avanzar la ruta
+  if (character.location.routeIndex >= route.length - 1) return `Has llegado al final de la ruta: ${character.location.island}. El mar aguarda una nueva aventura.`;
+  const next = character.location.routeIndex + 1;
   const mission = character.mission;
   if (mission?.status === "active") {
     character.logPose.alignment += character.travel?.speedMultiplier === 0.5 ? 0.5 : 1;
@@ -471,18 +493,6 @@ function navigate(character, random = Math.random) {
     addLog(character, `🧭 Log Pose alineado: comienza la misión «${mission.title}» en ${mission.island}.`);
     completeMission(character);
     return `Misión en ${mission.island}: ${mission.title}.`;
-  }
-  if (character.location.routeIndex >= route.length - 1) return `Has llegado al final de la ruta: ${character.location.island}. El mar aguarda una nueva aventura.`;
-  const next = character.location.routeIndex + 1;
-  const reverseMountain = route.indexOf("Reverse Mountain");
-  if (character.race === "giant" && !character.ship.reinforced && reverseMountain >= 0 && next >= reverseMountain) {
-    return "La carabela no puede cruzar la Reverse Mountain sin un casco reforzado. Consíguelo en un astillero.";
-  }
-  if (reverseMountain >= 0 && next > reverseMountain) {
-    const hasHaki = Object.values(character.haki || {}).some(Boolean);
-    if ((Number(character.level) || 1) < 3 && !hasHaki && !(character.crew || []).length) {
-      return "La travesía de la Red Line exige preparación: alcanza el nivel 3, despierta Haki o recluta al menos un tripulante antes de cruzar.";
-    }
   }
   character.location.routeIndex = next;
   character.location.island = route[next];
@@ -541,6 +551,11 @@ export function performAction(character, action, { availableFruitIds } = {}) {
   recordActionOutcome(character, action);
   // zarpar desde puerto: el mar evalúa la preparación ANTES de soltar amarras.
   if (action === "navigate" && !previousAtSea && character.ship?.acquired) {
+    // gates que anteceden a la deriva: la Red Line no negocia, y el starter sin
+    // tripulación náutica tampoco suelta el muelle (deterministas, no de azar)
+    const gate = redLineGate(character)
+      || (character.starterChallenge && !hasNauticalCrew(character) ? "El mar no perdona la improvisación: antes de zarpar hay que reclutar al menos un navegante o carpintero." : null);
+    if (gate) return gate;
     const risks = applySailRisks(character);
     if (risks.drifted) {
       character.location.atSea = true;

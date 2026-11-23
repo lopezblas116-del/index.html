@@ -93,6 +93,9 @@ export function chooseAutonomousAction(character, random = Math.random) {
   const traits = traitsOf(character);
   const { honor, greed, liberty } = psyche.morality;
   const weights = { navigate: 3, train: 1.4, searchFruit: 1.1, rest: hp < 0.5 ? 2 : 0.3 };
+  // sin barco el mar no es opción: el instinto no sueña con amarras que no tiene.
+  // (0, no delete: las multiplicaciones posteriores con NaN romperían la elección)
+  if (!character.ship?.acquired) weights.navigate = 0;
   if (dream.includes("poder")) weights.train += 2;
   if (dream.includes("riqueza")) weights.searchFruit += 2;
   if (dream.includes("justicia")) weights.navigate += 0.8;
@@ -108,9 +111,10 @@ export function chooseAutonomousAction(character, random = Math.random) {
   weights.navigate += liberty / 50;
   weights.train += Math.max(0, 50 - honor) / 80;
   weights.searchFruit += greed / 35;
-  // zarpar sin navegante es más raro pero posible: el mar cobra caro, no prohíbe
-  if (character.starterChallenge && !character.ship?.acquired) weights.navigate = 0;
-  else if (character.starterChallenge && !hasNauticalCrew(character)) weights.navigate *= 0.35;
+  // el instinto del starter no zarpa solo: sin barco jamás, sin Navegante tampoco
+  // (el zarpe temprano lo sugiere el jugador; el mar cobra caro improvisar)
+  if (!character.ship?.acquired) weights.navigate = 0;
+  else if (character.starterChallenge && !hasNauticalCrew(character)) weights.navigate = 0;
   if (hp < 0.3) return "rest";
   const options = Object.entries(weights);
   const total = options.reduce((sum, [, weight]) => sum + weight, 0);
