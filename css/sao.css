@@ -437,3 +437,49 @@ html:not(.boot) #arranque{ display: none !important; }
 /* el caracol transpondedor */
 .mil-feed-kacha{ margin: -6px 18px 10px; font: 500 11.5px/1.4 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
 .mil-feed-kacha em{ color: rgba(244,193,26,.8); font-style: italic; }
+
+/* ── V13 · UNA SOLA INTERFAZ: los internos del cristal hablan SAO ── */
+#one-hud .one-hud-backdrop{ background: rgba(4,9,20,.62); backdrop-filter: blur(7px) saturate(1.05); }
+/* pestañas y filtros: pastillas fantasma — oro solo en la activa */
+#one-hud .one-hud-tabs{ display: flex; flex-wrap: wrap; gap: 7px; background: none; border: none; padding: 0; margin: 4px 0 12px; }
+#one-hud .one-hud-tabs button{
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--sao-line); background: rgba(9,18,36,.5);
+  color: #c9d2e3; font: 700 11.5px/1 'Manrope', system-ui, sans-serif; letter-spacing: .06em;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+#one-hud .one-hud-tabs button svg{ width: 14px; height: 14px; }
+#one-hud .one-hud-tabs button:hover{ border-color: rgba(244,193,26,.4); color: var(--sao-text); }
+#one-hud .one-hud-tabs button[aria-selected="true"]{ background: rgba(244,180,26,.14); border-color: rgba(244,193,26,.6); color: var(--sao-gold); }
+/* botones de acción: cristal con filo dorado */
+#one-hud .one-hud-action{
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: var(--sao-radius-sm); cursor: pointer;
+  border: 1px solid rgba(244,193,26,.3); background: rgba(244,180,26,.08);
+  color: var(--sao-text); font: 700 12.5px/1.2 'Manrope', system-ui, sans-serif; letter-spacing: .03em;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+#one-hud .one-hud-action:hover{ background: rgba(244,180,26,.18); border-color: rgba(244,193,26,.6); transform: translateY(-1px); }
+#one-hud .one-hud-action:disabled{ opacity: .45; cursor: not-allowed; transform: none; }
+/* stats: cajitas de cristal con etiqueta de oro */
+#one-hud .one-hud-stats{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+#one-hud .one-hud-stats > div{ border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 9px 12px; }
+#one-hud .one-hud-stats strong{ display: block; font: 800 9.5px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: rgba(244,193,26,.8); margin-bottom: 3px; }
+/* listas y medidores: líneas suaves, oro en la carga */
+#one-hud .one-hud-list{ list-style: none; margin: 8px 0; padding: 0; }
+#one-hud .one-hud-list li{ padding: 8px 4px; border-bottom: 1px solid var(--sao-line-soft); color: #d7e1f2; font-size: 13px; }
+#one-hud .one-hud-list li:last-child{ border-bottom: none; }
+#one-hud .one-hud-meter{ margin: 8px 0; }
+#one-hud .one-hud-meter progress{ height: 6px; border: 1px solid rgba(244,180,26,.4); background: #07101f; border-radius: 99px; }
+#one-hud .one-hud-meter progress::-webkit-progress-value{ background: linear-gradient(90deg,#a8842c,#f4c11a); }
+#one-hud .one-hud-meter progress::-moz-progress-bar{ background: linear-gradient(90deg,#a8842c,#f4c11a); }
+/* tarjetas de contrato, ajustes y noticias: mismo cristal, filo dorado en vez de azul */
+#one-hud .one-hud-contract, #one-hud .one-hud-settings-group{ border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 12px 14px; margin: 10px 0; }
+#one-hud .one-hud-muted{ color: #9fb0cc; }
+#one-hud .news-card{ border: 1px solid var(--sao-line-soft); border-left: 3px solid var(--sao-gold-soft); background: rgba(9,18,36,.45); border-radius: var(--sao-radius-sm); }
+#one-hud .news-card-time{ color: rgba(244,193,26,.75); }
+/* el contenido respira y rueda fino */
+#one-hud .one-hud-content{ scrollbar-width: thin; scrollbar-color: rgba(244,193,26,.35) transparent; }
+#one-hud .one-hud-content::-webkit-scrollbar{ width: 6px; }
+#one-hud .one-hud-content::-webkit-scrollbar-thumb{ background: rgba(244,193,26,.35); border-radius: 99px; }
