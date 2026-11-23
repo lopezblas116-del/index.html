@@ -108,16 +108,23 @@ function installWorldUi() {
         <span class="mil-globo-icon" aria-hidden="true">🌍</span>
       </button>
       <nav id="mil-globo-menu" class="mil-globo-menu oculto" aria-label="Paneles del mundo">
-        <button type="button" data-mil-accion="atlas"><span aria-hidden="true">🗺️</span> Atlas del Alma</button>
-        <button type="button" data-mil-accion="alma"><span aria-hidden="true">👤</span> Mi alma</button>
-        <button type="button" data-mil-accion="hemeroteca"><span aria-hidden="true">📰</span> Hemeroteca</button>
-        <button type="button" data-mil-accion="hora"><span aria-hidden="true">🕐</span> Última hora</button>
-        <button type="button" data-mil-accion="ajustes"><span aria-hidden="true">⚙️</span> Ajustes del mundo</button>
+        <p class="mil-menu-seccion">Tu historia</p>
+        <button type="button" data-mil-accion="bitacora"><span aria-hidden="true">📜</span><span class="mil-menu-txt">Bitácora del Mar<small>Misiones, crónicas y tu cartel SE BUSCA</small></span></button>
+        <button type="button" data-mil-accion="alma"><span aria-hidden="true">👤</span><span class="mil-menu-txt">Mi alma<small>Tu tarjeta viva en el mundo</small></span></button>
+        <button type="button" data-mil-accion="linaje"><span aria-hidden="true">🧬</span><span class="mil-menu-txt">Rasgos y linaje<small>Carácter, panteón y herederos</small></span></button>
+        <button type="button" data-mil-accion="atlas"><span aria-hidden="true">🗺️</span><span class="mil-menu-txt">Atlas del Alma<small>Tu viaje, islas pisadas y ruta dorada</small></span></button>
+        <p class="mil-menu-seccion">El mundo</p>
+        <button type="button" data-mil-accion="enciclopedia"><span aria-hidden="true">📖</span><span class="mil-menu-txt">Enciclopedia del Mar<small>Frutas, razas, islas y reliquias</small></span></button>
+        <button type="button" data-mil-accion="hemeroteca"><span aria-hidden="true">📰</span><span class="mil-menu-txt">Hemeroteca<small>Todo lo que el mundo vivió hasta hoy</small></span></button>
+        <button type="button" data-mil-accion="hora"><span aria-hidden="true">🐌</span><span class="mil-menu-txt">Última hora<small>El caracol de tu mar, al minuto</small></span></button>
+        <p class="mil-menu-seccion">Sistema</p>
+        <button type="button" data-mil-accion="sistema"><span aria-hidden="true">⚙️</span><span class="mil-menu-txt">Sistema, GM y datos<small>Sonido, guardado, exportar y panel GM</small></span></button>
       </nav>
             </div>
     </div>
     <section id="mil-feed-drawer" class="mil-feed-drawer oculto" aria-label="Bitácora del mundo">
-      <div class="mil-feed-heading"><h2>Última hora</h2><button type="button" data-close-feed aria-label="Cerrar bitácora">×</button></div>
+      <div class="mil-feed-heading"><h2><span aria-hidden="true">🐌</span> Última hora</h2><button type="button" data-close-feed aria-label="Cerrar bitácora">×</button></div>
+      <p class="mil-feed-kacha">¡Purupurupu! <em>kacha</em> — el caracol transpondedor te trae tu mar al minuto.</p>
       <div id="feed" aria-live="polite"></div>
     </section>
     <section id="pop-isla" class="mil-panel mil-island-pop oculto" aria-label="Detalles de isla">
@@ -193,10 +200,14 @@ function installWorldUi() {
       if (!item) return;
       cerrarMenu();
       const accion = item.dataset.milAccion;
-      if (accion === "atlas") window.UI?.abrirAtlas?.();
+      // teleportador: las puertas del HUD existen (ocultas en el dock) y el menú las pisa a distancia
+      if (accion === "bitacora") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
+      else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
+      else if (accion === "linaje") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
+      else if (accion === "sistema") document.querySelector('.one-hud-settings')?.click();
+      else if (accion === "atlas") window.UI?.abrirAtlas?.();
       else if (accion === "alma") window.UI?.abrirFicha?.();
       else if (accion === "hemeroteca") window.UI?.abrirPeriodico?.();
-      else if (accion === "ajustes") window.UI?.abrirAjustes?.();
       else if (accion === "hora") {
         const drawer = byId("mil-feed-drawer");
         if (drawer) { drawer.classList.remove("oculto"); window.UI?.renderFeed?.(true); }

@@ -407,3 +407,33 @@ html:not(.boot) #arranque{ display: none !important; }
 /* el capitán del encabezado ya no es una puerta: es solo tu nombre en el puente */
 .one-hud-captain{ cursor: default; pointer-events: none; }
 @media (max-width: 640px){ .mil-globo-menu{ min-width: min(210px, 70vw); } }
+
+/* ── V12 · teleportador total: secciones, subtítulos y orbe que grita ── */
+.mil-globo-menu{ min-width: min(276px, 78vw); padding: 12px 10px 10px; }
+.mil-menu-seccion{
+  margin: 8px 6px 4px; padding: 0;
+  font: 800 10px/1 'Manrope', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase;
+  color: rgba(244,193,26,.75);
+}
+.mil-menu-seccion:first-child{ margin-top: 0; }
+.mil-globo-menu button{ align-items: center; padding: 9px 12px; }
+.mil-menu-txt{ display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mil-menu-txt small{ font: 500 10.5px/1.25 'Manrope', system-ui, sans-serif; color: #9fb0cc; letter-spacing: 0; }
+.mil-globo-menu button:hover .mil-menu-txt small, .mil-globo-menu button:focus-visible .mil-menu-txt small{ color: #c9d2e3; }
+/* el badge del teleportador: el ítem Bitácora hereda el grito del mundo */
+.mil-globo-menu button{ position: relative; }
+.mil-globo-menu button .mil-badge{ top: 6px; right: 6px; }
+/* el orbe grita cuando el mundo tiene algo que contarte */
+#mil-globo{ position: relative; }
+.mil-badge-globo{
+  position: absolute; top: -4px; right: -4px; z-index: 2;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
+  display: grid; place-items: center;
+  background: #e5484d; color: #fff; border: 2px solid #0a1428;
+  font: 800 10px/1 'Manrope', system-ui, sans-serif;
+  box-shadow: 0 0 10px rgba(229,72,77,.55);
+  pointer-events: none;
+}
+/* el caracol transpondedor */
+.mil-feed-kacha{ margin: -6px 18px 10px; font: 500 11.5px/1.4 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
+.mil-feed-kacha em{ color: rgba(244,193,26,.8); font-style: italic; }

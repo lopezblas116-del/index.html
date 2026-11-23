@@ -43,15 +43,30 @@ import { getMapIslands } from '../map.js';
   }
   function pintaBadges() {
     const n = sinLeer();
-    document.querySelectorAll('#bottom-nav [data-hud-panel="news"]').forEach((el) => {
-      let b = el.querySelector('.mil-badge');
+    const marca = (el, clase) => {
+      let b = el.querySelector('.' + clase);
       if (n <= 0) { if (b) b.remove(); return; }
-      if (!b) { b = document.createElement('span'); b.className = 'mil-badge'; el.append(b); }
+      if (!b) { b = document.createElement('span'); b.className = clase; el.append(b); }
       b.textContent = n > 9 ? '9+' : String(n);
-      el.setAttribute('aria-label', `Bitácora: ${n} avisos sin leer`);
-      el.title = `${n} avisos del mundo sin leer`;
+    };
+    document.querySelectorAll('#bottom-nav [data-hud-panel="news"]').forEach((el) => {
+      marca(el, 'mil-badge');
+      if (n > 0) {
+        el.setAttribute('aria-label', `Bitácora: ${n} avisos sin leer`);
+        el.title = `${n} avisos del mundo sin leer`;
+      }
     });
+    // el teleportador también grita: el ítem del menú y el propio orbe
+    const itemMenu = document.querySelector('[data-mil-accion="bitacora"]');
+    if (itemMenu) marca(itemMenu, 'mil-badge');
+    const globo = document.getElementById('mil-globo');
+    if (globo) {
+      marca(globo, 'mil-badge-globo');
+      globo.title = n > 0 ? `${n} avisos del mundo sin leer` : 'Menú del mundo vivo';
+    }
   }
+  // el mundo no duerme: el orbe y el teleportador se revisan en cada respiro
+  setInterval(() => pintaBadges(), 4000);
   UI.marcarLeidas = function () {
     if (sim && sim.feed.length) leidasHasta = sim.feed[sim.feed.length - 1].i;
     pintaBadges();
