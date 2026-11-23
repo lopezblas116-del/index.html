@@ -1,12 +1,12 @@
 import {
-  SAVE_KEY, PULSE_MS, confrontFugitive, createCharacter, createHeir,
-  loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline
+  SAVE_KEY, PULSE_MS, coliseoFight, confrontFugitive, createCharacter, createHeir,
+  loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline, suggestSail
 } from "./game.js";
 import {
-  closeLegacyModal, closePantheon, initWizard, openPantheon,
+  closeLegacyModal, closePantheon, HISTORIAS_DADO, initWizard, openPantheon,
   renderGame, resetWizard, showSetup
 } from "./ui/ui.js";
-import { initHud, openIslandPanel, renderHud, setHudVisible } from "./ui/hud.js";
+import { initHud, renderHud, setHudVisible } from "./ui/hud.js";
 import { generateRandomOrigin, isBiographyValid } from "./character_creation.js";
 import { ensureBlockOneData, initBlock1 } from "./block1.js";
 import {
@@ -18,25 +18,29 @@ import { createNetwork } from "./network.js";
 import { SUPABASE_CONFIG } from "./network-config.js";
 import { attackWorldNoble, lootCelestialTribute, resolveCapture, sabotageTyrantPort } from "./politics.js";
 import { removeStorage } from "./storage_adapter.js";
+import { ensurePoliticalStance } from "./lore_engine.js";
 import { EVENT_TYPES, onTypedEvent } from "./event_dispatcher.js";
 import { sendConsciousnessWhisper } from "./chat_engine.js";
 import { adjustLocalBounty, applyGMEvent, isLocalGMAvailable, scheduleGMEvent, transmitLocalGMMessage } from "./gm_engine.js";
 import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
 import { beginStarterIslandAdventure, resolveIslandCrisis } from "./narrative_engine.js";
+import { anunciarLlegada, initUIBinding } from "../js/ui.js";
 import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
 import { celebrateAvatar } from "./island_renderer.js";
-import { importEvents, registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
+import { registerCharacter, retirarUser, susurrar, syncCharacter } from "./mundo/fusion.js";
 import "./mundo/index.js";
 
 let character = loadGame();
 initVfx();
+initUIBinding(); // conecta gameState → pantalla (js/state.js + js/ui.js)
 const network = createNetwork();
 let sharedState = network.snapshot();
 if (character?.world) Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
 let timerId = null;
+let syncTimer = null;
 let branchTimer = null;
 let scouting = false;
 const byId = (id) => document.getElementById(id);
@@ -45,12 +49,20 @@ function paint() {
   if (!character) return;
   ensureBlockOneData(character);
   ensureAdvancedSystems(character);
+  ensurePoliticalStance(character); // la marea política existe desde el primer latido (y se persiste)
   const startingIsland = getMapIslands(character).find((island) => island.name === character.location?.island);
   const starterAdventureStarted = beginStarterIslandAdventure(character, startingIsland);
   if (syncCodex(character)) saveGame(character);
   Object.defineProperty(character.world, "shared", { value: sharedState, writable: true, configurable: true, enumerable: false });
   renderGame(character);
   renderHud(character);
+  // banner de llegada: anuncia cada isla nueva que pisa el avatar (con su bioma)
+  const islaActual = character.location?.atSea ? null : (character.location?.island || null);
+  if (islaActual && islaActual !== (window.__islaAnunciada || null)) {
+    window.__islaAnunciada = islaActual;
+    const datos = getMapIslands(character).find((island) => island.name === islaActual);
+    anunciarLlegada(datos || { name: islaActual });
+  }
   trackVisualChanges(character);
   if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
   clearTimeout(branchTimer);
@@ -169,15 +181,6 @@ function persistRender(reschedule = false) {
 
 initWizard();
 initHud();
-listen(document, "onepiece:open-island-panel", (event) => openIslandPanel(event.detail?.panel));
-listen(document, "onepiece:local-suggestion", (event) => {
-  if (!character || character.status === "dead" || character.location?.atSea) return;
-  const { islandId, poiId } = event.detail || {};
-  const island = getMapIslands(character).find((entry) => entry.id === islandId && entry.name === character.location?.island);
-  if (!island?.pois.some((poi) => poi.id === poiId)) return;
-  character.localSuggestion = poiId;
-  persistRender();
-});
 initBlock1({ getCharacter: () => character, onChange: () => persistRender(), onPublicAction: (type, data, actor) => network.publish(type, data, actor) });
 network.subscribe((state) => { sharedState = state; if (character) paint(); });
 network.sync();
@@ -186,12 +189,8 @@ window.addEventListener("mil-almas:ready", () => {
   registerCharacter(character);
   paint();
 });
-window.addEventListener("mil-almas:tick", () => {
-  if (character && importEvents(character)) {
-    saveGame(character);
-    renderGame(character);
-  }
-});
+// el espejo de eventos del mundo vivo corre dentro de syncCharacter (paint):
+// un segundo listener por tick duplicaba el recorrido del feed
 function resumeOffline() {
   if (!character) return;
   const pending = character.autonomy.pendingBranch;
@@ -202,10 +201,9 @@ function resumeOffline() {
 }
 window.addEventListener("online", () => { resumeOffline(); network.sync(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearTimeout(timerId);
-  else { resumeOffline(); scheduleTick(); }
+  if (document.hidden) { clearTimeout(timerId); clearTimeout(syncTimer); }
+  else { resumeOffline(); scheduleTick(); scheduleNetworkSync(); }
 });
-let syncTimer;
 function scheduleNetworkSync() {
   clearTimeout(syncTimer);
   if (document.hidden || (!SUPABASE_CONFIG.url && !SUPABASE_CONFIG.publishableKey)) return;
@@ -214,8 +212,17 @@ function scheduleNetworkSync() {
     scheduleNetworkSync();
   }, 30000);
 }
-document.addEventListener("visibilitychange", scheduleNetworkSync);
 scheduleNetworkSync();
+listen(document, "onepiece:hud-whisper", (event) => {
+  if (!character || character.status === "dead") return;
+  const before = publicSnapshot(character);
+  const text = event.detail?.text || "";
+  sendConsciousnessWhisper(character, text);
+  susurrar(text);
+  publishChanges(before, character, true);
+  if (character.location?.atSea) scoutFugitive(character);
+  persistRender();
+});
 if (character) {
   if (character.status !== "dead" && character.autonomy?.paused) {
     setAutonomyPaused(character, false);
@@ -231,33 +238,26 @@ if (character) {
   if (character.status !== "dead" && !character.captured) scheduleTick();
 } else showSetup();
 
-listen(document, "onepiece:map-destination", (event) => {
-  if (!character || character.status === "dead") return;
-  character.navigationTarget = { id: event.detail.id, name: event.detail.name, sea: event.detail.sea, x: event.detail.x, y: event.detail.y };
-  persistRender();
-});
-listen(document, "onepiece:hud-whisper", (event) => {
-  if (!character || character.status === "dead") return;
-  const before = publicSnapshot(character);
-  const text = event.detail?.text || "";
-  sendConsciousnessWhisper(character, text);
-  susurrar(text);
-  publishChanges(before, character, true);
-  if (character.location?.atSea) scoutFugitive(character);
-  persistRender();
-});
 listen(byId("character-form"), "submit", (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
-  if (!isBiographyValid(data.get("story"))) {
-    window.alert("Escribe tu historia de origen en un máximo de 280 caracteres.");
-    return;
-  }
+  // la historia es opcional: si quedó vacía, el dado del mar cuenta una por vos
+  let historia = String(data.get("story") || "").trim();
+  if (!historia) historia = HISTORIAS_DADO[Math.floor(Math.random() * HISTORIAS_DADO.length)];
   const traits = [String(data.get("traitPrimary") || ""), String(data.get("traitSecondary") || "")].filter(Boolean);
   if (traits.length !== 2) { window.alert("Selecciona dos rasgos para la Tarjeta del Alma."); return; }
-  const avatarConfig = { skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"), hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"), accessory: String(data.get("accessory") || "Bandana") };
+  const avatarConfig = {
+    skin: String(data.get("skin") || "Clara"), eyes: String(data.get("eyes") || "Marrón"),
+    hair: String(data.get("hair") || "Negro"), outfit: String(data.get("outfit") || "Rojo"),
+    accessory: String(data.get("accessory") || "Ninguno"), detail: String(data.get("detail") || "Ninguno"),
+    coat: String(data.get("coat") || "Ninguno")
+  };
   const randomOrigin = generateRandomOrigin();
-  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: String(data.get("faction") || "Pirata"), ...randomOrigin, starterChallenge: true, profession: String(data.get("profession") || "Navegante"), dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: String(data.get("story") || ""), traits, appearance: avatarConfig });
+  // raza y mar pueden venir del Gacha del Destino (3 monedas); si no, azar puro al zarpar
+  const raceGacha = String(data.get("race") || "");
+  const seaGacha = String(data.get("originSea") || "");
+  const faction = String(data.get("faction") || "Pirata");
+  character = createCharacter({ name: String(data.get("name") || "Aventurero"), username: String(data.get("handle") || "@usuario"), faction: faction === "Autonomo" ? "Autonomo" : faction, originSea: seaGacha || randomOrigin.originSea, race: raceGacha || randomOrigin.race, starterChallenge: true, profession: "Grumete", dream: String(data.get("dream") || "Libertad"), alignment: String(data.get("alignment") || "Libertad"), story: historia, traits, appearance: avatarConfig });
   registerCharacter(character);
   if (sharedState.status === "local") {
     character.world.day = sharedState.world?.last_cycle_day || 0;
@@ -282,6 +282,7 @@ function startNewGame() {
   closeLegacyModal();
   closePantheon();
   setHudVisible(false);
+  document.body.classList.remove("mil-cine"); // sin esto, la nueva partida arrancaba sin HUD (inmersión heredada)
   resetWizard();
   showSetup();
 }
@@ -304,6 +305,24 @@ listen(document, "onepiece:hud-tavern-action", (event) => {
 listen(document, "onepiece:hud-shipyard-action", (event) => {
   if (!character) return;
   const result = performDockyardAction(character, event.detail?.action);
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-sail-suggest", (event) => {
+  if (!character || character.status === "dead") return;
+  const target = event.detail?.location;
+  if (character.location?.atSea) return;
+  const result = suggestSail(character, target);
+  if (result.accepted) {
+    character.navigationTarget = { ...target, type: "sail" };
+    persistRender(true); // el zarpe corre en el próximo latido del mar
+    window.MAPA?.volar?.(target.x, target.y, 1.5, 700);
+  }
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
+});
+listen(document, "onepiece:hud-coliseo-fight", () => {
+  if (!character || character.status === "dead") return;
+  const result = coliseoFight(character);
   persistRender();
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
 });
@@ -347,6 +366,38 @@ listen(document, "onepiece:hud-territory-claim", (event) => {
   if (result?.ok) persistRender(true);
   document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result?.message || "No se pudo guardar el mundo local." } }));
 });
+listen(document, "onepiece:hud-coliseo-bet", (event) => {
+  if (!character || character.status === "dead" || character.location?.atSea) return;
+  const fighter = String(event.detail?.fighter || "");
+  const rival = String(event.detail?.rival || "el favorito");
+  const amount = Math.floor(Number(event.detail?.amount));
+  if (!fighter || !Number.isFinite(amount) || amount < 10 || amount > 500 || amount > Number(character.berries)) return;
+  character.berries = Number(character.berries) - amount;
+  character.coliseo = { last: character.coliseo?.last, resolving: { fighter, rival, amount, deadline: Date.now() + 9000 + Math.floor(Math.random() * 6000) } };
+  character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo de ${character.location?.island || "puerto"}: apostaste ฿${amount} por ${fighter}. La arena se llena de gritos…` });
+  persistRender();
+  document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `Apuesta aceptada: ฿${amount} por ${fighter}` } }));
+});
+// La campana del coliseo: resuelve apuestas vencidas — también las que quedaron
+// colgadas si el jugador cerró la página antes del resultado.
+setInterval(() => {
+  const resolving = character?.coliseo?.resolving;
+  if (!resolving || Date.now() < resolving.deadline) return;
+  const { fighter, rival, amount } = resolving;
+  if (Math.random() < 0.42) {
+    const premio = Math.round(amount * 2.6);
+    character.berries = Number(character.berries) + premio;
+    character.coliseo.last = `🥊 ${fighter} ganó la jornada: cobraste ฿${premio}.`;
+    character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo: ¡${fighter} levanta la copa! Cobras ฿${premio}.` });
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `¡Ganaste el Coliseo! +฿${premio}` } }));
+  } else {
+    character.coliseo.last = `🥊 ${rival} noqueó a ${fighter}: perdiste ฿${amount}.`;
+    character.log.unshift({ time: new Date().toISOString(), message: `🥊 Coliseo: ${rival} noqueó a ${fighter}. Perdiste ฿${amount}.` });
+    document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: `El Coliseo no perdona: -฿${amount}` } }));
+  }
+  delete character.coliseo.resolving;
+  persistRender();
+}, 4000);
 listen(document, "onepiece:hud-territory-blockade", (event) => {
   if (!character || sharedState.status !== "local") return;
   const berries = character.berries;

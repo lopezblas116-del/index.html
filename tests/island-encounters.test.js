@@ -25,7 +25,7 @@ test("encounters stay hidden at sea, on a preview island, or after the tribute c
   const sabotaje = sabotajes[0];
   assert.equal(sabotaje.title, "Contacto de la resistencia");
   assert.ok(sabotaje.description.startsWith("Una célula local ofrece refugio y suministros si ayudas a desarticular el control tiránico."), "descripción base intacta");
-  assert.match(sabotaje.description, /Según los registros del mundo:.*Revolutionary Army/, "con canon del Ejército Revolucionario");
+  assert.match(sabotaje.description, /Según los registros del mundo:.*Ejército Revolucionario/, "con canon del Ejército Revolucionario");
   assert.equal(sabotaje.warning, "");
   assert.equal(sabotaje.buttonLabel, "Ayudar a la resistencia");
 });

@@ -1,5 +1,4 @@
 import { getMapIslands } from "../map.js";
-import { drawIslandSceneContext } from "../island_renderer.js";
 
 const MAP_IDS = {
   "East Blue": "EB",
@@ -85,22 +84,6 @@ function mapDe(juegoIsl) {
   return D.ISLAS.find((entry) => entry.juegoId === juegoIsl.id) || null;
 }
 
-// ── Dioramas en el mapa vivo ──
-// Al acercar el zoom, MAPA dibuja cada isla como su escena 16-bit completa
-// (edificios, NPCs temáticos, almas presentes y el avatar si está ahí).
-// El módulo del mundo no importa a la app: la app le provee las piezas.
-function conectarEscenas() {
-  if (!window.MAPA?.configuraEscenas) return false;
-  window.MAPA.configuraEscenas({
-    juegoDe: (mapIsl) => juegoDe(mapIsl),
-    npcsDe: (mapIsl) => almasDeIsla(mapIsl.id, performance.now()),
-    personajeDe: (juegoIsl) => (lastCharacter && lastCharacter.location?.island === juegoIsl.name && !lastCharacter.location?.atSea) ? lastCharacter : null,
-    pinta: drawIslandSceneContext
-  });
-  return true;
-}
-if (!conectarEscenas()) window.addEventListener("mil-almas:ready", conectarEscenas, { once: true });
-
 function installWorldUi() {
   const mapPanel = byId("map-panel");
   const canvasContainer = byId("canvas-container");
@@ -119,17 +102,23 @@ function installWorldUi() {
   const ui = document.createElement("div");
   ui.id = "mil-almas-ui";
   ui.innerHTML = `
-    <header class="mil-world-bar">
-      <div><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
-      <div class="mil-world-actions">
-        <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">Bitácora viva</button>
-        <button id="btn-nuevo" type="button">Mi alma</button>
-        <button id="btn-atlas" type="button">Atlas</button>
-        <button id="btn-peri" type="button">Hemeroteca</button>
-        <button id="btn-ajustes" type="button" aria-label="Ajustes del mundo">⚙</button>
-        <button id="btn-sonido" type="button" aria-label="Activar o silenciar sonidos">♫</button>
+    <div id="mil-globo-wrap">
+      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Mundo vivo: bitácora, alma, atlas y hemeroteca">
+        <span class="mil-globo-ring" aria-hidden="true"></span>
+        <span class="mil-globo-icon" aria-hidden="true">🌍</span>
+      </button>
+      <div id="mil-globo-menu" class="mil-globo-menu oculto" aria-label="Menú del mundo vivo">
+        <div class="mil-globo-head"><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
+        <button type="button" class="mil-feed-toggle" aria-expanded="false" aria-controls="mil-feed-drawer">📖 Bitácora viva</button>
+        <button id="btn-nuevo" type="button">✨ Mi alma</button>
+        <button id="btn-atlas" type="button">🗺️ Atlas</button>
+        <button id="btn-peri" type="button">📰 Hemeroteca</button>
+        <div class="mil-globo-row">
+          <button id="btn-ajustes" type="button" aria-label="Ajustes del mundo">⚙</button>
+          <button id="btn-sonido" type="button" aria-label="Activar o silenciar sonidos">♫</button>
+        </div>
       </div>
-    </header>
+    </div>
     <section id="mil-feed-drawer" class="mil-feed-drawer oculto" aria-label="Bitácora del mundo">
       <div class="mil-feed-heading"><h2>Última hora</h2><button type="button" data-close-feed aria-label="Cerrar bitácora">×</button></div>
       <div id="feed" aria-live="polite"></div>
@@ -195,6 +184,23 @@ function installWorldUi() {
       <button id="wz-atras" type="button">Atrás</button><button id="wz-siguiente" type="button">Siguiente</button>
     </section>`;
   document.body.append(ui);
+  // el globo del mundo: una esquina, no una franja — tocás el orbe, se abre; tocás el mar, se va
+  const globo = ui.querySelector("#mil-globo");
+  const globoMenu = ui.querySelector("#mil-globo-menu");
+  if (globo && globoMenu) {
+    const cierraGlobo = () => { globoMenu.classList.add("oculto"); globo.setAttribute("aria-expanded", "false"); };
+    globo.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const oculto = globoMenu.classList.toggle("oculto");
+      globo.setAttribute("aria-expanded", String(!oculto));
+    });
+    globoMenu.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // cada acción del menú cierra el globo: el mundo vuelve a ser mar
+      if (!event.target.classList.contains("mil-feed-toggle")) setTimeout(cierraGlobo, 120);
+    });
+    document.addEventListener("click", cierraGlobo);
+  }
   ui.querySelector(".mil-feed-toggle").addEventListener("click", (event) => {
     const drawer = byId("mil-feed-drawer");
     const opened = drawer.classList.toggle("oculto") === false;
@@ -217,24 +223,25 @@ function installWorldUi() {
     byId("atlas").classList.add("oculto");
   });
   document.addEventListener("click", (event) => {
-    const navigation = event.target.closest('[data-hud-panel="navigation"]');
+    // NOTA: el botón "Navegación / Isla" del nav YA NO se secuestra aquí (stopPropagation
+    // en captura lo mataba y, si la isla no mapeaba, el botón quedaba muerto sin panel).
+    // Ahora abre el panel de navegación del HUD; el vuelo a tu isla vive dentro del panel
+    // vía el evento "onepiece:hud-volar-isla" (ver abajo).
     const zoom = event.target.closest("[data-map-zoom]");
-    if (navigation && lastCharacter && !lastCharacter.location?.atSea) {
-      event.stopPropagation();
-      const island = getMapIslands(lastCharacter).find((entry) => entry.name === lastCharacter.location?.island);
-      const mapa = island ? mapDe(island) : null;
-      if (!mapa) {
-        window.UI?.toast("No se encontró la isla actual.");
-        return;
-      }
-      if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
-      // Vuelo directo a tu isla en modo diorama (zoom cercano = escena 16-bit en el mapa).
-      if (window.MAPA?.enfocarIsla) window.MAPA.enfocarIsla(mapa); else window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
-    } else if (zoom) {
+    if (zoom) {
       event.stopPropagation();
       window.MAPA?.zoom?.(zoom.dataset.mapZoom === "in" ? 1 : -1);
     }
   }, true);
+  // Vuelo directo a tu isla desde el panel de navegación (modo diorama 16-bit).
+  document.addEventListener("onepiece:hud-volar-isla", () => {
+    if (!lastCharacter || lastCharacter.location?.atSea) return;
+    const island = getMapIslands(lastCharacter).find((entry) => entry.name === lastCharacter.location?.island);
+    const mapa = island ? mapDe(island) : null;
+    if (!mapa) return;
+    if (document.querySelector(".one-hud-backdrop.open")) document.querySelector(".one-hud-close")?.click();
+    if (window.MAPA?.enfocarIsla) window.MAPA.enfocarIsla(mapa); else window.MAPA?.volar?.(mapa.x, mapa.y, 3.2, 800);
+  });
   window.addEventListener("mil-almas:tick", () => {
     syncLocation(lastCharacter);
   });
@@ -268,7 +275,7 @@ function updateChip(character) {
     return;
   }
   const island = user?.isl ? window.D.ISLA[user.isl] : null;
-  const region = character.location?.region || window.D.REGIONS[island?.reg]?.name;
+  const region = character.location?.region || window.D?.REGIONS?.[island?.reg]?.name;
   chip.textContent = `📍 ${character.location?.island || island?.n || "Puerto desconocido"} · ${SEA_ES[region] || region || "Mar desconocido"}`;
 }
 

@@ -108,7 +108,9 @@ export function chooseAutonomousAction(character, random = Math.random) {
   weights.navigate += liberty / 50;
   weights.train += Math.max(0, 50 - honor) / 80;
   weights.searchFruit += greed / 35;
-  if (character.starterChallenge && (!character.ship?.acquired || !hasNauticalCrew(character))) weights.navigate = 0;
+  // zarpar sin navegante es más raro pero posible: el mar cobra caro, no prohíbe
+  if (character.starterChallenge && !character.ship?.acquired) weights.navigate = 0;
+  else if (character.starterChallenge && !hasNauticalCrew(character)) weights.navigate *= 0.35;
   if (hp < 0.3) return "rest";
   const options = Object.entries(weights);
   const total = options.reduce((sum, [, weight]) => sum + weight, 0);

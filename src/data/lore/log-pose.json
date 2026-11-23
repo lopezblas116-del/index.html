@@ -1,8 +1,8 @@
 {
   "key": "log-pose",
   "title": "Log Pose",
-  "description": "La aguja registra la atracción magnética de una isla; en rutas nuevas puede necesitar tiempo para estabilizarse.",
+  "description": "Sin brújula común en la Grand Line: el Log Pose graba el magnetismo de cada isla y solo señala la siguiente cuando la aguja se estabiliza. Apresurarse es perderse; respetar el registro es sobrevivir. Los navegantes que desprecian la aguja terminan en cartas de naufragio.",
   "climate": "variable",
-  "hazards": ["rumbo inestable", "lecturas magnéticas", "islas sin cartografiar"],
-  "newsSeeds": ["la aguja busca el norte", "un rumbo todavía sin nombre", "el magnetismo altera las cartas"]
+  "hazards": ["rumbo inestable tras zarpar", "lecturas magnéticas falsas", "islas sin cartografiar", "aguja que necesita horas para estabilizarse", "un mal registro y el rumbo se pierde semanas"],
+  "newsSeeds": ["la aguja gira buscando un norte imposible", "un rumbo todavía sin nombre en la bitácora", "el magnetismo altera las cartas antiguas", "un navegante juró por su aguja y volvió al día siguiente", "el registro se estabilizó al fin: hay rumbo"]
 }

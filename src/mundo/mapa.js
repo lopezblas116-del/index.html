@@ -7,7 +7,7 @@
 
   // Zoom: 0.5 = globo completo (esfera), 0.62 = aterrizando en el mar, 6.0 = dioramas.
   // La rueda y los botones mueven un OBJETIVO (zT) y la cámara lo persigue: zoom lupa, no salto.
-  const Z_MIN = 0.5, Z_MAX = 6.0, UMBRAL_GLOBO = 0.62;
+  const Z_MIN = 0.42, Z_MAX = 9.5, UMBRAL_GLOBO = 0.48; // el globo solo entra en la franja 0.42-0.48: alejar desde una isla vuelve al MAR, nunca te expulsa a la esfera
   MAPA.LOD_ZOOM = 1.5;          // entrar al diorama
   MAPA.LOD_SALIDA = 1.12;       // salir del diorama (histéresis: alejarse un poco no te expulsa)
   let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: Z_MIN }, ancho = 0, alto = 0;
@@ -17,6 +17,7 @@
   let selIsl = null, onSel = null, base = null, eventoIsl = new Set(), eventoT = -1e9;
   // ── Globo ──
   let rotLon = -0.35;                 // rotación horizontal actual (radianes)
+  const envuelveX = (x) => ((x % D.W) + D.W) % D.W; // el mapa es un anillo: la costura se cruza sin salto
   let TEX = null;                     // textura del mundo para la esfera
   const nubes = [];
   for (let i = 0; i < 26; i++) {
@@ -43,9 +44,11 @@
     const fit = () => {
       const r = cv.parentElement.getBoundingClientRect();
       ancho = r.width; alto = r.height;
-      cv.width = Math.round(ancho * devicePixelRatio); cv.height = Math.round(alto * devicePixelRatio);
+      const DPR = Math.min(window.devicePixelRatio || 1, 2); // tope 2: 3x en móviles cuadruplica el costo sin ganancia visible
+      cv.width = Math.round(ancho * DPR); cv.height = Math.round(alto * DPR);
       cv.style.width = ancho + 'px'; cv.style.height = alto + 'px';
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.imageSmoothingEnabled = false; // pixel art nítido: ningún escalado borroso
       base = null; TEX = null; estrellado = null;
     };
     MAPA.resize = fit;
@@ -62,29 +65,73 @@
       cv.parentElement.appendChild(p);
       MAPA._pista = p;
     }
+    // ── modo inmersión: píldora "Alejar" + banner breve con el nombre de la isla ──
+    if (cv.parentElement && !cv.parentElement.querySelector('#mil-salir-cine')) {
+      const salir = document.createElement('button');
+      salir.type = 'button';
+      salir.id = 'mil-salir-cine';
+      salir.textContent = '⤡ Alejar';
+      salir.setAttribute('aria-label', 'Alejar y salir del modo inmersión');
+      salir.addEventListener('click', () => MAPA.volar(cam.x, cam.y, 1.25, 720));
+      cv.parentElement.appendChild(salir);
+      const nombre = document.createElement('div');
+      nombre.id = 'mil-cine-nombre';
+      nombre.setAttribute('role', 'status');
+      cv.parentElement.appendChild(nombre);
+      MAPA._cineNombre = nombre;
+    }
+    // el joystick se jubiló: el dedo manda — arrastre mueve, pinza acerca, rueda fija
+
     // ── interacción: arrastre, rueda, y PINZA con dos dedos centrada en el punto medio ──
     let drag = null, pellizco = null;
+    // fluidez: mientras hay gestos el mapa corre a 60 fps (animaMapa consulta este flag)
+    MAPA.interactuando = false;
+    let quietoTimer = null;
+    const toca = () => {
+      MAPA.interactuando = true;
+      clearTimeout(quietoTimer);
+      quietoTimer = setTimeout(() => { MAPA.interactuando = false; }, 450);
+    };
     const gira = (dx) => { rotLon += dx * 0.0045; };
     cv.addEventListener('mousedown', e => {
       cancelaVuelo(); // el arrastre toma el control
+      toca();
       drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, movio: false };
     });
     window.addEventListener('mousemove', e => {
       if (!drag) return;
+      toca();
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.movio = true;
       if (globoF() > 0.5) gira(dx);
-      else { cam.x = clamp(drag.cx - dx / cam.z, 0, D.W); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
+      else { cam.x = envuelveX(drag.cx - dx / cam.z); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
       drag.x = e.clientX; drag.y = e.clientY; drag.cx = cam.x; drag.cy = cam.y;
     });
-    window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; });
+    window.addEventListener('mouseup', e => { if (drag && !drag.movio) MAPA.click(e); drag = null; toca(); });
+    // hover sin arrastre: isla bajo el cursor → resalte + cursor de mano (no corre en globo)
+    window.addEventListener('mousemove', e => {
+      if (drag) { cv.style.cursor = 'grabbing'; return; }
+      const r = cv.getBoundingClientRect();
+      const px = e.clientX - r.left, py = e.clientY - r.top;
+      if (px < 0 || py < 0 || px > r.width || py > r.height || globoF() > 0.5) {
+        MAPA._hoverIsla = null;
+        if (px >= 0 && py >= 0 && px <= r.width && py <= r.height && globoF() > 0.5) cv.style.cursor = 'grab';
+        return;
+      }
+      const wx = px / cam.z + cam.x - ancho / (2 * cam.z);
+      const wy = py / cam.z + cam.y - alto / (2 * cam.z);
+      MAPA._hoverIsla = islaEn(wx, wy);
+      cv.style.cursor = MAPA._hoverIsla ? 'pointer' : 'default';
+    });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
       cancelaVuelo(); // la lupa manda: un giro de rueda a mitad de vuelo toma el control
+      toca();
       MAPA.zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
     }, { passive: false });
     cv.addEventListener('touchstart', e => {
       cancelaVuelo(); // el dedo toma el control
+      toca();
       if (e.touches.length === 1) {
         drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, cx: cam.x, cy: cam.y, movio: false };
       } else if (e.touches.length >= 2) {
@@ -103,6 +150,7 @@
       }
     }, { passive: true });
     cv.addEventListener('touchmove', e => {
+      toca();
       if (pellizco && e.touches.length >= 2) {
         e.preventDefault();
         const [a, b] = e.touches;
@@ -113,7 +161,7 @@
         zT = cam.z; // la pinza es entrada viva: el objetivo la sigue sin retraso
         if (globoF() < 0.5) {
           // el punto del mundo bajo los dedos sigue bajo los dedos: zoom real, no centrado
-          cam.x = clamp(pellizco.wx - (mx - ancho / 2) / cam.z, 0, D.W);
+          cam.x = envuelveX(pellizco.wx - (mx - ancho / 2) / cam.z);
           cam.y = clamp(pellizco.wy - (my - alto / 2) / cam.z, 0, D.H);
         } else {
           gira(mx - pellizco.mx);
@@ -126,7 +174,7 @@
         const dx = e.touches[0].clientX - drag.x, dy = e.touches[0].clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.movio = true;
         if (globoF() > 0.5) gira(dx);
-        else { cam.x = clamp(drag.cx - dx / cam.z, 0, D.W); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
+        else { cam.x = envuelveX(drag.cx - dx / cam.z); cam.y = clamp(drag.cy - dy / cam.z, 0, D.H); }
         drag.x = e.touches[0].clientX; drag.y = e.touches[0].clientY; drag.cx = cam.x; drag.cy = cam.y;
       }
     }, { passive: false });
@@ -140,6 +188,7 @@
         MAPA.click({ clientX: t.clientX, clientY: t.clientY });
       }
       if (e.touches.length === 0) drag = null;
+      toca();
     });
   };
 
@@ -168,6 +217,18 @@
   };
 
   MAPA.clickEn = function (wx, wy) {
+    // tu capitán camina: toque sobre TU isla con zoom cercano = caminar hasta el punto
+    const u = MAPA._sim && MAPA._sim.user;
+    if (u && u.isl && cam.z >= DETALLE_Z && !MAPA._sim._fusionAtSea) {
+      const propia = D.ISLA[u.isl];
+      if (propia && dist(wx, wy, propia.x, propia.y) < propia.r * 1.15) {
+        MAPA._caminar = {
+          x: clamp((wx - propia.x) / (propia.r * 0.7), -1, 1),
+          y: clamp((wy - propia.y) / (propia.r * 0.5), -1, 1)
+        };
+        return;
+      }
+    }
     // islas (con envoltura horizontal)
     for (const i of D.ISLAS) {
       for (const off of [0, -D.W, D.W]) {
@@ -178,15 +239,14 @@
   };
 
   MAPA.centra = function (x, y) { cam.x = x; cam.y = y; };
-  // Encuadre completo de una isla: calcula el zoom para que el diorama ENTRE entero en pantalla
-  // y vuela hasta allí. Es el "acercar a una isla y verla completa, no una porción".
+  // Encuadre completo de una isla: calcula el zoom para que la isla DENTRO del
+  // mapa entre entera en pantalla (con su playa, aldea y muelle) y vuela hasta allí.
   MAPA.enfocarIsla = function (i) {
     if (!i || !ancho) return;
-    const r = rectDiorama(i, 0);
-    const z = clamp(Math.min(ancho / (r.w + 90), alto / (r.h + 150)), 1.35, 4.2);
-    dioramasActivos.add(i.id); // forzar el diorama: el clic ES intención de ver la escena
-    // +36: baja la escena por debajo de la barra del HUD
-    vuelo = creaVuelo(i.x, i.y + 36, z, 750);
+    MAPA._enfocada = i; // la isla encuadrada: el banner del modo inmersión la nombra
+    // ENTRAR de verdad: la isla ocupa buena parte de la pantalla (tope 7, casi 1:1 con el sprite)
+    const z = clamp(Math.min(ancho / (i.r * 4.4), alto / (i.r * 2.6)), 1.35, 7);
+    vuelo = creaVuelo(i.x, i.y + 22, z, 750);
     zT = vuelo.tz;
   };
   // ── Vuelo cinematográfico ──
@@ -283,7 +343,7 @@
       const r = cv.getBoundingClientRect();
       const mx = cx - r.left, my = cy - r.top;
       const wx = cam.x + (mx - ancho / 2) / z0, wy = cam.y + (my - alto / 2) / z0;
-      cam.x = clamp(wx - (mx - ancho / 2) / zT, 0, D.W);
+      cam.x = envuelveX(wx - (mx - ancho / 2) / zT);
       cam.y = clamp(wy - (my - alto / 2) / zT, 0, D.H);
     }
   };
@@ -297,118 +357,9 @@
     ultT = t;
   }
 
-  // ── Dioramas 16-bit EN el mapa: al acercar el zoom, cada isla se convierte en su escena completa ──
+  // ── UN SOLO MAPA: la isla crece DENTRO del mapa (sin escenas-rectángulo).
+  //    LOD_ZOOM queda como umbral del modo inmersión y del ritmo de animación. ──
   MAPA.LOD_ZOOM = 1.5;
-  let apiEscenas = null;
-  // fusion inyecta: { juegoDe, npcsDe, personajeDe, pinta } — el mundo no depende de la app.
-  MAPA.configuraEscenas = function (api) { apiEscenas = api; };
-
-  function rectDiorama(i, off) {
-    const w = Math.min(Math.max(i.r * 30, 300), 560); // tope: dioramas que siempre caben en pantalla
-    const h = w * 400 / 640;
-    return { x: i.x - w / 2 + off, y: i.y - h / 2, w, h };
-  }
-  MAPA.rectDiorama = rectDiorama;
-
-  // ── Dioramas sin superposiciones, por RESERVA y PASADAS:
-  //    1) cada isla con diorama reserva su rectángulo (prioridad: seleccionada y cercanía),
-  //    2) las islas que quedarían debajo de un rect reservado NO se pintan encima,
-  //    3) se pintan los dioramas reservados, 4) barcos y etiquetas solo fuera de ellos. ──
-  let dioFrameT = -1e9, dioReservados = [];
-  MAPA.reservaDiorama = function (i, off, t) {
-    const r = rectDiorama(i, off);
-    const margenX = ancho / (2 * cam.z) + r.w * 0.6, margenY = alto / (2 * cam.z) + r.h * 0.6;
-    if (Math.abs(r.x + r.w / 2 - cam.x) > margenX || Math.abs(r.y + r.h / 2 - cam.y) > margenY) return null;
-    if (t !== dioFrameT) { dioFrameT = t; dioReservados = []; }
-    for (const q of dioReservados) {
-      if (r.x < q.x + q.w && r.x + r.w > q.x && r.y < q.y + q.h && r.y + r.h > q.y) return null;
-    }
-    dioReservados.push(r);
-    return r;
-  };
-  // ¿algo de esto (blob de isla, barco, etiqueta) cae bajo un diorama ya reservado?
-  MAPA.bajoDiorama = function (x0, y0, x1, y1, t) {
-    if (t !== dioFrameT) return false;
-    for (const q of dioReservados) {
-      if (x0 < q.x + q.w && x1 > q.x && y0 < q.y + q.h && y1 > q.y) return true;
-    }
-    return false;
-  };
-  MAPA.dioramasReservados = () => dioReservados;
-
-  MAPA.dibujaEscenaIsla = function (c2, i, t, off) {
-    const r = rectDiorama(i, off);
-    // solo pinta la escena si ESTA isla reservó su rectángulo este frame;
-    // si no, la llamada cae a la vista blob (return false)
-    if (t !== dioFrameT) return false;
-    if (!dioReservados.some(q => q.x === r.x && q.y === r.y && q.w === r.w)) return false;
-    const s = r.w / 640;
-    const juego = apiEscenas?.juegoDe ? apiEscenas.juegoDe(i) : null;
-    if (juego && apiEscenas?.pinta) {
-      // NPCs: temáticos de la isla + almas presentes del sim (copia nueva, sin mutar la isla).
-      const escena = { ...juego, npcs: [...(juego.npcs || []), ...(apiEscenas.npcsDe ? apiEscenas.npcsDe(i) : [])].slice(0, 10) };
-      const pers = apiEscenas.personajeDe ? apiEscenas.personajeDe(juego) : null;
-      c2.save();
-      c2.translate(r.x, r.y);
-      c2.scale(s, s);
-      c2.beginPath();
-      c2.moveTo(26, 0);
-      c2.arcTo(640, 0, 640, 400, 26);
-      c2.arcTo(640, 400, 0, 400, 26);
-      c2.arcTo(0, 400, 0, 0, 26);
-      c2.arcTo(0, 0, 640, 0, 26);
-      c2.closePath();
-      c2.clip();
-      apiEscenas.pinta(c2, escena, pers, t);
-      c2.restore();
-    } else {
-      // isla de simulación (sin escena del catálogo): diorama temático procedural cacheado
-      if (!i._dio) i._dio = renderDioramaTema(i);
-      c2.save();
-      c2.translate(r.x, r.y);
-      c2.scale(s, s);
-      c2.beginPath();
-      c2.moveTo(26, 0);
-      c2.arcTo(640, 0, 640, 400, 26);
-      c2.arcTo(640, 400, 0, 400, 26);
-      c2.arcTo(0, 400, 0, 0, 26);
-      c2.arcTo(0, 0, 640, 0, 26);
-      c2.closePath();
-      c2.clip();
-      c2.drawImage(i._dio, 0, 0);
-      propsVivas(c2, i, t);
-      c2.restore();
-    }
-    // marco dorado y nombre, fuera del recorte
-    c2.save();
-    c2.translate(r.x, r.y);
-    c2.scale(s, s);
-    c2.strokeStyle = 'rgba(244,193,26,0.75)';
-    c2.lineWidth = 5 / cam.z;
-    c2.beginPath();
-    c2.moveTo(26, 0);
-    c2.arcTo(640, 0, 640, 400, 26);
-    c2.arcTo(640, 400, 0, 400, 26);
-    c2.arcTo(0, 400, 0, 0, 26);
-    c2.arcTo(0, 0, 640, 0, 26);
-    c2.closePath();
-    c2.stroke();
-    c2.restore();
-    // rótulo con tamaño constante en pantalla (unidades de mundo = px_pantalla / zoom)
-    const fs = Math.max(7, 16 / cam.z);
-    const lw = Math.max(130 / cam.z, i.n.length * fs * 0.62 + 18 / cam.z);
-    const bh = 24 / cam.z;
-    c2.fillStyle = 'rgba(12,22,38,0.72)';
-    c2.fillRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
-    c2.strokeStyle = 'rgba(244,193,26,0.6)';
-    c2.lineWidth = 1.2 / cam.z;
-    c2.strokeRect(i.x + off - lw / 2, r.y - bh - 6 / cam.z, lw, bh);
-    c2.font = '700 ' + fs + 'px system-ui, sans-serif';
-    c2.fillStyle = '#f4d97a';
-    c2.textAlign = 'center';
-    c2.fillText(i.n, i.x + off, r.y - 11 / cam.z);
-    return true;
-  };
   // Exposiciones para la capa de gráficos mejorados (GFX)
   MAPA.cam = cam;
   MAPA.nubes = nubes;
@@ -431,128 +382,6 @@
       pts.push([Math.cos(ang) * rr, Math.sin(ang) * rr * 0.82]);
     }
     i._pts = pts; return pts;
-  }
-
-  // ── Dioramas temáticos para islas de simulación (sin escena del catálogo) ──
-  // Se pre-renderizan una vez por isla (640×400) y en vivo solo se animan olas y almas.
-  function renderDioramaTema(i) {
-    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
-    const tema = i.tema || 'verde';
-    const c = document.createElement('canvas');
-    c.width = 640; c.height = 400;
-    const g = c.getContext('2d');
-    const cielos = { desierto: ['#ffdca6', '#ffb371'], blanco: ['#cfe4ff', '#f0f8ff'], industrial: ['#a8b8cc', '#d2dfe9'], prision: ['#2e3d59', '#5a7095'], mar: ['#7fc3ee', '#cfeeff'], tropical: ['#ffe8b8', '#ffcb8f'], fortaleza: ['#9fc0e8', '#dcecfb'] };
-    const [cs1, cs2] = cielos[tema] || ['#a4dcf4', '#ddf2ff'];
-    const sky = g.createLinearGradient(0, 0, 0, 208);
-    sky.addColorStop(0, cs1); sky.addColorStop(1, cs2);
-    g.fillStyle = sky; g.fillRect(0, 0, 640, 208);
-    // astro y nubes fijas
-    g.fillStyle = tema === 'prision' ? 'rgba(210,225,255,0.5)' : 'rgba(255,240,190,0.9)';
-    g.beginPath(); g.arc(540, 60, 26, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.75)';
-    for (let k = 0; k < 3; k++) {
-      const cx = 60 + ruido(k * 3.3 + i.r) * 380, cy = 40 + ruido(k * 7.1) * 60;
-      g.beginPath(); g.ellipse(cx, cy, 34, 12, 0, 0, 7); g.fill();
-      g.beginPath(); g.ellipse(cx + 22, cy - 8, 22, 9, 0, 0, 7); g.fill();
-    }
-    // mar de fondo con horizonte
-    g.fillStyle = '#2a6cb0'; g.fillRect(0, 200, 640, 60);
-    g.fillStyle = 'rgba(255,255,255,0.22)';
-    for (let k = 0; k < 14; k++) g.fillRect(20 + ruido(k * 2.7 + i.r) * 600, 208 + ruido(k * 5.3) * 44, 22, 2);
-    // terreno: playa y tierra con borde pixelado
-    g.fillStyle = rgb(T.sand); g.fillRect(0, 248, 640, 152);
-    g.fillStyle = rgb(T.land); g.fillRect(0, 266, 640, 134);
-    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 264, 640, 4);
-    // props por tema
-    const arbusto = (x, y, s, col) => { g.fillStyle = col; g.fillRect(x, y, 10 * s, 8 * s); g.fillRect(x + 3 * s, y - 5 * s, 6 * s, 6 * s); };
-    const palmera = (x, y, s) => {
-      g.fillStyle = '#8a5a33'; g.fillRect(x, y - 26 * s, 5 * s, 26 * s);
-      g.fillStyle = rgb(T.tree); g.fillRect(x - 14 * s, y - 34 * s, 33 * s, 9 * s);
-      g.fillRect(x + 8 * s, y - 40 * s, 8 * s, 8 * s);
-    };
-    const pino = (x, y, s, col) => { g.fillStyle = '#6b4a2f'; g.fillRect(x + 4 * s, y - 8 * s, 4 * s, 8 * s); g.fillStyle = col || rgb(T.tree); g.fillRect(x - 6 * s, y - 30 * s, 24 * s, 23 * s); g.fillRect(x - 3 * s, y - 38 * s, 18 * s, 9 * s); };
-    const casa = (x, y, s, techo) => { g.fillStyle = '#f0e6d2'; g.fillRect(x, y - 18 * s, 26 * s, 18 * s); g.fillStyle = techo; g.fillRect(x - 3 * s, y - 24 * s, 32 * s, 7 * s); g.fillStyle = '#6b4a2f'; g.fillRect(x + 10 * s, y - 10 * s, 6 * s, 10 * s); };
-    const fabrica = (x, y, s) => { g.fillStyle = '#9aa5b1'; g.fillRect(x, y - 34 * s, 48 * s, 34 * s); g.fillStyle = '#7d8794'; g.fillRect(x + 6 * s, y - 52 * s, 10 * s, 20 * s); g.fillRect(x + 24 * s, y - 60 * s, 10 * s, 28 * s); g.fillStyle = 'rgba(230,235,240,0.75)'; g.fillRect(x + 27 * s, y - 74 * s, 4 * s, 14 * s); };
-    const duna = (x, y, s) => { g.fillStyle = '#e8c98a'; g.beginPath(); g.ellipse(x, y, 60 * s, 14 * s, 0, Math.PI, 0); g.fill(); };
-    const cactusP = (x, y, s) => { g.fillStyle = '#3f8f4f'; g.fillRect(x, y - 22 * s, 7 * s, 22 * s); g.fillRect(x - 8 * s, y - 16 * s, 8 * s, 5 * s); g.fillRect(x + 7 * s, y - 12 * s, 8 * s, 5 * s); };
-    const iglu = (x, y, s) => { g.fillStyle = '#eef6ff'; g.beginPath(); g.arc(x, y - 12 * s, 16 * s, Math.PI, 0); g.fill(); g.fillStyle = '#b8d4ee'; g.fillRect(x - 4 * s, y - 9 * s, 8 * s, 9 * s); };
-    const muro = (x, y, s) => { g.fillStyle = '#8d99a6'; g.fillRect(x, y - 44 * s, 130 * s, 44 * s); g.fillStyle = '#76828e'; for (let k = 0; k < 5; k++) g.fillRect(x + 8 * s + k * 26 * s, y - 52 * s, 14 * s, 9 * s); };
-    const torre = (x, y, s) => { g.fillStyle = '#6d7884'; g.fillRect(x, y - 64 * s, 16 * s, 64 * s); g.fillStyle = '#2b6cb0'; g.fillRect(x + 2 * s, y - 74 * s, 12 * s, 11 * s); };
-    const reja = (x, y, s) => { g.fillStyle = '#4a5568'; g.fillRect(x, y - 40 * s, 90 * s, 6 * s); for (let k = 0; k < 7; k++) g.fillRect(x + 4 * s + k * 13 * s, y - 40 * s, 4 * s, 40 * s); };
-    const farol = (x, y, s) => { g.fillStyle = '#e8e2d2'; g.fillRect(x, y - 56 * s, 10 * s, 56 * s); g.fillStyle = '#d33'; g.fillRect(x + 1 * s, y - 64 * s, 8 * s, 9 * s); };
-    const roca = (x, y, s) => { g.fillStyle = '#78838f'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 18 * s, y - 34 * s); g.lineTo(x + 34 * s, y); g.closePath(); g.fill(); };
-    let k = 0;
-    switch (tema) {
-      case 'desierto':
-        duna(120, 300, 1); duna(420, 330, 1.2); duna(260, 355, 0.9);
-        cactusP(90, 330, 1); cactusP(540, 345, 1.2); cactusP(330, 360, 0.9);
-        g.fillStyle = '#d9b36c'; g.beginPath(); g.moveTo(380, 352); g.lineTo(430, 268); g.lineTo(480, 352); g.closePath(); g.fill(); // pirámide
-        break;
-      case 'blanco':
-        for (k = 0; k < 7; k++) pino(40 + k * 88, 320 + ruido(k) * 40, 1, '#dfeefc');
-        iglu(300, 340, 1.2); iglu(500, 360, 1);
-        g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(0, 266, 640, 8); // nieve fresca
-        break;
-      case 'industrial':
-        fabrica(70, 330, 1); fabrica(250, 350, 1.2); fabrica(450, 325, 0.9);
-        for (k = 0; k < 5; k++) { g.fillStyle = '#5f6a76'; g.fillRect(120 + k * 96, 300, 12, 26); } // chimeneas
-        break;
-      case 'fortaleza':
-        muro(160, 340, 1.4); torre(140, 340, 1); torre(420, 340, 1.1);
-        g.fillStyle = '#2b6cb0'; g.fillRect(300, 268, 8, 22); g.fillStyle = '#f5f0e6'; g.fillRect(308, 268, 14, 9); // bandera
-        break;
-      case 'prision':
-        reja(200, 350, 1.4); g.fillStyle = '#3a4658'; g.fillRect(120, 290, 400, 20); // muralla alta
-        farol(480, 350, 0.8);
-        break;
-      case 'mar': // restaurante flotante estilo Baratie
-        g.fillStyle = '#6b4a2f'; g.fillRect(180, 296, 280, 18);
-        casa(240, 296, 1.6, '#d33'); farol(200, 296, 0.6);
-        break;
-      case 'tropical':
-        palmera(90, 330, 1.1); palmera(200, 360, 0.9); palmera(420, 330, 1.2); palmera(560, 355, 1);
-        casa(300, 350, 1.1, '#c98a3d');
-        break;
-      case 'ciudad': case 'puerto':
-        farol(80, 345, 1.1);
-        for (k = 0; k < 4; k++) casa(140 + k * 90, 330 + (k % 2) * 26, 1 + ruido(k) * 0.4, ['#c0533d', '#3d6bc0', '#c9a13d', '#4f8f5f'][k]);
-        g.fillStyle = '#8a5a33'; g.fillRect(40, 356, 560, 10); // muelle
-        break;
-      case 'rocosa':
-        roca(110, 340, 1.4); roca(300, 355, 1); roca(480, 330, 1.7); roca(560, 360, 0.9);
-        break;
-      default: // verde, bosque, jungla
-        for (k = 0; k < 6; k++) pino(50 + k * 104, 320 + ruido(k * 1.7 + i.r) * 46, 0.9 + ruido(k) * 0.5);
-        arbusto(180, 355, 1.2, rgb(T.land2)); arbusto(400, 345, 1, rgb(T.land2));
-        casa(500, 350, 1, '#7a9a4d');
-    }
-    // luz de tarde + viñeta suave: la misma capa 32-bit de los dioramas del catálogo
-    const luz = g.createLinearGradient(0, 0, 640, 400);
-    luz.addColorStop(0, 'rgba(255,244,214,.10)');
-    luz.addColorStop(.5, 'rgba(255,255,255,0)');
-    luz.addColorStop(1, 'rgba(4,14,28,.16)');
-    g.fillStyle = luz; g.fillRect(0, 0, 640, 400);
-    const vina = g.createRadialGradient(320, 180, 170, 320, 200, 430);
-    vina.addColorStop(0, 'rgba(0,0,0,0)');
-    vina.addColorStop(1, 'rgba(3,10,22,.15)');
-    g.fillStyle = vina; g.fillRect(0, 0, 640, 400);
-    return c;
-  }
-  // Capa viva encima del diorama cacheado: olas del horizonte y almas caminando.
-  function propsVivas(g, i, t) {
-    g.fillStyle = 'rgba(255,255,255,0.3)';
-    for (let k = 0; k < 5; k++) {
-      const x = ((t / 26 + k * 137 + i.r * 9) % 620) + 10;
-      g.fillRect(x, 212 + (k % 3) * 14, 20, 2);
-    }
-    const n = 2 + (Math.floor(i.r) % 3);
-    for (let k = 0; k < n; k++) {
-      const x = 80 + ruido(k * 9.3 + i.r) * 480;
-      const y = 296 + ruido(k * 3.1) * 60;
-      const paseo = Math.sin(t / 1400 + k * 2.4) * 26;
-      g.fillStyle = '#3d2f23'; g.fillRect(x + paseo, y - 8, 5, 9); // cuerpo
-      g.fillStyle = '#e8c8a0'; g.fillRect(x + paseo + 1, y - 12, 3, 4); // cabeza
-    }
   }
 
   // ── Vista media de la isla: bajío claro, espuma, arena, tierra con parches,
@@ -681,33 +510,684 @@
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  UN SOLO MAPA — islas pixel-art detalladas que crecen DENTRO del mapa.
+  //  Al acercar el zoom la isla NO se sustituye por una escena aparte:
+  //  revela playa, terreno con textura, relieve, aldea temática y muelle,
+  //  todo pre-renderizado una vez por isla (sprite cacheado, LRU) y escalado
+  //  sin suavizado: píxeles nítidos con la misma estética del globo.
+  // ═══════════════════════════════════════════════════════════════════════
+  const DETALLE_Z = 1.12;
+  MAPA.usaDetalle = function () { return cam.z >= DETALLE_Z; };
+
+  function hIsla(i, k) { // hash determinista isla+slot: el mismo arte cada frame
+    let h = 7;
+    for (const ch of i.id + '#' + k) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return (h ^ (h >>> 13)) >>> 0;
+  }
+  const rIsla = (i, k) => (hIsla(i, k) % 1000) / 1000;
+  const ES_MOVIL = (typeof screen !== 'undefined' && Math.min(screen.width || 0, screen.height || 0) < 820) || (typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent || ''));
+  const SPR_S = ES_MOVIL ? 5 : 6;
+  // px del sprite por unidad de mundo. Con las islas grandes 8px eran ~18MB por isla
+  // (×16 en caché ≈ 280MB: la GPU del teléfono se ahogaba). 5-6 mantiene el pixel art nítido.
+
+  // ── EL LAYOUT canónico de cada isla: UNA lista determinista de casas, árboles
+  //    y adornos compartida por TODO el arte. El zoom ya no cambia de artista:
+  //    la misma aldea gana resolución. La noche enciende ESTAS ventanas. ──
+  function layoutIsla(i) {
+    if (i._lay) return i._lay;
+    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
+    const tema = i.tema || 'verde';
+    const r = i.r;
+    const baseCasas = { ciudad: 6, puerto: 4, fortaleza: 3, prision: 0, japon: 5, dulce: 4, gobierno: 5 }[tema] ?? (3 + Math.floor(rIsla(i, 7) * 4));
+    const dens = Math.max(1, Math.min(1.6, r / 27)); // islas más grandes: más pueblo, misma proporción
+    const nCasas = Math.round(baseCasas * dens);
+    const casas = [];
+    for (let q = 0; q < nCasas; q++) {
+      const a = rIsla(i, 100 + q * 3) * 6.2832;
+      const rr = r * (0.14 + rIsla(i, 130 + q) * 0.36);
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr * 0.7 + 2, s = 0.9 + rIsla(i, 160 + q) * 0.5;
+      casas.push({ x, y, wy: y - 4.4 * s, s, roof: T.roof[q % T.roof.length] });
+    }
+    const nArb = Math.round((7 + (T.trees || 0.3) * 10) * Math.max(1, Math.min(1.5, r / 27)));
+    const arboles = [];
+    for (let q = 0; q < nArb; q++) {
+      const a = (q / nArb) * 6.2832 + (rIsla(i, 200 + q) - 0.5) * 0.5;
+      const rr = r * (0.5 + rIsla(i, 230 + q) * 0.3);
+      arboles.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.76, s: 0.8 + rIsla(i, 260 + q) * 0.5 });
+    }
+    // adornos de interior: arbustos, matas, rocas y flores (la vida de cerca)
+    const adornos = [];
+    const nAd = 6 + Math.floor(rIsla(i, 9) * 5);
+    for (let q = 0; q < nAd; q++) {
+      const a = rIsla(i, 400 + q) * 6.2832;
+      const rr = r * (0.2 + rIsla(i, 430 + q) * 0.52);
+      adornos.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.66, t: rIsla(i, 460 + q) });
+    }
+    i._lay = { casas, arboles, adornos };
+    return i._lay;
+  }
+
+  // Chaikin ×2: la MISMA silueta de formaIsla con costa orgánica (continuidad al hacer zoom)
+  function suaviza(pts, iter) {
+    let out = pts;
+    for (let n = 0; n < iter; n++) {
+      const nx = [];
+      for (let k = 0; k < out.length; k++) {
+        const a = out[k], b = out[(k + 1) % out.length];
+        nx.push([a[0] * 0.72 + b[0] * 0.28, a[1] * 0.72 + b[1] * 0.28]);
+        nx.push([a[0] * 0.28 + b[0] * 0.72, a[1] * 0.28 + b[1] * 0.72]);
+      }
+      out = nx;
+    }
+    return out;
+  }
+
+  const cacheSprites = new Map();
+  // día/noche: la atmósfera la escribe el HUD en <body> cada tick; al cambiar,
+  // la caché de sprites se invalida para que el pueblo se encienda o apague.
+  const esNoche = () => document.body?.dataset.atmosphere === 'night';
+  let nocheCache = null;
+  function spriteDetalle(i) {
+    const hit = cacheSprites.get(i.id);
+    if (hit) { cacheSprites.delete(i.id); cacheSprites.set(i.id, hit); return hit; }
+    const noche = esNoche();
+    if (nocheCache !== noche) { cacheSprites.clear(); nocheCache = noche; }
+    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
+    const r = i.r, tema = i.tema || 'verde';
+    const R = Math.ceil(r * 1.9 + 54);
+    const c = document.createElement('canvas');
+    c.width = c.height = R * 2 * SPR_S;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.scale(SPR_S, SPR_S);
+    g.translate(R, R);
+    const rgb2 = (col) => 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+    const el = (x, y, rx, ry, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); };
+    const rc = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    const pts = suaviza(formaIsla(i), 2);
+    const poly = (esc, col, stroke, lw) => {
+      g.beginPath();
+      pts.forEach(([dx, dy], k) => { const X = dx * esc, Y = dy * esc; if (k) g.lineTo(X, Y); else g.moveTo(X, Y); });
+      g.closePath();
+      if (col) { g.fillStyle = col; g.fill(); }
+      if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.stroke(); }
+    };
+    const clipLand = () => { g.save(); g.beginPath(); pts.forEach(([dx, dy], k) => { const X = dx * 0.82, Y = dy * 0.82; if (k) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.closePath(); g.clip(); };
+
+    // ── sombra, bajío y arena ──
+    el(2, 5, r * 1.62, r * 1.3, 'rgba(6,26,48,0.30)');
+    el(0, 0, r * 1.95, r * 1.56, 'rgba(16,58,110,0.12)'); // aguas profundas: borde cartográfico
+    el(0, 0, r * 1.68, r * 1.36, 'rgba(150,205,232,0.30)');
+    el(0, 0, r * 1.38, r * 1.12, 'rgba(168,216,238,0.42)');
+    poly(1.04, rgb2(T.sand), 'rgba(255,255,255,0.5)', 1.2);
+    poly(0.92, 'rgba(196,168,104,0.55)'); // arena mojada
+    poly(0.82, rgb2(T.land));
+    // textura dither del terreno: grano determinista en dos tonos
+    clipLand();
+    for (let yy = -r * 0.9; yy < r * 0.9; yy += 1.4) {
+      for (let xx = -r * 0.9; xx < r * 0.9; xx += 1.4) {
+        const n = rIsla(i, Math.floor(xx * 3.7 + yy * 91) % 9973);
+        if (n > 0.72) rc(xx, yy, 1.1, 1.1, 'rgba(' + T.land2.join(',') + ',0.6)');
+        else if (n < 0.1) rc(xx, yy, 1.1, 1.1, 'rgba(255,255,255,0.08)');
+      }
+    }
+    for (let q = 0; q < 4; q++) {
+      const a = rIsla(i, 40 + q) * 6.2832, rr = r * (0.16 + rIsla(i, 60 + q) * 0.3);
+      el(Math.cos(a) * rr, Math.sin(a) * rr * 0.72, r * 0.3, r * 0.22, 'rgba(' + T.land2.join(',') + ',0.75)');
+    }
+    // luz solar del noroeste: el terreno brilla hacia el sol, se apaga al sureste
+    const sol = g.createRadialGradient(-r * 0.45, -r * 0.5, r * 0.15, 0, 0, r * 1.35);
+    sol.addColorStop(0, 'rgba(255,246,214,0.12)');
+    sol.addColorStop(0.55, 'rgba(255,255,255,0)');
+    sol.addColorStop(1, 'rgba(8,20,40,0.16)');
+    g.fillStyle = sol; g.fillRect(-r * 1.1, -r * 1.1, r * 2.2, r * 2.2);
+    // hallazgos de playa: conchas y madera a la deriva en el anillo de arena
+    for (let q = 0; q < 4; q++) {
+      const a = rIsla(i, 500 + q) * 6.2832, rr = r * (0.9 + rIsla(i, 530 + q) * 0.1);
+      const px = Math.cos(a) * rr, py = Math.sin(a) * rr * 0.8;
+      if (q % 2) { el(px, py, 1.4, 1.1, 'rgba(255,252,240,0.85)'); el(px + 0.5, py - 0.4, 0.5, 0.4, '#e8a0c0'); }
+      else { g.strokeStyle = 'rgba(122,82,54,0.75)'; g.lineWidth = 1; g.beginPath(); g.moveTo(px - 2.4, py + 0.8); g.lineTo(px + 2.2, py - 0.6); g.stroke(); }
+    }
+    g.restore();
+
+    // ── vegetación en el anillo exterior (determinista, con sombra) ──
+    const palmeraP = (x, y, s) => {
+      el(x + 1, y + 1, 5 * s, 2 * s, 'rgba(6,26,48,0.25)');
+      for (let k = 0; k < 6; k++) rc(x + k * 0.9 * s - 1, y - k * 2.1 * s, 1.8 * s, 2.4 * s, '#8a5a33');
+      const tx = x + 4.5 * s, ty = y - 12 * s;
+      rc(tx - 7 * s, ty - 1 * s, 15 * s, 2.6 * s, rgb2(T.tree));
+      rc(tx - 4 * s, ty - 3.4 * s, 11 * s, 2.6 * s, rgb2(T.tree));
+      rc(tx + 3 * s, ty + 1 * s, 8 * s, 2.4 * s, rgb2(T.tree));
+      rc(tx - 9 * s, ty + 1.2 * s, 8 * s, 2.2 * s, rgb2(T.tree));
+      rc(tx - 2 * s, ty - 2 * s, 6 * s, 1.6 * s, 'rgba(255,255,255,0.18)');
+      el(tx - 1, ty + 2, 1 * s, 1 * s, '#6b4a2f'); el(tx + 1.5, ty + 2.6, 1 * s, 1 * s, '#6b4a2f');
+    };
+    const pinoP = (x, y, s, nieve) => {
+      el(x + 1, y + 1, 4 * s, 1.8 * s, 'rgba(6,26,48,0.25)');
+      rc(x - 0.8 * s, y - 3 * s, 1.6 * s, 4 * s, '#5b3f28');
+      const tri = (x0, y0, w0, h0, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x0 - w0, y0); g.lineTo(x0, y0 - h0); g.lineTo(x0 + w0, y0); g.closePath(); g.fill(); };
+      tri(x, y - 3 * s, 5 * s, 8 * s, rgb2(T.tree));
+      tri(x, y - 8 * s, 4 * s, 7 * s, rgb2(T.tree));
+      tri(x, y - 12 * s, 2.6 * s, 5 * s, rgb2(T.tree));
+      if (nieve) { tri(x, y - 12 * s, 2.4 * s, 4 * s, 'rgba(238,248,255,0.9)'); rc(x - 3 * s, y - 6 * s, 6 * s, 1.2 * s, 'rgba(238,248,255,0.75)'); }
+    };
+    const cactusP = (x, y, s) => {
+      el(x + 1, y + 1, 3.6 * s, 1.6 * s, 'rgba(6,26,48,0.25)');
+      rc(x - 1 * s, y - 8 * s, 2 * s, 8 * s, '#3f8f4f');
+      rc(x - 3.4 * s, y - 6 * s, 2.4 * s, 1.6 * s, '#3f8f4f'); rc(x - 3.4 * s, y - 8 * s, 1.4 * s, 3 * s, '#3f8f4f');
+      rc(x + 1.6 * s, y - 5 * s, 2.4 * s, 1.6 * s, '#3f8f4f'); rc(x + 3 * s, y - 7.4 * s, 1.4 * s, 3.4 * s, '#3f8f4f');
+    };
+    const chimeneas = [];
+    const casaP = (x, y, s, roof) => {
+      rc(x - 6.6 * s, y + 1.8 * s, 14 * s, 2.6 * s, 'rgba(6,26,48,0.28)');
+      rc(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 7 * s, rgb2(T.wall));
+      rc(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 1.1 * s, 'rgba(255,255,255,0.2)'); // luz del norte en la fachada
+      rc(x + 3.4 * s, y - 4.6 * s, 2.2 * s, 6 * s, 'rgba(0,0,0,0.1)'); // sombra del este
+      g.strokeStyle = 'rgba(30,22,12,0.5)'; g.lineWidth = 0.5; g.strokeRect(x - 5.6 * s, y - 5.6 * s, 11.2 * s, 7 * s);
+      rc(x - 7.4 * s, y - 9 * s, 14.8 * s, 3.6 * s, rgb2(roof));
+      rc(x - 7.4 * s, y - 9 * s, 14.8 * s, 1.1 * s, 'rgba(255,255,255,0.25)'); // cumbrera iluminada
+      rc(x - 7.4 * s, y - 5.8 * s, 14.8 * s, 0.7 * s, 'rgba(0,0,0,0.18)'); // alero en sombra
+      rc(x - 1.7 * s, y - 2.4 * s, 3.4 * s, 4.6 * s, 'rgba(60,42,26,0.85)'); // puerta
+      // ventanas: de día vidrio neutro; de noche se encienden — halo cálido,
+      // la del fondo del mar también, y un charco de luz en el suelo
+      if (noche) {
+        rc(x - 5.1 * s, y - 4.4 * s, 3.2 * s, 3.2 * s, 'rgba(255,214,120,0.26)');
+        rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,226,140,0.98)');
+        rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(255,214,120,0.9)');
+        el(x - 3.2 * s, y + 2.8 * s, 7.4 * s, 2.6 * s, 'rgba(255,214,120,0.13)');
+        g.strokeStyle = 'rgba(30,22,12,0.35)'; g.lineWidth = 0.4;
+        g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+        g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      } else {
+        rc(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(196,218,230,0.72)');
+        rc(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s, 'rgba(120,150,180,0.6)');
+        g.strokeStyle = 'rgba(30,22,12,0.55)'; g.lineWidth = 0.4;
+        g.strokeRect(x - 4.6 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+        g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      }
+      g.strokeRect(x + 2.4 * s, y - 3.9 * s, 2.2 * s, 2.2 * s);
+      if (rIsla(i, 700 + Math.round(x * 7 + y * 13)) > 0.62) { // alguna casa echa humo
+        rc(x + 4 * s, y - 11.6 * s, 2.2 * s, 3.4 * s, '#8a6d5a');
+        rc(x + 4.4 * s, y - 12.2 * s, 1.4 * s, 0.8 * s, 'rgba(255,255,255,0.2)');
+      }
+    };
+    // ── relieve: montañas con cara en luz y en sombra (por tema) ──
+    const tri = (x0, y0, w0, h0, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x0 - w0, y0); g.lineTo(x0, y0 - h0); g.lineTo(x0 + w0, y0); g.closePath(); g.fill(); };
+    const nieveTema = tema === 'nieve' || tema === 'blanco';
+    const nMont = { rocosa: 2, japon: 1, oscuro: 1, nieve: 1, blanco: 1, bosque: 1, burbujas: 0 }[tema] ?? (rIsla(i, 5) > 0.6 ? 1 : 0);
+    for (let q = 0; q < nMont; q++) {
+      const mx = (rIsla(i, 70 + q) - 0.5) * r * 0.9, my = (rIsla(i, 80 + q) - 0.3) * r * 0.5;
+      const mw = r * (0.5 + rIsla(i, 90 + q) * 0.3), mh = mw * (0.72 + rIsla(i, 95 + q) * 0.4);
+      el(mx + mw * 0.15, my + 1.6, mw * 0.85, mw * 0.2, 'rgba(6,26,48,0.18)'); // asiento en el terreno
+      tri(mx, my, mw, mh, '#5d6a76');
+      tri(mx + mw * 0.42, my, mw * 0.58, mh * 0.86, 'rgba(255,255,255,0.14)');
+      if (nieveTema) tri(mx, my - mh * 0.78, mw * 0.3, mh * 0.3, 'rgba(240,248,255,0.92)');
+    }
+    if (tema === 'desierto') {
+      el(-r * 0.4, r * 0.28, r * 0.5, r * 0.14, '#e8c98a');
+      el(r * 0.3, r * 0.42, r * 0.44, r * 0.12, '#dfbe7e');
+    }
+
+    // ── aldea temática: el LAYOUT compartido — las mismas casas a todo zoom ──
+    const lay = layoutIsla(i);
+    // caminos de tierra: del muelle a la plaza y de la plaza a cada casa
+    clipLand();
+    const camino = (x0, y0, x1, y1, w) => {
+      g.strokeStyle = 'rgba(146,112,66,0.55)'; g.lineWidth = w; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x0, y0);
+      g.quadraticCurveTo((x0 + x1) / 2 + (y1 - y0) * 0.18, (y0 + y1) / 2 - (x1 - x0) * 0.18, x1, y1);
+      g.stroke();
+    };
+    camino(0, r * 0.78, 0, r * 0.1, 2.6);
+    for (const c of lay.casas) camino(0, r * 0.1, c.x, c.y, 1.7);
+    g.restore();
+    // plaza central: pozo de piedra donde todo converge
+    el(0, r * 0.06 + 1, 3.6, 2.7, 'rgba(6,26,48,0.22)');
+    el(0, r * 0.04, 3.2, 2.4, '#9aa8b4'); el(0, r * 0.04, 1.5, 1.1, '#5d6a76');
+    for (const c of lay.casas) casaP(c.x, c.y, c.s, c.roof);
+    if (i.base || tema === 'fortaleza') { // bastión de la Marina: muralla + torres + asta
+      rc(-r * 0.62, r * 0.1, r * 1.24, r * 0.5, '#9aa8b4');
+      rc(-r * 0.62, r * 0.1, r * 1.24, r * 0.1, 'rgba(255,255,255,0.25)');
+      for (const tx of [-r * 0.62, 0, r * 0.5]) {
+        rc(tx, r * 0.1 - r * 0.34, r * 0.16, r * 0.34, '#8794a1');
+        for (let m = 0; m < 3; m++) rc(tx + m * r * 0.06, r * 0.1 - r * 0.4, r * 0.035, r * 0.07, '#8794a1');
+      }
+      rc(-r * 0.18, r * 0.1 - r * 0.62, r * 0.36, r * 0.62, '#7d8b98');
+      rc(-r * 0.1, r * 0.1 - r * 0.5, r * 0.2, r * 0.2, 'rgba(20,30,44,0.55)');
+      i._flag = [0, r * 0.1 - r * 0.62 - 6];
+      rc(-0.7, r * 0.1 - r * 0.62 - 8, 1.4, 8, '#5b3f28');
+    }
+    if (i.tribunal && i.id !== 'enies') { rc(-r * 0.4, -r * 0.62, r * 0.8, r * 0.4, '#e8e2d2'); rc(-r * 0.44, -r * 0.68, r * 0.88, r * 0.1, '#d69e2e'); el(0, -r * 0.48, r * 0.12, r * 0.12, '#d69e2e'); }
+    if (tema === 'prision') {
+      rc(-r * 0.66, -r * 0.5, r * 1.32, r * 0.8, '#3a4658');
+      for (let m = 0; m < 8; m++) rc(-r * 0.6 + m * r * 0.16, -r * 0.7, r * 0.05, r * 1.1, '#4a5568');
+      rc(-r * 0.1, -r * 1.05, r * 0.2, r * 0.6, '#2e3a4c');
+      i._flag = [r * 0.1, -r * 1.05 - 6];
+      rc(r * 0.1 - 0.7, -r * 1.05 - 8, 1.4, 8, '#5b3f28');
+    }
+    if (i.restaurante || tema === 'mar') { // casco flotante estilo Baratie
+      rc(-r * 0.62, r * 0.24, r * 1.24, r * 0.3, '#6b4a2f');
+      casaP(0, r * 0.24, 1.5, '#c0392b');
+      rc(0 - 0.8, r * 0.24 - r * 0.9, 1.6, r * 0.7, '#8a6d3b');
+      i._flag = [0, r * 0.24 - r * 0.9];
+    }
+    if (tema === 'burbujas') { // manglares de Yarukiman: troncos gruesos + copa ancha
+      for (const tx of [-r * 0.34, r * 0.1, r * 0.4]) {
+        rc(tx - 1.6, -r * 0.2 - r * 0.5, 3.2, r * 0.6, '#7a5236');
+        el(tx, -r * 0.2 - r * 0.62, r * 0.3, r * 0.16, rgb2(T.tree));
+        el(tx - r * 0.14, -r * 0.2 - r * 0.7, r * 0.18, r * 0.1, 'rgba(255,255,255,0.16)');
+      }
+    }
+    if (tema === 'japon') { // meseta con muralla y gran portal
+      rc(-r * 0.5, -r * 0.1, r, r * 0.14, '#7a5236');
+      rc(-r * 0.42, -r * 0.24, r * 0.84, r * 0.14, '#8a6142');
+      rc(-r * 0.3, -r * 0.66, 2.4, r * 0.42, '#b03a3a'); rc(r * 0.3 - 2.4, -r * 0.66, 2.4, r * 0.42, '#b03a3a');
+      rc(-r * 0.42, -r * 0.66, r * 0.84, 2, '#b03a3a');
+      rc(-r * 0.34, -r * 0.76, r * 0.68, 1.6, '#2b6cb0');
+    }
+    if (tema === 'dulce') {
+      rc(-r * 0.34, -r * 0.3, r * 0.68, r * 0.16, '#f2a7c3');
+      rc(-r * 0.26, -r * 0.5, r * 0.52, r * 0.16, '#f7c6d9');
+      rc(-r * 0.16, -r * 0.68, r * 0.32, r * 0.16, '#fddfe9');
+      for (const dx of [-r * 0.3, 0, r * 0.3]) el(dx, -r * 0.3 + 1, 2.4, 1.6, '#fff0f5');
+    }
+    if (tema === 'nubes') { // base de nubes bajo la isla (Isla del Cielo)
+      el(-r * 0.3, r * 0.72, r * 0.42, r * 0.16, 'rgba(255,255,255,0.85)');
+      el(r * 0.26, r * 0.82, r * 0.34, r * 0.13, 'rgba(255,255,255,0.7)');
+    }
+    if (tema === 'oscuro' && i.fantasma) { // navío fantasma varado
+      rc(-r * 0.5, r * 0.3, r, r * 0.22, '#2c3440');
+      rc(-r * 0.3, -r * 0.4, 1.6, r * 0.66, '#3c4654');
+      rc(-r * 0.14, -r * 0.34, r * 0.34, r * 0.2, 'rgba(190,210,235,0.4)');
+    }
+    if (i.natal) { // Villa Foosha: el molino de viento
+      rc(-3, -r * 0.52, 6, r * 0.34, '#e6dec4');
+      rc(-4, -r * 0.6, 8, 3.6, '#c0533d');
+      g.save(); g.translate(0, -r * 0.5);
+      for (let q = 0; q < 4; q++) { g.rotate(Math.PI / 2); rc(1.2, -1.2, r * 0.42, 2.2, '#f0e6d2'); }
+      g.restore();
+    }
+    if (i.entrada) { // Monte Contracorriente: la montaña invertida con cascada ascendente
+      tri(0, r * 0.4, r * 1.1, r * 1.5, '#5d6a76');
+      tri(r * 0.4, r * 0.4, r * 0.7, r * 1.3, 'rgba(255,255,255,0.14)');
+      rc(-2.2, -r * 1.1, 4.4, r * 1.3, 'rgba(150,205,238,0.75)');
+      for (let q = 0; q < 5; q++) el(-1.6 + q, -r * 1.1 - q * 4, 1.6, 1, 'rgba(200,230,250,0.6)');
+    }
+    // ── LANDMARKS CANÓNICOS: cada isla icónica con su hito propio de One Piece ──
+    // (misma mano que el resto del arte: bloques planos, luz del norte, sombra del este)
+    if (i.id === 'arabasta') { // el palacio de Alubarna: cúpula dorada sobre el desierto
+      el(0, r * 0.3 + 2, r * 0.4, r * 0.12, 'rgba(6,26,48,0.22)');
+      rc(-r * 0.34, -r * 0.16, r * 0.68, r * 0.42, '#e8d9b8');
+      rc(-r * 0.34, -r * 0.16, r * 0.68, r * 0.09, 'rgba(255,255,255,0.22)');
+      rc(-r * 0.34, r * 0.18, r * 0.68, r * 0.09, 'rgba(0,0,0,0.12)');
+      for (const tx of [-r * 0.34, r * 0.16]) { rc(tx, -r * 0.5, r * 0.18, r * 0.38, '#dccdaa'); el(tx + r * 0.09, -r * 0.5, r * 0.09, r * 0.09, '#c9a227'); }
+      rc(-r * 0.12, -r * 0.66, r * 0.24, r * 0.5, '#e8d9b8');
+      g.fillStyle = '#d4af37'; g.beginPath(); g.arc(0, -r * 0.66, r * 0.16, Math.PI, 0); g.closePath(); g.fill();
+      el(-r * 0.05, -r * 0.72, r * 0.06, r * 0.05, 'rgba(255,246,214,0.55)');
+      el(0, r * 0.3, r * 0.06, r * 0.05, '#4a90c2'); // el oasis bajo el palacio
+      palmeraP(-r * 0.42, r * 0.34, 1); palmeraP(r * 0.44, r * 0.3, 1);
+    }
+    if (i.id === 'drum') { // castillo Drum: la fortaleza en la cima de la montaña nevada
+      tri(0, r * 0.62, r * 1.05, r * 1.15, '#7f8ea0');
+      tri(r * 0.4, r * 0.62, r * 0.62, r * 0.98, 'rgba(255,255,255,0.16)');
+      tri(0, r * 0.62 - r * 0.86, r * 0.3, r * 0.32, 'rgba(240,248,255,0.92)');
+      const dy = r * 0.62 - r * 0.9;
+      el(0, dy + 2, r * 0.16, r * 0.06, 'rgba(6,26,48,0.25)');
+      rc(-r * 0.11, dy - r * 0.22, r * 0.22, r * 0.24, '#e8e4d4');
+      for (const tx of [-r * 0.13, r * 0.04]) { rc(tx, dy - r * 0.34, r * 0.09, r * 0.36, '#e8e4d4'); tri(tx + r * 0.045, dy - r * 0.34, r * 0.07, r * 0.12, '#4a6fa5'); }
+      tri(0, dy - r * 0.34, r * 0.12, r * 0.14, '#4a6fa5');
+      rc(0, dy - r * 0.58, 1.2, r * 0.14, '#5b3f28'); el(0.6, dy - r * 0.6, 2.2, 1.6, '#e8a0c0'); // la bandera del cerezo rosa
+    }
+    if (i.id === 'skypiea') { // el arca con la campana dorada de Shandora
+      rc(-r * 0.44, -r * 0.06, r * 0.88, r * 0.12, '#d8cfa8');
+      rc(-r * 0.36, -r * 0.12, r * 0.72, r * 0.07, '#c9bd92');
+      for (const tx of [-r * 0.32, r * 0.2]) rc(tx, -r * 0.4, 2, r * 0.34, '#b8a878');
+      rc(-r * 0.4, -r * 0.44, r * 0.8, r * 0.08, '#d8cfa8');
+      rc(0 - 0.8, -r * 0.36, 1.6, r * 0.22, '#8a6d3b');
+      const cy2 = -r * 0.14 + r * 0.22;
+      g.fillStyle = '#d4af37'; g.beginPath(); g.arc(0, cy2, r * 0.13, Math.PI, 0); g.closePath(); g.fill();
+      rc(-r * 0.13, cy2, r * 0.26, r * 0.12, '#d4af37');
+      el(-r * 0.04, cy2 + r * 0.1, r * 0.05, r * 0.04, 'rgba(255,246,214,0.6)');
+      el(0, cy2 + r * 0.16, 2, 1.6, '#8a6d3b');
+      el(-r * 0.34, r * 0.66, r * 0.3, r * 0.1, 'rgba(255,255,255,0.8)'); el(r * 0.3, r * 0.74, r * 0.22, r * 0.09, 'rgba(255,255,255,0.6)');
+    }
+    if (i.id === 'enies') { // la Torre de la Justicia sobre la corriente del vacío
+      el(0, r * 0.36, r * 0.5, r * 0.16, '#cfc4a0');
+      rc(-r * 0.42, r * 0.22, r * 0.84, r * 0.18, '#e8e2d2');
+      rc(-r * 0.24, -r * 0.42, r * 0.48, r * 0.68, '#f2eee2');
+      rc(-r * 0.24, -r * 0.42, r * 0.48, r * 0.1, 'rgba(255,255,255,0.3)');
+      for (let m = 0; m < 3; m++) rc(-r * 0.16 + m * r * 0.16, -r * 0.24, r * 0.08, r * 0.12, 'rgba(120,150,180,0.7)');
+      tri(-r * 0.3, -r * 0.42, r * 0.3, r * 0.14, '#d9d2bc'); tri(r * 0.3, -r * 0.42, r * 0.3, r * 0.14, '#d9d2bc');
+      tri(0, -r * 0.42, r * 0.3, r * 0.2, '#c9a227');
+      rc(0 - 0.7, -r * 0.62 - 8, 1.4, 8, '#5b3f28'); i._flag = [0, -r * 0.62 - 6];
+      rc(-r * 0.6, r * 0.4, r * 0.24, r * 0.34, 'rgba(150,205,238,0.6)'); // la cascada que cae al vacío
+      for (let q = 0; q < 3; q++) el(-r * 0.48 + q * 2, r * 0.76 + q * 2, 3, 1.2, 'rgba(150,205,238,0.4)');
+    }
+    if (i.id === 'zou') { // ¡el gigante elefante Zunesha! la isla es su espalda
+      const ey = r * 0.62;
+      g.strokeStyle = '#6f7d8c'; g.lineWidth = r * 0.1; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(r * 0.72, ey - r * 0.3); g.quadraticCurveTo(r * 1.05, ey - r * 0.1, r * 1.0, ey + r * 0.5); g.stroke();
+      g.strokeStyle = '#5d6a78'; g.lineWidth = r * 0.055;
+      g.beginPath(); g.moveTo(r * 0.78, ey - r * 0.24); g.quadraticCurveTo(r * 1.02, ey - r * 0.05, r * 0.98, ey + r * 0.44); g.stroke();
+      el(r * 0.62, ey - r * 0.38, r * 0.34, r * 0.3, '#7f8ea0');
+      el(r * 0.44, ey - r * 0.44, r * 0.16, r * 0.24, '#5d6a78');
+      el(r * 0.72, ey - r * 0.42, r * 0.05, r * 0.05, '#f2eee2'); el(r * 0.72, ey - r * 0.42, r * 0.022, r * 0.022, '#1a202c');
+      el(r * 0.62, ey - r * 0.34, r * 0.1, r * 0.05, 'rgba(255,255,255,0.15)');
+      for (const lx of [-r * 0.52, -r * 0.2, r * 0.18]) { rc(lx, ey + r * 0.2, r * 0.14, r * 0.5, '#6f7d8c'); rc(lx + 1, ey + r * 0.2, r * 0.05, r * 0.5, 'rgba(255,255,255,0.12)'); }
+    }
+    if (i.id === 'dressrosa') { // el Coliseo Corrida: anillo de piedra con arcos
+      el(0, -r * 0.12, r * 0.44, r * 0.3, '#c8b48a');
+      el(0, -r * 0.14, r * 0.34, r * 0.21, '#e0cba0');
+      el(0, -r * 0.16, r * 0.22, r * 0.12, '#d69e5e');
+      g.strokeStyle = '#a8906a'; g.lineWidth = 2;
+      g.beginPath(); g.ellipse(0, -r * 0.12, r * 0.44, r * 0.3, 0, 0, 7); g.stroke();
+      for (let m = 0; m < 8; m++) { const a = m / 8 * 6.2832; el(Math.cos(a) * r * 0.39, -r * 0.12 + Math.sin(a) * r * 0.26, r * 0.045, r * 0.03, 'rgba(60,48,34,0.6)'); }
+      for (const fx of [-r * 0.5, r * 0.5]) { rc(fx, -r * 0.34, 1.2, r * 0.14, '#5b3f28'); el(fx + 0.6, -r * 0.36, 2, 1.5, '#d33'); }
+    }
+    if (i.id === 'logue') { // la plataforma de ejecución: donde todo empezó
+      el(0, r * 0.28 + 2, r * 0.3, r * 0.1, 'rgba(6,26,48,0.2)');
+      rc(-r * 0.22, r * 0.06, r * 0.44, r * 0.16, '#d9c9a8');
+      rc(-r * 0.16, r * 0.22, r * 0.32, r * 0.08, '#c9b894');
+      rc(-r * 0.14, -r * 0.34, 2, r * 0.4, '#8a7a5c'); rc(r * 0.14 - 2, -r * 0.34, 2, r * 0.4, '#8a7a5c');
+      rc(-r * 0.16, -r * 0.36, r * 0.32, 2.2, '#8a7a5c');
+      i._flag = [0, -r * 0.36]; rc(-0.7, -r * 0.36 - 7, 1.4, 7, '#5b3f28');
+    }
+    if (i.id === 'ohara') { // el Árbol del Conocimiento: la biblioteca vive en la copa
+      el(r * 0.3, r * 0.3 + 1, r * 0.2, r * 0.07, 'rgba(6,26,48,0.18)');
+      rc(r * 0.26, -r * 0.3, r * 0.09, r * 0.58, '#6b4a2f');
+      el(r * 0.3, -r * 0.42, r * 0.3, r * 0.24, '#3e7c48');
+      el(r * 0.3, -r * 0.5, r * 0.2, r * 0.16, '#4a9060');
+      rc(r * 0.24, -r * 0.48, r * 0.14, r * 0.1, '#e8d9b8');
+      rc(r * 0.26, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5'); rc(r * 0.3, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5'); rc(r * 0.34, -r * 0.46, r * 0.03, r * 0.03, '#4a6fa5');
+      el(r * 0.3, -r * 0.42, r * 0.22, r * 0.12, 'rgba(255,255,255,0.12)');
+    }
+    if (i.id === 'lily') { // los arcos de la tribuna Kuja: serpientes de piedra
+      for (const [ax, ay, w] of [[-r * 0.34, r * 0.3, r * 0.34], [r * 0.3, r * 0.16, r * 0.3]]) {
+        g.strokeStyle = '#5e7d5a'; g.lineWidth = r * 0.07;
+        g.beginPath(); g.arc(ax, ay, w, Math.PI * 0.9, Math.PI * 1.9); g.stroke();
+        el(ax + w * 0.9, ay - w * 0.5, r * 0.05, r * 0.04, '#3e5e42');
+      }
+      el(0, r * 0.1, r * 0.16, r * 0.1, '#8a7a9e');
+      tri(0, r * 0.1, r * 0.14, r * 0.14, '#6e5e84');
+    }
+    if (i.id === 'littlegarden') { // los dinosaurios prehistóricos siguen vivos aquí
+      el(-r * 0.3, r * 0.3 + 1, r * 0.3, r * 0.05, 'rgba(6,26,48,0.15)');
+      el(-r * 0.3, r * 0.3, r * 0.26, r * 0.12, '#5a6e4a');
+      g.strokeStyle = '#5a6e4a'; g.lineWidth = r * 0.06; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-r * 0.12, r * 0.28); g.quadraticCurveTo(0, -r * 0.05, r * 0.14, -r * 0.02); g.stroke();
+      el(r * 0.17, -r * 0.04, r * 0.05, r * 0.04, '#5a6e4a');
+      el(r * 0.34, r * 0.36, r * 0.16, r * 0.1, '#7a5e46');
+      el(r * 0.44, r * 0.3, r * 0.09, r * 0.08, '#7a5e46');
+      tri(r * 0.5, r * 0.3, r * 0.07, r * 0.05, '#7a5e46');
+      el(r * 0.47, r * 0.27, 0.8, 0.8, '#f2eee2'); el(r * 0.47, r * 0.27, 0.35, 0.35, '#1a202c');
+      tri(-r * 0.5, r * 0.1, r * 0.24, r * 0.3, '#6e5a48');
+      el(-r * 0.5, r * 0.1 - r * 0.3 + 1, r * 0.06, r * 0.03, '#d65a3a');
+      el(-r * 0.5, r * 0.1 - r * 0.44, r * 0.1, r * 0.04, 'rgba(200,190,180,0.4)');
+    }
+    // árboles por tema en el anillo — el LAYOUT compartido (los mismos a todo zoom)
+    for (const a2 of lay.arboles) {
+      const px = a2.x, py = a2.y, s = a2.s;
+      if (T.palms || tema === 'jungla') palmeraP(px, py, tema === 'jungla' ? s * 1.3 : s);
+      else if (tema === 'desierto') cactusP(px, py, s);
+      else if (tema === 'oscuro') { rc(px - 0.7, py - 5 * s, 1.4, 5 * s, '#3c3440'); rc(px - 3 * s, py - 7 * s, 2.6 * s, 1.2, '#3c3440'); rc(px + 0.6, py - 9 * s, 1.2, 2.8 * s, '#3c3440'); }
+      else pinoP(px, py, s, nieveTema);
+    }
+    // adornos de interior: arbustos, matas de hierba, rocas y flores
+    for (const ad of lay.adornos) {
+      const px = ad.x, py = ad.y;
+      if (ad.t < 0.38) { el(px, py + 0.8, 2.6, 1.7, 'rgba(' + T.land2.join(',') + ',0.95)'); el(px - 0.8, py - 0.4, 1.6, 1.2, 'rgba(255,255,255,0.14)'); }
+      else if (ad.t < 0.62) {
+        g.strokeStyle = rgb2(T.tree); g.lineWidth = 0.8; g.lineCap = 'round';
+        for (const dx of [-1, 0, 1]) { g.beginPath(); g.moveTo(px + dx * 1.1, py + 1); g.lineTo(px + dx * 1.6, py - 2.4); g.stroke(); }
+      }
+      else if (ad.t < 0.82) { el(px, py, 2.2, 1.7, '#8a95a1'); el(px - 0.7, py - 0.7, 1.1, 0.8, 'rgba(255,255,255,0.22)'); }
+      else { el(px, py, 0.9, 0.9, tema === 'dulce' ? '#fff0f5' : '#e8a0c0'); el(px + 1.8, py + 0.6, 0.7, 0.7, '#f6e05e'); }
+    }
+    if (tema === 'industrial') { // fábrica + chimeneas (humo vivo encima)
+      rc(-r * 0.4, r * 0.06, r * 0.56, r * 0.3, '#9aa5b1');
+      rc(-r * 0.24, r * 0.06 - r * 0.22, r * 0.1, r * 0.22, '#7d8794');
+      rc(r * 0.04, r * 0.06 - r * 0.3, r * 0.1, r * 0.3, '#7d8794');
+      chimeneas.push([r * 0.09, r * 0.06 - r * 0.3]);
+      chimeneas.push([-r * 0.19, r * 0.06 - r * 0.22]);
+    }
+    // ── muelle con bote y farol ──
+    if (r >= 22 && tema !== 'nubes') {
+      const my = r * 0.82;
+      rc(-3.6, my, 7.2, r * 0.5, '#8a5a33');
+      for (let q = 1; q < 5; q++) rc(-3.6, my + q * r * 0.5 / 5, 7.2, 0.7, 'rgba(0,0,0,0.2)');
+      rc(r * 0.26, my + r * 0.5 + 1, 12, 5, '#614536');
+      rc(r * 0.26 + 4, my + r * 0.5 - 4, 1.6, 5, '#e6dec4');
+      rc(-r * 0.62, my - 6, 2.4, 6, '#e8e2d2'); rc(-r * 0.62 + 0.4, my - 8.4, 1.6, 2.6, '#d33');
+    }
+    i._chimeneas = chimeneas;
+    if (cacheSprites.size > 16) cacheSprites.delete(cacheSprites.keys().next().value);
+    const entry = { c, R };
+    cacheSprites.set(i.id, entry);
+    return entry;
+  }
+
+  // ── el mismo arte, en MINIATURA: a lo lejos se dibuja esta copia reducida
+  //    (suavizada) para que el mapa general se vea denso y estable, sin vibrar.
+  //    De cerca el sprite grande toma el relevo: ES el mismo arte, solo más cerca. ──
+  const cacheLejos = new Map();
+  function spriteLejos(i) {
+    const hit = cacheLejos.get(i.id);
+    if (hit) { cacheLejos.delete(i.id); cacheLejos.set(i.id, hit); return hit; }
+    const big = spriteDetalle(i);
+    const F = 2; // píxeles del mini-sprite por unidad de mundo
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.max(4, Math.round(big.R * 2 * F));
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(big.c, 0, 0, c.width, c.height);
+    const entry = { c, R: big.R };
+    if (cacheLejos.size > 40) cacheLejos.delete(cacheLejos.keys().next().value);
+    cacheLejos.set(i.id, entry);
+    return entry;
+  }
+
+  // ── la isla detallada EN el mapa: sprite + espuma viva + bandera de facción ──
+  function pintaIslaDetalle(i, ox, t) {
+    const lejos = cam.z < 0.85; // vista general: el mismo arte en miniatura suavizada
+    const sp = lejos ? spriteLejos(i) : spriteDetalle(i);
+    const cx = i.x + ox, cy = i.y, r = i.r;
+    ctx.save();
+    // de cerca, píxel nítido; a lo lejos, suavizado para que el mini no vibre
+    ctx.imageSmoothingEnabled = lejos;
+    ctx.drawImage(sp.c, cx - sp.R, cy - sp.R, sp.R * 2, sp.R * 2);
+    ctx.restore();
+    // espuma que respira alrededor de la costa
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1.4;
+    const pulso = 1.05 + Math.sin(t / 1100 + i.x * 0.3) * 0.02;
+    const pts = suaviza(formaIsla(i), 2);
+    ctx.beginPath();
+    pts.forEach(([dx, dy], k) => {
+      const X = cx + dx * pulso, Y = cy + dy * pulso;
+      if (k) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+    });
+    ctx.closePath(); ctx.stroke();
+    // crestas de ola alrededor (deterministas, derivan con el tiempo): solo al acercar
+    if (cam.z >= 0.85) {
+      ctx.lineWidth = 1;
+      for (let q = 0; q < 5; q++) {
+        const a = rIsla(i, 300 + q) * 6.2832;
+        const rr = r * (1.32 + rIsla(i, 330 + q) * 0.4);
+        const wx = cx + Math.cos(a) * rr, wy = cy + Math.sin(a) * rr * 0.8;
+        const fase = Math.sin(t / 950 + q * 2.1 + i.x * 0.2) * 3;
+        ctx.beginPath(); ctx.moveTo(wx - 4 + fase, wy); ctx.lineTo(wx + 3 + fase, wy); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // humo vivo de chimeneas industriales (solo tiene sentido de cerca)
+    if (i._chimeneas && cam.z >= 0.8) for (const [sx, sy] of i._chimeneas) {
+      for (let q = 0; q < 3; q++) {
+        const k = ((t / 1400 + q * 0.33) % 1);
+        elVivo(cx + sx + Math.sin(t / 800 + q * 3) * 2.4, cy + sy - 4 - k * 14, (1.6 + k * 2.6), 'rgba(226,232,238,' + (0.4 * (1 - k)).toFixed(2) + ')');
+      }
+    }
+    // bandera de facción: la tela ondea, el color lo manda el control del mundo
+    if (i._flag) {
+      const [fx, fy] = i._flag;
+      const fac = (MAPA._sim && MAPA._sim.control && MAPA._sim.control[i.id]) || '';
+      const color = fac === 'ley' ? '#2b6cb0' : fac === 'tirano' ? '#7d3c98' : '#c9a13d'; // control real: ley/tirano/libre
+      const onda = Math.sin(t / 300 + i.x) * 1.6;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(cx + fx, cy + fy);
+      ctx.lineTo(cx + fx + 11, cy + fy + 1.4 + onda * 0.4);
+      ctx.lineTo(cx + fx + 11, cy + fy + 5.4 + onda * 0.4);
+      ctx.lineTo(cx + fx, cy + fy + 4);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+  }
+  function elVivo(x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+
+  // ── el capitán en el mapa: figura pixel a zoom cercano, cubo a lo lejos ──
+  function avatarMundo(sim, t) {
+    const u = sim && sim.user;
+    if (!u || !u.isl || sim._fusionAtSea || u.plan) return;
+    const isl = D.ISLA[u.isl];
+    if (!isl) return;
+    // el capitán PISA la isla: camina hacia el punto tocado (tap-to-walk), no flota
+    let caminando = false;
+    if (MAPA._caminar) {
+      const dx = MAPA._caminar.x - u.pos.x, dy = MAPA._caminar.y - u.pos.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0.015) { const paso = Math.min(d, 0.006); u.pos.x += (dx / d) * paso; u.pos.y += (dy / d) * paso; caminando = true; }
+      else MAPA._caminar = null;
+    }
+    const pasoX = caminando && Math.floor(t / 150) % 2 ? 1 : -1;
+    const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5 + bobIsla(isl, t);
+    const bob = caminando ? Math.sin(t / 150) * 0.16 : 0; // en tierra NO flota: solo el vaivén del paso
+    ctx.save();
+    if (cam.z >= DETALLE_Z) {
+      // sombra + mini capitán en la MISMA tinta del mundo: outline, luz del norte,
+      // ojos y sonrisa — proporción de héroe (algo más alto que una casa, nunca gigante)
+      const s = 1.15 * clamp(cam.z / 2.6, 1, 2.0);
+      const O = 'rgba(30,22,12,0.55)';
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(px + 0.2 * s, py + 0.5 * s, 2.1 * s, 0.85 * s, 0, 0, 7);
+      ctx.fillStyle = 'rgba(6,26,48,0.35)';
+      ctx.fill();
+      ctx.restore();
+      // pantalón azul corto + botas con puntas: las piernas alternan al caminar
+      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s + pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s);
+      ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      ctx.strokeStyle = O; ctx.lineWidth = 0.35;
+      ctx.strokeRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
+      // torso: camisa roja con luz del norte y dos botones
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 0.4 * s);
+      ctx.strokeStyle = O; ctx.strokeRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
+      ctx.fillStyle = 'rgba(30,22,12,0.5)'; ctx.fillRect(px - 0.2 * s, py - 3.35 * s + bob, 0.4 * s, 0.4 * s); ctx.fillRect(px - 0.2 * s, py - 2.55 * s + bob, 0.4 * s, 0.4 * s);
+      // brazos con puños: la piel del capitán es de mar
+      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s);
+      ctx.fillStyle = '#d4a97f'; ctx.fillRect(px - 1.6 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s); ctx.fillRect(px + 1.1 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s);
+      // cara: piel, ojos y la sonrisa del que ya eligió su mar
+      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 0.85 * s, py - 5 * s + bob, 1.7 * s, 1.35 * s);
+      ctx.fillStyle = '#2b1c10'; ctx.fillRect(px - 0.55 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s); ctx.fillRect(px + 0.2 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s);
+      ctx.fillRect(px - 0.15 * s, py - 3.95 * s + bob, 0.3 * s, 0.16 * s);
+      // sombrero de paja: ala ancha, copa, cinta roja y brillo del ala
+      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.75 * s);
+      ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 1.55 * s, py - 5.05 * s + bob, 3.1 * s, 0.4 * s);
+      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.22 * s);
+      ctx.strokeStyle = O;
+      ctx.strokeRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 1.1 * s); ctx.strokeRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+      ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.arc(px, py - 2.6 * s + bob, 3.6 * s + Math.sin(t / 300) * 0.5, 0, 7); ctx.stroke();
+      // nombre flotante sobre el capitán: chip oscuro redondeado, texto legible a todo zoom
+      const nombre = (u.name || 'Capitán');
+      ctx.font = `600 ${(11 / cam.z).toFixed(1)}px Manrope, sans-serif`;
+      const tw2 = ctx.measureText(nombre).width + 10 / cam.z, fh = 15 / cam.z;
+      const bx = px - tw2 / 2, by = py - 7.6 * s - 20 / cam.z;
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, tw2, fh, 4 / cam.z); else ctx.rect(bx, by, tw2, fh);
+      ctx.fillStyle = 'rgba(18,29,54,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(244,180,26,0.45)'; ctx.lineWidth = 0.8 / cam.z; ctx.stroke();
+      ctx.fillStyle = '#f0f6fc';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(nombre, px, by + fh / 2);
+      ctx.restore();
+    } else {
+      dibujaCubo(px, py);
+      ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  MAPA.avatarMundo = avatarMundo;
+  MAPA.edificiosIsla = edificiosIsla; // las casas del layout (la noche enciende sus ventanas)
+  MAPA.layoutIsla = layoutIsla;       // el layout canónico compartido por todo el arte
+
   function sombraIsla(i, ox) {
     ctx.beginPath();
     ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
     ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
   }
 
-  // Las casas ahora las pinta pintaIslaVista (con techo y contorno, sin puntos blancos).
-  // La función queda por compatibilidad: expone las posiciones deterministas sin dibujar.
-  function edificiosIsla(i, ox) {
-    if (!i.edif) {
-      let h = 7;
-      for (const ch of i.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
-      i.edif = [];
-      const n = 2 + (h % 4);
-      for (let k = 0; k < n; k++) {
-        h = (h * 1103515245 + 12345) >>> 0;
-        const a = ((h >>> 8) % 628) / 100, rr = i.r * 0.45 * (((h >>> 16) % 100) / 100);
-        i.edif.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr * 0.7 });
+  // ── flotación: cada isla sube y baja lento con su propia fase (el mar la mece) ──
+  // La sombra del agua NO flota: la isla se mece sobre su sombra, como en UMP.
+  function bobIsla(i, t) { return Math.sin(t / 2800 + i.x * 0.13) * 1.8; }
+  MAPA.bobIsla = bobIsla;
+
+  // ── pintaIslaConVida: flotación + resaltado al pasar el cursor ──
+  // Un solo envoltorio para mapa base y GFX: bajo el cursor la isla crece un
+  // 3.5% con suavizado y su bajío se enciende (luz de agua poco profunda).
+  function pintaIslaConVida(i, off, t) {
+    const hov = MAPA._hoverIsla === i;
+    // escala de hover suavizada (lerp por frame: entra y sale sin salto)
+    i._hs = (i._hs || 1) + ((hov ? 1.035 : 1) - (i._hs || 1)) * 0.12;
+    const cx = i.x + off, cy = i.y, r = i.r;
+    if (hov) {
+      const pulso = 1 + Math.sin(t / 500) * 0.03;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 1.55 * pulso, r * 1.22 * pulso, 0, 0, 7);
+      ctx.fillStyle = 'rgba(140,215,255,0.28)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(190,235,255,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.translate(0, bobIsla(i, t));
+    if (i._hs !== 1) {
+      ctx.translate(cx, cy); ctx.scale(i._hs, i._hs); ctx.translate(-cx, -cy);
+    }
+    dibujaIsla(i, off, t);
+    ctx.restore();
+  }
+  MAPA.pintaIslaConVida = pintaIslaConVida;
+
+  // ── hover: isla bajo el cursor (resalta y pone el cursor de mano) ──
+  const islaEn = (wx, wy) => {
+    for (const i of D.ISLAS) {
+      for (const off of [0, -D.W, D.W]) {
+        if (dist(wx, wy, i.x + off, i.y) < Math.max(14, i.r + 10)) return i;
       }
     }
-    return i.edif;
+    return null;
+  };
+  MAPA.islaEn = islaEn;
+
+  // Las VENTANAS que enciende la noche son las de las casas reales del LAYOUT:
+  // la misma lista que pinta el sprite, casa por casa, con la altura de su ventana.
+  function edificiosIsla(i) {
+    return layoutIsla(i).casas;
   }
 
-  // anillo blanco punteado girando en islas con evento activo
+  // anillo blanco punteado girando en islas con evento activo;
+  // al acercar se hace sutil: avisa sin tapar el arte de la isla
   function anilloIsla(i, ox, t) {
     if (!eventoIsl.has(i.id)) return;
     ctx.save();
+    ctx.globalAlpha = Math.max(0.32, 1 - (cam.z - 1.1) / 1.1);
     ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
     ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t / 80;
     ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r * 1.9, 0, 7); ctx.stroke();
@@ -719,19 +1199,46 @@
     return cam.z >= 0.95 || i.juego || i.base || i.tribunal || i.cuartel || i.natal;
   }
 
-  // Histéresis del diorama: entra a LOD_ZOOM (1.5), solo sale bajando de LOD_SALIDA (1.12).
-  // Así "alejar un poco" no te expulsa de la isla. La usan el mapa base y GFX.
-  // Mientras hay un vuelo en curso NO se borra la marca: el vuelo cruza zooms bajos
-  // al despegar y borrarla anularía el encuadre del clic.
-  const dioramasActivos = new Set();
-  MAPA.usaDiorama = function (i) {
-    if (dioramasActivos.has(i.id)) {
-      if (cam.z >= MAPA.LOD_SALIDA) return true;
-      if (!vuelo) dioramasActivos.delete(i.id);
-      return false;
+  // ── Modo inmersión: al acercar el zoom el HUD se retira (clase mil-cine en <body>)
+  //    y queda SOLO la isla en pixel art, sin interferencia de nada. La píldora
+  //    "Alejar" (o la lupa / la pinza) te devuelve. Histéresis: entra a 2.0, sale a 1.7. ──
+  const CINE_ENTRA = 2.0, CINE_SALE = 1.7;
+  let cineActivo = false;
+  MAPA.enCine = () => cineActivo;
+  function muestraNombreCine() {
+    const el = MAPA._cineNombre;
+    if (!el) return;
+    const sm = MAPA._sim;
+    // nombre honesto: la isla encuadrada, o la más cercana a la cámara (llegues como llegues)
+    let isla = selIsl || MAPA._enfocada || null;
+    if (!isla) {
+      let mejorD = 1e18;
+      for (const i of D.ISLAS) {
+        if (i.oculta) continue;
+        const dx = distX(i.x - cam.x), d = dx * dx + (i.y - cam.y) * (i.y - cam.y);
+        if (d < mejorD) { mejorD = d; isla = i; }
+      }
+      if (isla && mejorD > 260 * 260) isla = null; // demasiado lejos: no hay isla protagonizando
     }
-    return cam.z >= MAPA.LOD_ZOOM;
-  };
+    if (!isla) isla = (sm && sm.user && D.ISLA[sm.user.isl]) || null;
+    if (!isla) return;
+    el.textContent = isla.n;
+    el.classList.add('ver');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('ver'), 2800);
+  }
+  function actualizaCine() {
+    const cine = cam.z >= (cineActivo ? CINE_SALE : CINE_ENTRA);
+    if (cine === cineActivo) return;
+    cineActivo = cine;
+    document.body.classList.toggle('mil-cine', cine);
+    if (cine) muestraNombreCine();
+  }
+  // GFX sustituye el render del mar: expone el easing de la lupa y el vigilante
+  // del modo inmersión para que la capa mejorada los llame en cada frame
+  MAPA.actualizaCinePublica = actualizaCine;
+  MAPA.pasaZoomPublica = function (t) { pasaZoom(t); };
+  MAPA.cancelaVueloPublica = function () { cancelaVuelo(); }; // el teclado panea sin pelear con un vuelo
 
   // Marcas del mundo sobre cada isla: secretos sin descubrir (?) y Cubos Rojos hallados.
   // Tamaño compensado por zoom: se ven igual de chicos en pantalla a cualquier escala.
@@ -764,15 +1271,11 @@
   };
 
   function dibujaIsla(i, ox, t) {
-    // Con el zoom acercado, la isla ES su diorama 16-bit (NPCs caminando incluidos).
-    if (MAPA.usaDiorama(i) && MAPA.dibujaEscenaIsla(ctx, i, t, ox)) return;
-    sombraIsla(i, ox);
-    pintaIslaVista(i, ox, t);
+    // UN SOLO ARTISTA a todo zoom: la MISMA isla pixel-art (sprite) de lejos a cerca.
+    // El acercamiento no cambia de dibujo: el arte escala y gana nitidez —
+    // así la entrada a la isla es un adentrarse real, sin salto ni cambio de artista.
+    pintaIslaDetalle(i, ox, t);
     anilloIsla(i, ox, t);
-    // olas
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    const wob = Math.sin(t / 900 + i.x) * 1.6;
-    ctx.beginPath(); ctx.moveTo(i.x + ox - i.r * 1.7, i.y + i.r * 1.15 + wob); ctx.lineTo(i.x + ox - i.r * 1.7 + 7, i.y + i.r * 1.15 + wob); ctx.stroke();
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
@@ -786,6 +1289,7 @@
       ctx.beginPath(); ctx.ellipse(i.x + ox + 16, i.y + i.r + 13 - bob, 20, 7, 0, 0, 7); ctx.fill();
     }
   }
+  MAPA.dibujaIslaPublica = dibujaIsla;
 
   // tormenta: disco de mala fama + espiral de viento girando + destello eléctrico ocasional
   function pintaTormenta(s, t) {
@@ -834,9 +1338,7 @@
       y = isl.y + isl.r * 0.55 + 14;
       ang = lado > 0 ? 0 : Math.PI;
     }
-    // si cae bajo un diorama reservado, no se dibuja: no cruza por encima de la escena
     s._px = x; s._py = y;
-    if (MAPA.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) return;
     y += Math.sin(t / 700 + s.id * 1.7) * 0.9; // balanceo: ningún barco quieto en el agua
     // estela
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4;
@@ -860,15 +1362,36 @@
     cb.width = Math.round(D.W * esc); cb.height = Math.round(D.H * esc);
     const c = cb.getContext('2d');
     c.scale(esc, esc);
-    // océano con profundidad: gradiente vertical suave
+    // océano CON LA MISMA PALETA del globo: profundo en los polos, vivo en el ecuador
     const grad = c.createLinearGradient(0, 0, 0, D.H);
-    grad.addColorStop(0, '#1d5a99'); grad.addColorStop(0.5, '#2265ab'); grad.addColorStop(1, '#1d5a99');
+    grad.addColorStop(0, '#164278'); grad.addColorStop(0.24, '#2866ad');
+    grad.addColorStop(0.5, '#2e74bd'); grad.addColorStop(0.76, '#2866ad'); grad.addColorStop(1, '#164278');
     c.fillStyle = grad; c.fillRect(0, 0, D.W, D.H);
-    // manchas amplias de tono sutil
-    c.fillStyle = '#2365ad';
-    for (let k = 0; k < 22; k++) {
+    // los cuatro BLUE: cada océano del mundo tiene su temperatura de color (los cuadrantes de la cruz)
+    for (const bl of [
+      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],    // NORTH BLUE (noroeste)
+      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],  // EAST BLUE (noreste)
+      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],    // WEST BLUE (suroeste)
+      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']  // SOUTH BLUE (sureste)
+    ]) { c.fillStyle = bl[4]; c.fillRect(bl[0], bl[1], bl[2] - bl[0], bl[3] - bl[1]); }
+    // manchas de dos tonos: el mar nunca es un color plano (las mismas del globo)
+    for (let k = 0; k < 26; k++) {
+      c.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
       c.beginPath();
-      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 110 + ruido(k + 99) * 170, 50 + ruido(k + 7) * 80, ruido(k + 3) * 3, 0, 7);
+      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 130 + ruido(k + 99) * 190, 60 + ruido(k + 7) * 90, ruido(k + 3) * 3, 0, 7);
+      c.fill();
+    }
+    // cartografía de profundidad: bancos abisales oscuros y aguas someras claras
+    c.fillStyle = 'rgba(9,34,72,0.13)';
+    for (let k = 0; k < 12; k++) {
+      c.beginPath();
+      c.ellipse(ruido(k + 300) * D.W, ruido(k + 340) * D.H, 170 + ruido(k + 380) * 230, 75 + ruido(k + 420) * 100, ruido(k + 460) * 3, 0, 7);
+      c.fill();
+    }
+    c.fillStyle = 'rgba(140,205,235,0.09)';
+    for (let k = 0; k < 12; k++) {
+      c.beginPath();
+      c.ellipse(ruido(k + 500) * D.W, ruido(k + 540) * D.H, 140 + ruido(k + 580) * 180, 60 + ruido(k + 620) * 90, ruido(k + 660) * 3, 0, 7);
       c.fill();
     }
     // textura de olas en dos tonos: swell largo oscuro + destello claro corto
@@ -895,13 +1418,13 @@
     c.fillRect(0, D.GL_Y0, D.W, D.GL_Y1 - D.GL_Y0);
     c.strokeStyle = 'rgba(255,255,255,0.05)'; c.lineWidth = 1;
     for (let x = 130; x < D.W; x += 260) { c.beginPath(); c.moveTo(x, D.GL_Y0); c.lineTo(x, D.GL_Y1); c.stroke(); }
-    // ── rótulos: una vez por zona, sin spam ──
+    // ── rótulos: sellos de los océanos — LOS MISMOS del globo (canon One Piece) ──
     c.textAlign = 'center';
-    c.font = '700 30px Georgia, serif'; c.fillStyle = 'rgba(255,255,255,0.26)';
-    c.fillText('M A R   D E L   N O R T E', 650, 250);
-    c.fillText('M A R   D E L   E S T E', 1950, 250);
-    c.fillText('M A R   D E L   O E S T E', 650, 1190);
-    c.fillText('M A R   D E L   S U R', 1950, 1190);
+    c.font = '600 34px system-ui, sans-serif'; c.fillStyle = 'rgba(220,240,255,0.34)';
+    c.fillText('N O R T H  B L U E', 650, 250);
+    c.fillText('E A S T  B L U E', 1950, 250);
+    c.fillText('W E S T  B L U E', 650, 1190);
+    c.fillText('S O U T H  B L U E', 1950, 1190);
     c.font = '700 26px Georgia, serif'; c.fillStyle = 'rgba(255,244,214,0.34)';
     c.fillText('N U E V O   M U N D O', 650, D.GL_Y0 + 105);
     c.fillText('P A R A Í S O', 1950, D.GL_Y0 + 105);
@@ -910,26 +1433,53 @@
       c.fillText('F R A N J A   D E   C A L M A', x, (D.CB_T + D.GL_Y0) / 2 + 4);
       c.fillText('F R A N J A   D E   C A L M A', x, (D.GL_Y1 + D.CB_B) / 2 + 4);
     }
-    // ── Muralla Roja: continente ancho (~64px) rugoso con relieve ──
-    const x0 = D.RL_X, hw = 32, paso = 10;
+    // ── Muralla Roja: cordillera rugosa de polo a polo — EL MISMO relieve que el globo ──
+    const x0 = D.RL_X, paso = 12;
+    const muroGrad = c.createLinearGradient(0, 0, 0, D.H);
+    muroGrad.addColorStop(0, '#a8503a'); muroGrad.addColorStop(0.5, '#93402c'); muroGrad.addColorStop(1, '#a8503a');
+    const bordeMuro = (dir) => {
+      const pts = [];
+      for (let y = -paso; y <= D.H + paso; y += paso) {
+        const w = (26 + ruido(y * 0.07 + (dir > 0 ? 5 : 9)) * 30) * (1 + 0.22 * Math.sin((y / D.H) * 6));
+        pts.push([x0 + dir * w + Math.sin((y / D.H) * 9 + 1.7) * 14 + (ruido(y * 0.11) - 0.5) * 16, y]);
+      }
+      return pts;
+    };
+    const izqM = bordeMuro(-1), derM = bordeMuro(1);
     c.beginPath();
-    for (let y = 0; y <= D.H; y += paso) c.lineTo(x0 - hw + (ruido(y / paso) - 0.5) * 10, y);
-    for (let y = D.H; y >= 0; y -= paso) c.lineTo(x0 + hw + (ruido(y / paso + 500) - 0.5) * 10, y);
-    c.closePath(); c.fillStyle = '#a8553f'; c.fill();
-    for (let k = 0; k < 80; k++) {
-      const y = ruido(k * 13.7) * D.H, dy = (ruido(k * 3.3) - 0.5) * hw * 1.15, rr3 = 6 + ruido(k * 9.1) * 16;
-      c.fillStyle = k % 2 ? 'rgba(201,122,90,0.5)' : 'rgba(120,56,40,0.45)';
-      c.beginPath(); c.ellipse(x0 + dy, y, rr3, rr3 * 0.6, 0, 0, 7); c.fill();
+    izqM.forEach(([X, y], k) => { if (k) c.lineTo(X, y); else c.moveTo(X, y); });
+    derM.reverse().forEach(([X, y]) => c.lineTo(X, y));
+    c.closePath();
+    c.fillStyle = muroGrad; c.fill();
+    // vetas rocosas y cumbres iluminadas: trazos curvos orgánicos (los mismos del globo)
+    for (let q = 0; q < 110; q++) {
+      const y = ruido(q * 3.3) * D.H;
+      const X = x0 + (ruido(q * 7.7) - 0.5) * 70 + Math.sin((y / D.H) * 9 + 1.7) * 14;
+      const an = 3 + ruido(q * 9.1) * 8;
+      c.strokeStyle = q % 3 ? 'rgba(70,26,18,0.5)' : 'rgba(230,150,120,0.4)';
+      c.lineWidth = 1.5 + ruido(q) * 1.8;
+      c.beginPath();
+      c.moveTo(X - an, y - 4 + ruido(q * 2) * 7);
+      c.quadraticCurveTo(X + (ruido(q * 5.5) - 0.5) * 9, y + (ruido(q * 6.1) - 0.5) * 7, X + an * 0.8, y + 3 + ruido(q * 4.4) * 5);
+      c.stroke();
     }
-    // sombra de altura en el agua: la muralla "proyecta" borde a sus costados
-    const sombIzq = c.createLinearGradient(x0 - hw - 30, 0, x0 - hw, 0);
-    sombIzq.addColorStop(0, 'rgba(6,20,40,0)'); sombIzq.addColorStop(1, 'rgba(6,20,40,0.24)');
-    c.fillStyle = sombIzq; c.fillRect(x0 - hw - 30, 0, 30, D.H);
-    const sombDer = c.createLinearGradient(x0 + hw + 30, 0, x0 + hw, 0);
-    sombDer.addColorStop(0, 'rgba(6,20,40,0)'); sombDer.addColorStop(1, 'rgba(6,20,40,0.24)');
-    c.fillStyle = sombDer; c.fillRect(x0 + hw, 0, 30, D.H);
-    c.fillStyle = 'rgba(212,150,118,0.45)';
-    c.fillRect(x0 - 12, 0, 5, D.H); c.fillRect(x0 + 7, 0, 5, D.H);
+    // pliegues secundarios: dos crestas oscuras paralelas dan volumen de cordillera
+    for (const desp of [-14, 11]) {
+      c.strokeStyle = 'rgba(58,20,14,0.32)'; c.lineWidth = 2.6;
+      c.beginPath();
+      for (let y = 0; y <= D.H; y += 22) {
+        const X = x0 + desp + Math.sin((y / D.H) * 9 + 1.7) * 12 + (ruido(y * 0.13 + desp) - 0.5) * 12;
+        if (y) c.lineTo(X, y); else c.moveTo(X, y);
+      }
+      c.stroke();
+    }
+    // sombra de altura en el agua: la cordillera proyecta borde a sus costados
+    const sombIzq = c.createLinearGradient(x0 - 115, 0, x0 - 45, 0);
+    sombIzq.addColorStop(0, 'rgba(6,20,40,0)'); sombIzq.addColorStop(1, 'rgba(6,20,40,0.26)');
+    c.fillStyle = sombIzq; c.fillRect(x0 - 115, 0, 70, D.H);
+    const sombDer = c.createLinearGradient(x0 + 115, 0, x0 + 45, 0);
+    sombDer.addColorStop(0, 'rgba(6,20,40,0)'); sombDer.addColorStop(1, 'rgba(6,20,40,0.26)');
+    c.fillStyle = sombDer; c.fillRect(x0 + 45, 0, 70, D.H);
     c.font = '700 13px Georgia, serif'; c.fillStyle = 'rgba(255,238,226,0.85)';
     c.save(); c.translate(x0 - 8, D.H - 130); c.rotate(-Math.PI / 2); c.fillText('M U R A L L A   R O J A', 0, 0); c.restore();
     // ── El anillo continúa: SEGUNDA franja de la Muralla Roja en el costurero del mapa ──
@@ -1019,6 +1569,13 @@
     oc.addColorStop(0, '#164278'); oc.addColorStop(0.24, '#2866ad');
     oc.addColorStop(0.5, '#2e74bd'); oc.addColorStop(0.76, '#2866ad'); oc.addColorStop(1, '#164278');
     g2.fillStyle = oc; g2.fillRect(0, 0, tw, th);
+    // los cuatro BLUE: la misma temperatura de color que el mapa plano (coherencia total)
+    for (const bl of [
+      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],
+      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],
+      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],
+      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']
+    ]) { g2.fillStyle = bl[4]; g2.fillRect(bl[0] * escX, bl[1] * escY, (bl[2] - bl[0]) * escX, (bl[3] - bl[1]) * escY); }
     // manchas amplias de tono: el mar nunca es un color plano
     for (let k = 0; k < 26; k++) {
       g2.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
@@ -1248,7 +1805,7 @@
 
     // proyección mundo→esfera (compartida por nubes, barcos, avisos y etiquetas)
     const proyecta = (wx, wy) => {
-      let lam = (wx / D.W) * 2 * Math.PI - rotLon;
+      let lam = (wx / D.W) * 2 * Math.PI - rotLon - Math.PI; // MISMA convención que la textura y el clic (antes quedaba espejado 180°)
       lam = ((lam + Math.PI * 3) % (2 * Math.PI)) - Math.PI;
       if (Math.abs(lam) > 1.45) return null;
       const phi = (wy / D.H) * Math.PI - Math.PI / 2;
@@ -1356,6 +1913,12 @@
   MAPA.cubo = dibujaCubo;
   MAPA.etiquetaIsla = function (i, ox) {
     if (!rotulable(i)) return;
+    // UN SOLO MAPA: al acercar el zoom el nombre se desvanece — la isla habla por sí sola.
+    // El nombre queda en el popover al tocar la isla y en el banner breve del modo inmersión.
+    const alpha = clamp(1 - (cam.z - 1.32) / 0.3, 0, 1);
+    if (alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
     // contorno oscuro: el nombre se lee aunque pase un barco por debajo
@@ -1368,13 +1931,95 @@
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();
     }
+    ctx.restore();
   };
 
+  // ── Reyes del Mar: las serpientes que patrullan las Franjas de Calma ──
+  //    Deterministas desde t (sin estado por frame): ondulan, avanzan despacio,
+  //    se envuelven por el borde del mundo y solo viven en las aguas sin viento.
+  let reyesMar = null;
+  function initReyes() {
+    reyesMar = [];
+    for (const banda of [[D.CB_T, D.GL_Y0, 1], [D.GL_Y1, D.CB_B, -1]]) {
+      for (let k = 0; k < 3; k++) {
+        reyesMar.push({
+          x: ruido(k * 7.3 + banda[0]) * D.W,
+          y: banda[0] + (banda[1] - banda[0]) * (0.28 + ruido(k * 3.1 + banda[0] * 0.7) * 0.44),
+          v: (9 + ruido(k * 9.7) * 10) * banda[2],
+          f: 0.8 + ruido(k * 5.3) * 0.6,
+          L: 78 + ruido(k * 11.3) * 54
+        });
+      }
+    }
+  }
+  MAPA.pintaReyesMar = function (t) {
+    if (!reyesMar) initReyes();
+    const vx0 = cam.x - ancho / (2 * cam.z) - 160, vx1 = cam.x + ancho / (2 * cam.z) + 160;
+    ctx.save();
+    for (const r of reyesMar) {
+      const x = ((r.x + (t / 1000) * r.v) % D.W + D.W) % D.W;
+      if (x < vx0 || x > vx1) continue;
+      const y = r.y + Math.sin(t / 2600 + r.x * 0.01) * 5;
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(r.v > 0 ? 1 : -1, 1);
+      const fase = (t / 900) * r.f;
+      // estela suave que deja a flote
+      ctx.strokeStyle = 'rgba(230,244,252,0.14)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-r.L * 0.5 - 6, 6); ctx.lineTo(-r.L * 0.5 + 12, 6); ctx.stroke();
+      // cuerpo serpenteante que se afina hacia la cola, con lomo iluminado
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let s = 0; s <= 12; s++) {
+        const u = s / 12, px = r.L * 0.5 - u * r.L;
+        const py = Math.sin(fase + u * 4.4) * (4 + u * 9);
+        if (s) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.strokeStyle = 'rgba(13,33,58,0.46)'; ctx.lineWidth = 7.5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(26,56,92,0.5)'; ctx.lineWidth = 3; ctx.stroke();
+      // crestas dorsales siguiendo la onda
+      ctx.fillStyle = 'rgba(13,33,58,0.5)';
+      for (let s = 2; s <= 10; s += 2) {
+        const u = s / 12, px = r.L * 0.5 - u * r.L;
+        const py = Math.sin(fase + u * 4.4) * (4 + u * 9);
+        const sgn = Math.cos(fase + u * 4.4) > 0 ? -1 : 1;
+        ctx.beginPath();
+        ctx.moveTo(px - 2, py - 3 * sgn);
+        ctx.lineTo(px, py - (7 + u * 4) * sgn);
+        ctx.lineTo(px + 2, py - 3 * sgn);
+        ctx.closePath(); ctx.fill();
+      }
+      // cabeza y ojo
+      const hy = Math.sin(fase) * 4;
+      ctx.fillStyle = 'rgba(13,33,58,0.55)';
+      ctx.beginPath(); ctx.ellipse(r.L * 0.5 + 5, hy, 7, 4.6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(210,235,250,0.55)';
+      ctx.beginPath(); ctx.arc(r.L * 0.5 + 8, hy - 1.4, 1.3, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  };
+
+  let joyTimer = null;
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
+    actualizaCine(); // el HUD se retira solo al acercar (modo inmersión), antes de cualquier retorno
+    // joystick: empuje → la cámara viaja en ESA dirección (izquierda = izquierda)
+    const joy = MAPA._joystick;
+    if (joy && (Math.abs(joy.x) > 0.14 || Math.abs(joy.y) > 0.14)) {
+      if (globoF() > 0.5) rotLon += joy.x * 0.02;
+      else {
+        const paso = (ancho / cam.z) * 0.011; // ~1% de la vista por frame empujado
+        cam.x = envuelveX(cam.x + joy.x * paso);
+        cam.y = clamp(cam.y + joy.y * paso, 0, D.H);
+        MAPA.interactuando = true; // empuje = gesto vivo: el mapa corre fluido
+        clearTimeout(joyTimer);
+        joyTimer = setTimeout(() => { MAPA.interactuando = false; }, 450);
+      }
+    }
     const g = globoF();
+    ctx.imageSmoothingEnabled = g < 0.5; // en el mar, píxeles nítidos; en el globo, mezcla suave de celdas
     if (g >= 0.999) {
       // vista globo: espacio + esfera. Sin capas de mundo (rendimiento).
       dibujaEstrellas(t, 1);
@@ -1382,12 +2027,15 @@
       return;
     }
     // capa base estática (mar, franjas, muralla, rótulos): se pre-renderiza una vez por refit/resize
-    ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
+    // azul profundo tipo UMP: sin cuadrícula, el brillo lo ponen las olas y la espuma
+    ctx.fillStyle = '#1a4f8b'; ctx.fillRect(0, 0, ancho, alto);
     if (!base) base = crearBase();
     actualizaEventos(sim, t);
     ctx.save();
     ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
     for (const off of [-D.W, 0, D.W]) ctx.drawImage(base, off, 0, D.W, D.H);
+    // los Reyes del Mar patrullan las Franjas de Calma: el mapa cuenta la historia
+    MAPA.pintaReyesMar(t);
     // tormentas: espiral de viento girando + destello eléctrico ocasional
     for (const s of sim.storms) pintaTormenta(s, t);
     // estela del vuelo: la ruta dorada se dibuja sola hacia el destino (bajo las islas)
@@ -1399,7 +2047,7 @@
     const visibles = [];
     for (const i of D.ISLAS) {
       if (i.oculta) continue;
-      const mg = Math.max(190, i.r * 16);
+      const mg = i.r * 2.6 + 80; // el sprite y su halo llegan a ~r*2.2: margen justo, no r*16
       let entra = false;
       for (const off of [0, -D.W, D.W]) {
         const x = i.x + off;
@@ -1413,9 +2061,9 @@
       return (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y)
         - ((b.x - cam.x) * (b.x - cam.x) + (b.y - cam.y) * (b.y - cam.y));
     });
-    // PASADA 0: reservas de diorama (el rectángulo lo gana la isla más prioritaria)
+    // islas visibles: cada una se dibuja en la envoltura más cercana a la cámara
     const mejorEnvoltura = (i) => {
-      const mg = Math.max(190, i.r * 16);
+      const mg = i.r * 2.6 + 80;
       let mejor = null, mejorD = 1e18;
       for (const off of [0, -D.W, D.W]) {
         const x = i.x + off;
@@ -1425,36 +2073,16 @@
       }
       return mejor;
     };
-    const conDiorama = new Map(); // id → envoltura elegida
-    for (const i of visibles) {
-      if (!MAPA.usaDiorama(i)) continue;
-      const off = mejorEnvoltura(i);
-      if (off === null) continue;
-      if (MAPA.reservaDiorama(i, off, t)) conDiorama.set(i.id, off);
-    }
-    // PASADA 1: blobs de las islas SIN diorama; si su zona cae bajo un diorama
-    // reservado, no se pinta (antes quedaba como mancha encima de la escena vecina)
     const dibujadas = [];
     for (const i of visibles) {
-      if (conDiorama.has(i.id)) continue;
       const off = mejorEnvoltura(i);
       if (off === null) continue;
-      const cx = i.x + off, cy = i.y;
-      if (MAPA.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
-      dibujaIsla(i, off, t);
+      pintaIslaConVida(i, off, t); // flotación + hover: la isla se mece y responde al cursor
       dibujadas.push([i, off]);
     }
-    // PASADA 2: los dioramas reservados, encima de todo lo demás
-    for (const [id, off] of conDiorama) {
-      const i = D.ISLA[id];
-      if (i) MAPA.dibujaEscenaIsla(ctx, i, t, off);
-    }
-    // barcos — dentro de dibujaBarco se comprueba si caen bajo un diorama reservado
+    // barcos y luego etiquetas: ningún barco tapa un rótulo
     for (const s of sim.ships) dibujaBarco(s, sim, t);
-    // etiquetas al final: ningún barco las tapa (antes se pintaban bajo los barcos y quedaban ilegibles)
-    for (const [i, off] of dibujadas) {
-      if (!MAPA.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) MAPA.etiquetaIsla(i, off);
-    }
+    for (const [i, off] of dibujadas) MAPA.etiquetaIsla(i, off);
     // nubes: puffs suaves de tres lóbulos, nunca elipses duras
     for (const n of nubes) {
       n.x += n.v / 60; if (n.x > D.W + 60) n.x = -60;
@@ -1463,17 +2091,8 @@
       ctx.beginPath(); ctx.ellipse(n.x + n.r * 0.55, n.y + n.r * 0.1, n.r * 0.6, n.r * 0.28, 0, 0, 7); ctx.fill();
       ctx.beginPath(); ctx.ellipse(n.x - n.r * 0.5, n.y + n.r * 0.08, n.r * 0.48, n.r * 0.24, 0, 0, 7); ctx.fill();
     }
-    // tu avatar (el cubo solo con zoom lejos; cerca, el diorama muestra el sprite 16-bit)
-    const u = sim.user;
-    if (u && u.isl && !sim._fusionAtSea && cam.z < MAPA.LOD_ZOOM) {
-      const isl = D.ISLA[u.isl];
-      if (isl && !u.plan) {
-        const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
-        dibujaCubo(px, py);
-        ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
-      }
-    }
+    // tu capitán: figura pixel con sombrero de paja a zoom cercano, cubo y anillo a lo lejos
+    avatarMundo(sim, t);
     ctx.restore();
     // aterrizaje/despegue: la esfera se superpone mientras el zoom cruza el umbral
     if (g > 0.001) {

@@ -44,71 +44,6 @@
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
 
-  // ── Mejora de islas: textura, sombras, marcadores ──
-  const MARCADORES = { palmera: 0, casa: 1, torre: 2, arbol: 3, roca: 4, calavera: 5 };
-  GFX.pintaIslaMejorada = function (ctx, i, t, ox) {
-    const T = D.TEMAS[i.tema] || D.TEMAS.verde;
-    const pts = i._pts || G.MAPA.formaIslaPublica(i);
-    const r = i.r;
-    ox = ox || 0;
-    // sombra al mar
-    ctx.beginPath();
-    ctx.ellipse(i.x + ox + 3, i.y + 4, r * 1.52, r * 1.24, 0, 0, 7);
-    ctx.fillStyle = 'rgba(4,20,38,0.35)'; ctx.fill();
-    // bajío
-    ctx.beginPath();
-    ctx.ellipse(i.x + ox, i.y, r * 1.5, r * 1.22, 0, 0, 7);
-    ctx.fillStyle = 'rgba(120,195,225,0.32)'; ctx.fill();
-    // arena con borde brillante
-    ctx.beginPath();
-    ctx.moveTo(i.x + ox + pts[0][0], i.y + pts[0][1]);
-    for (const p of pts) ctx.lineTo(i.x + ox + p[0], i.y + p[1]);
-    ctx.closePath();
-    ctx.fillStyle = 'rgb(' + T.sand.join(',') + ')'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-    // tierra con textura de ruido (grano determinista)
-    ctx.save(); ctx.translate(i.x + ox, i.y); ctx.scale(0.8, 0.8); ctx.translate(-(i.x + ox), -i.y);
-    ctx.beginPath();
-    ctx.moveTo(i.x + ox + pts[0][0], i.y + pts[0][1]);
-    for (const p of pts) ctx.lineTo(i.x + ox + p[0], i.y + p[1]);
-    ctx.closePath();
-    ctx.fillStyle = 'rgb(' + T.land.join(',') + ')'; ctx.fill();
-    ctx.save(); ctx.clip();
-    const paso = 2;
-    for (let y = -r; y < r; y += paso) {
-      for (let x = -r; x < r; x += paso) {
-        const n = hash2(Math.floor((i.x + ox + x) * 3), Math.floor((i.y + y) * 3));
-        if (n > 0.62) {
-          ctx.fillStyle = 'rgba(' + T.land2.join(',') + ',0.55)';
-          ctx.fillRect(i.x + ox + x, i.y + y, paso, paso);
-        } else if (n < 0.12) {
-          ctx.fillStyle = 'rgba(255,255,255,0.07)';
-          ctx.fillRect(i.x + ox + x, i.y + y, paso, paso);
-        }
-      }
-    }
-    ctx.restore(); ctx.restore();
-    // decoración con sprites si hay, si no la clásica
-    if (!i.decoDib) {
-      i.decoDib = [];
-      const nn = Math.round(5 + T.trees * 10);
-      for (let k = 0; k < nn; k++) {
-        const a = (k / nn) * Math.PI * 2 + r;
-        const rr = r * 0.55;
-        i.decoDib.push({ x: Math.cos(a * 3.1) * rr * 0.7, y: Math.sin(a * 2.3) * rr * 0.5, t: k % 6 });
-      }
-    }
-    const marc = GFX.imgs.marcadores;
-    for (const d of i.decoDib) {
-      const px = i.x + ox + d.x, py = i.y + d.y;
-      if (marc) {
-        ctx.drawImage(marc, d.t * 16, 0, 16, 16, px - 5, py - 7, 10, 10);
-      } else {
-        ctx.fillStyle = 'rgb(' + T.tree.join(',') + ')'; ctx.fillRect(px - 1, py - 4, 2, 6);
-      }
-    }
-  };
-
   // ── Barcos con sprite rotado ──
   const FAC_IDX = { pir: 0, mar: 1, rev: 2, caz: 3 };
   GFX.pintaBarco = function (ctx, s, sim, t, x, y, ang) {
@@ -172,13 +107,6 @@
     }
   };
 
-  // ── Viñeta y profundidad ──
-  GFX.vineta = function (ctx, ancho, alto) {
-    const g = ctx.createRadialGradient(ancho / 2, alto / 2, Math.min(ancho, alto) * 0.42, ancho / 2, alto / 2, Math.max(ancho, alto) * 0.75);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(2,8,16,0.5)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, ancho, alto);
-  };
-
   // ── Retrato pixel de un agente (para popovers/ficha) ──
   GFX.retrato = function (agent, escala) {
     const per = GFX.imgs.personajes;
@@ -208,6 +136,11 @@
       const M = G.MAPA;
       // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
       if (M.enGlobo && M.enGlobo()) return original(sim, t);
+      // la lupa persigue su objetivo y el modo inmersión vigila el zoom TAMBIÉN aquí:
+      // GFX sustituye el render del mar, así que estos dos relojes no pueden vivir solo en el original
+      if (M.pasaZoomPublica) M.pasaZoomPublica(t);
+      if (M.actualizaCinePublica) M.actualizaCinePublica();
+      ctx.imageSmoothingEnabled = false; // pixel art nítido también en la capa GFX
       ctx.fillStyle = '#2161a7'; ctx.fillRect(0, 0, ancho, alto);
       // vista del mundo (para el culling: no pintar lo que no se ve)
       const vx0 = cam.x - ancho / (2 * cam.z), vx1 = cam.x + ancho / (2 * cam.z);
@@ -221,6 +154,7 @@
       }
       M.actualizaEventos(sim, t);
       GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
+      if (M.pintaReyesMar) M.pintaReyesMar(t); // los Reyes del Mar patrullan las Franjas de Calma
       for (const s of sim.storms) {
         if (M.pintaTormenta) M.pintaTormenta(s, t);
         else {
@@ -258,34 +192,20 @@
         }
         return mejor;
       };
-      const conDiorama = new Map();
-      for (const i of visibles) {
-        if (!M.usaDiorama(i)) continue;
-        const off = mejorEnv(i);
-        if (off === null) continue;
-        if (M.reservaDiorama(i, off, t)) conDiorama.set(i.id, off);
-      }
       const dibujadas = [];
       for (const i of visibles) {
-        if (conDiorama.has(i.id)) continue;
         const off = mejorEnv(i);
         if (off === null) continue;
-        const cx = i.x + off, cy = i.y;
-        if (M.bajoDiorama(cx - i.r * 1.85, cy - i.r * 1.5, cx + i.r * 1.85, cy + i.r * 1.6, t)) continue;
-        M.sombraIsla(i, off);
-        M.pintaIslaVista(i, off, t);
-        M.anilloIsla(i, off, t);
-        if (M.marcasIsla) M.marcasIsla(ctx, i, t, off);
+        // UN SOLO MAPA: la misma isla detallada del mapa base (detalle cerca, vista media lejos)
+        // con vida propia: flotación suave + resaltado al pasar el cursor (halo y micro-zoom)
+        if (M.pintaIslaConVida) M.pintaIslaConVida(i, off, t);
+        else if (M.dibujaIslaPublica) M.dibujaIslaPublica(i, off, t);
+        else { M.sombraIsla(i, off); M.pintaIslaVista(i, off, t); M.anilloIsla(i, off, t); if (M.marcasIsla) M.marcasIsla(ctx, i, t, off); }
         dibujadas.push([i, off]);
       }
-      for (const [id, off] of conDiorama) {
-        const i = D.ISLA[id];
-        if (i && M.dibujaEscenaIsla) M.dibujaEscenaIsla(ctx, i, t, off);
-      }
       // barcos con sprite (recalcula posición como el mapa base);
-      // con zoom cerca, los anclados se omiten: el diorama ya dibuja los suyos en el muelle
+      // UN SOLO MAPA: los anclados también se ven a zoom cercano (no hay dioramas que los tapen)
       for (const s of sim.ships) {
-        if (cam.z >= (M.LOD_ZOOM || 1.5) && s.state !== 'navegando') continue;
         let x, y, ang;
         if (s.state === 'navegando' && s.plan) {
           const k = clamp((sim.t - s.plan.t0) / Math.max(1, s.plan.dur), 0, 1);
@@ -305,27 +225,19 @@
           ang = lado > 0 ? 0 : Math.PI;
         }
         if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
-        if (M.bajoDiorama(x - 16, y - 16, x + 16, y + 16, t)) continue; // no cruzan por encima de una escena
         GFX.pintaBarco(ctx, s, sim, t, x, y + Math.sin(t / 700 + s.id * 1.7) * 0.9, ang);
       }
-      // etiquetas al final: ningún barco las tapa y ninguna cae bajo un diorama
-      for (const [i, off] of dibujadas) {
-        if (!M.bajoDiorama(i.x + off - i.r - 6, i.y - i.r - 6, i.x + off + i.r + 30, i.y + i.r + 20, t)) M.etiquetaIsla(i, off);
-      }
+      // etiquetas al final: ningún barco las tapa
+      for (const [i, off] of dibujadas) M.etiquetaIsla(i, off);
       GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
-      // tu avatar (el cubo solo con zoom lejos; cerca, el diorama ya muestra su sprite 16-bit)
-      const u = sim.user;
-      if (u && u.isl && !sim._fusionAtSea && cam.z < (M.LOD_ZOOM || 1.5)) {
-        const isl = D.ISLA[u.isl];
-        if (isl && !u.plan) {
-          const px = isl.x + u.pos.x * isl.r * 0.7, py = isl.y + u.pos.y * isl.r * 0.5;
-          M.cubo(px, py);
-          ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(px, py - 5, 12 + Math.sin(t / 300) * 2, 0, 7); ctx.stroke();
-        }
-      }
+      // tu capitán: figura pixel a zoom cercano, cubo y anillo a lo lejos (misma función que el mapa base)
+      if (M.avatarMundo) M.avatarMundo(sim, t);
       ctx.restore();
     };
+    GFX.instalado = true; // la atmósfera espera esta bandera para envolver el render AL FINAL
+    // carrera ATM/GFX: si la atmósfera agotó su sondeo antes de que GFX terminara de
+    // cargar, su instalador nunca corrió — re-invocarlo aquí re-envuelve el render.
+    if (G.ATM && G.ATM.instalar) G.ATM.instalar();
     return true;
   };
 

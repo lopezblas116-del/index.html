@@ -1,8 +1,8 @@
 {
   "key": "reverse-mountain",
   "title": "Reverse Mountain",
-  "description": "Corrientes ascendentes desde los cuatro Blues convergen en un paso estrecho hacia la Grand Line.",
+  "description": "La montaña donde los cuatro Blues suben al cielo: sus corrientes ascendentes son la única puerta de entrada para quienes no sirven al Gobierno. El canal ruge entre rocas vivas y una equivocación de rumbo significa caer de vuelta al mar de origen, si el casco sobrevive.",
   "climate": "grand-line",
-  "hazards": ["corrientes ascendentes", "rocas sumergidas", "navegación de precisión"],
-  "newsSeeds": ["cuatro corrientes se encuentran", "el paso ruge entre las rocas", "una travesía al límite"]
+  "hazards": ["corrientes ascendentes traicioneras", "rocas sumergidas que destrozan quillas", "navegación de precisión milimétrica", "el canal devuelve al mar de origen", "vendavales cruzados en la cima"],
+  "newsSeeds": ["cuatro corrientes se encuentran y el cielo truena", "el paso ruge entre las rocas toda la noche", "una travesía al límite del casco", "un barco volvió a su origen: la corriente lo escupió", "bitácoras marcan el ángulo exacto para entrar"]
 }
