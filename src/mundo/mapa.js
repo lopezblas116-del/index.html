@@ -43,6 +43,10 @@
     cv.style.touchAction = 'none'; // el navegador no se queda con los gestos del mapa
     const fit = () => {
       const r = cv.parentElement.getBoundingClientRect();
+      // PERF: si el tamaño no cambió, no invalidar NADA. El ResizeObserver del padre
+      // puede re-dispararse con nuestro propio ajuste del canvas: sin este guardia,
+      // cada disparo tiraba la capa base horneada y el mundo se re-cocinaba por frame.
+      if (Math.round(r.width) === Math.round(ancho) && Math.round(r.height) === Math.round(alto) && base) return;
       ancho = r.width; alto = r.height;
       const DPR = Math.min(window.devicePixelRatio || 1, 2); // tope 2: 3x en móviles cuadruplica el costo sin ganancia visible
       cv.width = Math.round(ancho * DPR); cv.height = Math.round(alto * DPR);
@@ -961,7 +965,9 @@
       rc(-r * 0.62, my - 6, 2.4, 6, '#e8e2d2'); rc(-r * 0.62 + 0.4, my - 8.4, 1.6, 2.6, '#d33');
     }
     i._chimeneas = chimeneas;
-    if (cacheSprites.size > 16) cacheSprites.delete(cacheSprites.keys().next().value);
+    // LRU generoso: al alejar el zoom entran >16 islas y una cache chica re-cocinaba
+    // sprites completos cada frame (el tirón de FPS en móvil). 40 cubre cualquier vista.
+    if (cacheSprites.size > 40) cacheSprites.delete(cacheSprites.keys().next().value);
     const entry = { c, R };
     cacheSprites.set(i.id, entry);
     return entry;
@@ -997,6 +1003,7 @@
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sp.c, cx - sp.R, cy - sp.R, sp.R * 2, sp.R * 2);
     ctx.restore();
+    if (!lejos) { // espuma y crestas solo de cerca: de lejos la costa horneada basta
     // espuma que respira alrededor de la costa
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
@@ -1021,6 +1028,7 @@
       }
     }
     ctx.restore();
+    }
     // humo vivo de chimeneas industriales (solo tiene sentido de cerca)
     if (i._chimeneas && cam.z >= 0.8) for (const [sx, sy] of i._chimeneas) {
       for (let q = 0; q < 3; q++) {
@@ -1029,7 +1037,7 @@
       }
     }
     // bandera de facción: la tela ondea, el color lo manda el control del mundo
-    if (i._flag) {
+    if (i._flag && !lejos) {
       const [fx, fy] = i._flag;
       const fac = (MAPA._sim && MAPA._sim.control && MAPA._sim.control[i.id]) || '';
       const color = fac === 'ley' ? '#2b6cb0' : fac === 'tirano' ? '#7d3c98' : '#c9a13d'; // control real: ley/tirano/libre
@@ -1146,15 +1154,22 @@
     // escala de hover suavizada (lerp por frame: entra y sale sin salto)
     i._hs = (i._hs || 1) + ((hov ? 1.035 : 1) - (i._hs || 1)) * 0.12;
     const cx = i.x + off, cy = i.y, r = i.r;
-    // halo de agua poco profunda: el aro cian vive SIEMPRE bajo la isla
-    ctx.save();
-    const halo = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.8);
-    halo.addColorStop(0, 'rgba(150,220,255,0.55)');
-    halo.addColorStop(0.55, 'rgba(150,220,255,0.22)');
-    halo.addColorStop(1, 'rgba(150,220,255,0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, 7); ctx.fill();
-    ctx.restore();
+    // halo de agua somera horneado: el gradiente se cocina UNA vez, cada frame es un blit
+    if (!MAPA._haloSprite) {
+      const H = 96, hc = document.createElement('canvas');
+      hc.width = hc.height = H * 2;
+      const hg = hc.getContext('2d');
+      const grad = hg.createRadialGradient(H, H, H * 0.42, H, H, H);
+      grad.addColorStop(0, 'rgba(150,220,255,0.55)');
+      grad.addColorStop(0.55, 'rgba(150,220,255,0.22)');
+      grad.addColorStop(1, 'rgba(150,220,255,0)');
+      hg.fillStyle = grad; hg.fillRect(0, 0, H * 2, H * 2);
+      MAPA._haloSprite = hc;
+    }
+    const HR = r * 1.8;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(MAPA._haloSprite, cx - HR, cy - HR, HR * 2, HR * 2);
+    ctx.imageSmoothingEnabled = false;
     if (hov) {
       const pulso = 1 + Math.sin(t / 500) * 0.03;
       ctx.save();
@@ -1366,15 +1381,27 @@
 
   // ── Capa base: océano texturizado, Franjas de Calma, Gran Ruta y Muralla Roja como continente ──
   function crearBase() {
+    MAPA._nCrea=(MAPA._nCrea||0)+1;
     const esc = D.W > 2000 ? 1.4 : 2;
     const cb = document.createElement('canvas');
     cb.width = Math.round(D.W * esc); cb.height = Math.round(D.H * esc);
     const c = cb.getContext('2d');
     c.scale(esc, esc);
-    // océano profundo sólido + líneas de ola horizontales sutiles (patrón 100% × 30px)
+    // océano profundo sólido + olas como trazos dispersos (el idioma del mar de la referencia)
     c.fillStyle = '#154584'; c.fillRect(0, 0, D.W, D.H);
-    c.fillStyle = 'rgba(255,255,255,0.05)';
-    for (let y = 0; y < D.H; y += 30) c.fillRect(0, y, D.W, 1);
+    c.strokeStyle = 'rgba(255,255,255,0.13)'; c.lineWidth = 1.5;
+    c.fillStyle = 'rgba(255,255,255,0.12)';
+    for (let y = 24; y < D.H; y += 40) {
+      const dent = 1 + (Math.floor(y / 40) % 2); // filas alternadas: densidad variable
+      for (let x = 18; x < D.W; x += 74 * dent) {
+        const n = ruido(x * 0.013 + y * 0.031), n2 = ruido(x * 0.007 + y * 0.017);
+        if (n < 0.22) continue; // huecos: el mar respira
+        const len = 5 + n2 * 11, yy = y + (ruido(x * 0.05 + y) - 0.5) * 12;
+        const xx = x + n2 * 26;
+        c.beginPath(); c.moveTo(xx, yy); c.lineTo(xx + len, yy + (ruido(xx + y) - 0.5) * 2); c.stroke();
+        if (n > 0.93) { c.beginPath(); c.arc(xx + len + 5, yy - 4, 1.1, 0, 7); c.fill(); } // chispa de sol
+      }
+    }
     // ── Franjas de Calma: banda gris-verde pálida con borde punteado ──
     for (const [a, b] of [[D.CB_T, D.GL_Y0], [D.GL_Y1, D.CB_B]]) {
       c.fillStyle = 'rgba(74,124,126,0.5)';
@@ -1488,6 +1515,17 @@
       c.stroke();
       c.restore();
     }
+    // ── niebla cartográfica: el mundo se apaga en los bordes (lo que aún no navegaste) ──
+    const niebla = (x0, y0, w, h, horiz, inv) => {
+      const gr = horiz ? c.createLinearGradient(x0, 0, x0 + (inv ? -w : w), 0)
+                       : c.createLinearGradient(0, y0, 0, y0 + (inv ? -h : h));
+      gr.addColorStop(0, 'rgba(7,16,32,0.42)'); gr.addColorStop(1, 'rgba(7,16,32,0)');
+      c.fillStyle = gr; c.fillRect(x0, y0, w, h);
+    };
+    niebla(0, 0, 190, D.H, true, false);
+    niebla(D.W - 190, 0, 190, D.H, true, true);
+    niebla(0, 0, D.W, 130, false, false);
+    niebla(0, D.H - 130, D.W, 130, false, true);
     // ── Rosa de los vientos ──
     const rx = 150, ry = D.H - 118, rr2 = 46;
     c.save();
@@ -1859,7 +1897,7 @@
     ctx.beginPath(); ctx.moveTo(px + s, cy - s / 2); ctx.lineTo(px, cy); ctx.lineTo(px, cy + s); ctx.lineTo(px + s, cy + s / 2); ctx.closePath(); ctx.fill();
   }
 
-  MAPA.capaBase = function () { return base || (base = crearBase()); };
+  MAPA.capaBase = function () { MAPA._nBase=(MAPA._nBase||0)+1; return base || (base = crearBase()); };
   MAPA.actualizaEventos = actualizaEventos;
   MAPA.sombraIsla = sombraIsla;
   MAPA.pintaTormenta = pintaTormenta;
@@ -1874,10 +1912,10 @@
     if (alpha <= 0) return;
     ctx.save();
     ctx.globalAlpha = alpha;
-    // chip de etiqueta: fondo azul noche, texto blanco 12px, radio 4px, prefijo 📍
+    // chip de etiqueta: fondo azul noche, texto blanco 12px, radio 4px, bandera 🚩 (idioma de la referencia)
     ctx.font = '600 12px Manrope, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const rotulo = '\ud83d\udccd ' + i.n;
+    const rotulo = '\ud83d\udea9 ' + i.n;
     const wCh = ctx.measureText(rotulo).width + 16, hCh = 20;
     const bx = i.x + ox - wCh / 2, by = i.y + i.r + 9;
     ctx.beginPath();

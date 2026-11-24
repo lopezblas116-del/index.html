@@ -69,11 +69,18 @@
 
   // ── Agua animada (dos capas de olas suaves) ──
   GFX.pintaAgua = function (ctx, ancho, alto, t, cam, Wm, Hm) {
-    // brillos de ola que se desplazan lentamente
+    // PERF: el mar de fondo vive horneado en la capa base (olas dispersas estáticas).
+    // Esta capa animada SOLO corre de cerca, y solo redibuja cuando cambió la fase
+    // (6 pasos de 150ms) o la cámara: en la vista mundo cuesta CERO por frame.
+    if (cam.z < 0.8) return;
+    const fase = Math.floor(t / 150) % 6;
+    const llave = fase + ':' + Math.round(cam.x / 4) + ':' + Math.round(cam.y / 4) + ':' + Math.round(cam.z * 20);
+    if (llave === GFX._olaLlave) return;
+    GFX._olaLlave = llave;
     ctx.save();
     ctx.globalAlpha = 0.16;
     ctx.fillStyle = '#cfe8f7';
-    const sep = 34, vel = 12;
+    const sep = 44, vel = 12;
     const x0 = Math.floor((cam.x - ancho / (2 * cam.z)) / sep) * sep;
     const y0 = Math.floor((cam.y - alto / (2 * cam.z)) / sep) * sep;
     for (let y = y0; y < cam.y + alto / (2 * cam.z) + sep; y += sep) {
@@ -132,6 +139,10 @@
       if (!cv || !GFX.cargado) { return original(sim, t); }
       const ctx = cv.getContext('2d');
       const ancho = cv.clientWidth, alto = cv.clientHeight;
+      const _sec = GFX._sec || (GFX._sec = {});
+      const _tiempos = GFX._tiempos || (GFX._tiempos = {});
+      const _fr = GFX._fr || (GFX._fr = { n: 0 });
+      const sec = (n, fn) => { const t0 = performance.now(); fn(); _sec[n] = (_sec[n] || 0) + (performance.now() - t0); };
       const cam = G.MAPA.cam || { x: D.W / 2, y: D.H / 2, z: 1 };
       const M = G.MAPA;
       // vista globo: el mapa base se encarga de todo (esfera + espacio), sin capas mejoradas
@@ -148,20 +159,26 @@
       ctx.save();
       ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
       // capa base unificada (mar, franjas, muralla y rótulos) del mapa único — solo envolturas visibles
-      for (const off of [-D.W, 0, D.W]) {
-        if (off + D.W < vx0 - 40 || off > vx1 + 40) continue;
-        ctx.drawImage(M.capaBase(), off, 0, D.W, D.H);
-      }
-      M.actualizaEventos(sim, t);
-      GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
-      if (M.pintaReyesMar) M.pintaReyesMar(t); // los Reyes del Mar patrullan las Franjas de Calma
-      for (const s of sim.storms) {
-        if (M.pintaTormenta) M.pintaTormenta(s, t);
-        else {
-          ctx.fillStyle = 'rgba(30,40,60,0.55)';
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+      sec('base', () => {
+        for (const off of [-D.W, 0, D.W]) {
+          if (off + D.W < vx0 - 40 || off > vx1 + 40) continue;
+          ctx.drawImage(M.capaBase(), off, 0, D.W, D.H);
         }
-      }
+      });
+      sec('eventos-agua', () => {
+        M.actualizaEventos(sim, t);
+        GFX.pintaAgua(ctx, ancho, alto, t, cam, D.W, D.H);
+      });
+      sec('reyes-tormentas', () => {
+        if (M.pintaReyesMar) M.pintaReyesMar(t); // los Reyes del Mar patrullan las Franjas de Calma
+        for (const s of sim.storms) {
+          if (M.pintaTormenta) M.pintaTormenta(s, t);
+          else {
+            ctx.fillStyle = 'rgba(30,40,60,0.55)';
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+          }
+        }
+      });
       // islas en PASADAS: reservas de diorama → blobs no tapados → dioramas encima.
       const visibles = [];
       for (const i of D.ISLAS) {
@@ -193,6 +210,7 @@
         return mejor;
       };
       const dibujadas = [];
+      sec('islas', () => {
       for (const i of visibles) {
         const off = mejorEnv(i);
         if (off === null) continue;
@@ -203,6 +221,7 @@
         else { M.sombraIsla(i, off); M.pintaIslaVista(i, off, t); M.anilloIsla(i, off, t); if (M.marcasIsla) M.marcasIsla(ctx, i, t, off); }
         dibujadas.push([i, off]);
       }
+      });
       // barcos con sprite (recalcula posición como el mapa base);
       // UN SOLO MAPA: los anclados también se ven a zoom cercano (no hay dioramas que los tapen)
       for (const s of sim.ships) {
@@ -227,17 +246,65 @@
         if (x < vx0 - 30 || x > vx1 + 30 || y < vy0 - 30 || y > vy1 + 30) continue; // culling de barcos
         GFX.pintaBarco(ctx, s, sim, t, x, y + Math.sin(t / 700 + s.id * 1.7) * 0.9, ang);
       }
-      // etiquetas al final: ningún barco las tapa
-      for (const [i, off] of dibujadas) M.etiquetaIsla(i, off);
-      GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
-      // tu capitán: figura pixel a zoom cercano, cubo y anillo a lo lejos (misma función que el mapa base)
-      if (M.avatarMundo) M.avatarMundo(sim, t);
+      // tu islote actual: el anillo dorado girando marca dónde está tu capitán
+      const islCap = sim.user && D.ISLA[sim.user.isl];
+      if (islCap && !islCap.oculta) {
+        const offCap = mejorEnv(islCap);
+        if (offCap !== null) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(246,224,94,0.9)';
+          ctx.lineWidth = 2 / cam.z;
+          ctx.setLineDash([7 / cam.z, 5 / cam.z]);
+          ctx.lineDashOffset = -t / 90 / cam.z;
+          ctx.beginPath();
+          ctx.arc(islCap.x + offCap, islCap.y, (islCap.r + 10) * 1.3, 0, 7);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      sec('final', () => {
+        // etiquetas al final: ningún barco las tapa
+        for (const [i, off] of dibujadas) M.etiquetaIsla(i, off);
+        GFX.pintaNubes(ctx, t, cam, ancho, alto, G.MAPA.nubes || []);
+        // tu capitán: figura pixel a zoom cercano, cubo y anillo a lo lejos (misma función que el mapa base)
+        if (M.avatarMundo) M.avatarMundo(sim, t);
+      });
+      _fr.n++;
+      if (_fr.n >= 20) {
+        let peor = '-', mv = 0, total = '';
+        for (const k in _sec) {
+          const ms = _sec[k] / _fr.n;
+          total += ' ' + k + ':' + ms.toFixed(1);
+          if (ms > mv) { mv = ms; peor = k; }
+        }
+        for (const k in _sec) _sec[k] = 0;
+        _fr.n = 0;
+        document.title = 'PEOR:' + peor + total;
+      }
       ctx.restore();
     };
     GFX.instalado = true; // la atmósfera espera esta bandera para envolver el render AL FINAL
+    // sonda de rendimiento honesta: ms reales por frame en el título del documento
+    GFX._frames = 0; GFX._msAcc = 0;
+    GFX._sondea = function (fn) {
+      return function () {
+        const t0 = (window.performance && performance.now()) || 0;
+        fn.apply(this, arguments);
+        const dt = ((window.performance && performance.now()) || 0) - t0;
+        GFX._frames++; GFX._msAcc += dt;
+        if (GFX._frames >= 20) {
+          const M = G.MAPA;
+          document.title = 'rend ' + (GFX._msAcc / GFX._frames).toFixed(1) + 'ms/f'
+            + ' b=' + (M && M._nBase || 0) + ' c=' + (M && M._nCrea || 0)
+            + ' z=' + (M && M.cam ? M.cam.z.toFixed(2) : '-');
+          GFX._frames = 0; GFX._msAcc = 0;
+        }
+      };
+    };
     // carrera ATM/GFX: si la atmósfera agotó su sondeo antes de que GFX terminara de
     // cargar, su instalador nunca corrió — re-invocarlo aquí re-envuelve el render.
     if (G.ATM && G.ATM.instalar) G.ATM.instalar();
+    G.MAPA.render = GFX._sondea(G.MAPA.render);
     return true;
   };
 
