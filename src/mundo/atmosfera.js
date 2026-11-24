@@ -22,6 +22,8 @@
   let instalado = false;
   let mini = null, miniCtx = null;
   const MINI_W = 148, MINI_H = 82, MINI_ESC = 2; // ×2 interno para nitidez retina
+  // ruido determinista (la misma semilla del mapa): posiciones estables sin estado
+  const ruido = (k) => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 
   // ── pure (testeable sin DOM) ──────────────────────────────────────────────
   // 0 = pleno día, 1 = noche cerrada. Amanece 06:00→07:20, anochece 19:40→21:00.
@@ -84,8 +86,12 @@
     ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
     pintaRutas(sim, t, ctx, cam, D);
     pintaSombrasNubes(t, ctx, cam, D);
+    pintaCardumenes(sim, t, ctx, cam, D, vis);
     pintaLluvia(sim, t, ctx, cam, D);
+    if (noche > 0.3) pintaAurora(t, ctx, cam, D, noche); // las Franjas de Calma resplandecen de noche
+    pintaArcoiris(sim, t, ctx, cam, D, vis);             // la promesa tras cada tormenta
     if (noche > 0.04) pintaLuces(sim, t, ctx, cam, D, noche, vis);
+    if (noche > 0.25) pintaBioluma(t, ctx, cam, D, noche, vis); // el mar enciende su propio cielo
     pintaHover(t, ctx, cam, D);
     ctx.restore();
 
@@ -99,12 +105,158 @@
       if (crepusculo > 0.03) {
         ctx.fillStyle = 'rgba(255,138,60,' + (0.12 * crepusculo).toFixed(3) + ')';
         ctx.fillRect(0, 0, ancho, alto);
+        pintaRayos(ctx, crepusculo, ancho, alto); // columnas de sol bajo en el horizonte
       }
     }
     // 3) pantalla: luz de escena (como la del globo) + minimapa + rosa de los vientos
     pintaLuzEscena(ctx, cam, ancho, alto);
     pintaMini(sim, t, cam, D);
     pintaRosa(ctx, cam, ancho, alto);
+  }
+
+  // ── cardúmenes: la vida bajo la superficie. Escuelas que vagan y huyen de
+  //    las naves; de lejos son vetas oscuras, de cerca pequeñas sombras con cola ──
+  let _cardumenes = null;
+  function pintaCardumenes(sim, t, ctx, cam, D, vis) {
+    if (!_cardumenes) {
+      _cardumenes = [];
+      for (let e = 0; e < 7; e++) {
+        const esc = { x: ruido(e * 13.7 + 2) * D.W, y: 120 + ruido(e * 7.3 + 5) * (D.H - 240), vx: 0, vy: 0 };
+        esc.pes = [];
+        for (let p = 0; p < 6; p++) esc.pes.push({ a: ruido(e * 9 + p * 3.3) * 7, r: 7 + ruido(e + p) * 22, f: 0.8 + ruido(e * 3 + p) * 0.9 });
+        _cardumenes.push(esc);
+      }
+    }
+    const naves = (sim.ships || []).map(s => [s.x, s.y]);
+    ctx.fillStyle = 'rgba(16,38,66,0.5)';
+    for (const esc of _cardumenes) {
+      // huida: la nave más cercana empuja la escuela (pánico esprín)
+      let huye = null, dMin = 1e9;
+      for (const [sx, sy] of naves) { const d = Math.hypot(sx - esc.x, sy - esc.y); if (d < dMin) { dMin = d; huye = [sx, sy]; } }
+      const panico = huye && dMin < 130;
+      const vel = panico ? 3.1 : 0.55;
+      if (huye && panico) { const dx = esc.x - huye[0], dy = esc.y - huye[1], m = Math.hypot(dx, dy) || 1; esc.vx += (dx / m) * 0.5; esc.vy += (dy / m) * 0.5; }
+      esc.vx += Math.sin(t / 3400 + esc.x * 0.01) * 0.03; esc.vy += Math.cos(t / 4100 + esc.y * 0.013) * 0.02;
+      esc.vx *= 0.96; esc.vy *= 0.96;
+      esc.x = ((esc.x + esc.vx * vel) % D.W + D.W) % D.W;
+      esc.y = Math.max(60, Math.min(D.H - 60, esc.y + esc.vy * vel));
+      if (!vis(esc.x, esc.y, 70)) continue;
+      const ang = Math.atan2(esc.vy * vel + Math.sin(t / 2600 + esc.x) * 0.3, esc.vx * vel + 0.2);
+      for (const p of esc.pes) {
+        const ox = Math.cos(p.a + t / 900 * p.f) * p.r, oy = Math.sin(p.a * 1.7 + t / 1100 * p.f) * p.r * 0.6;
+        ctx.save();
+        ctx.translate(esc.x + ox, esc.y + oy); ctx.rotate(ang);
+        ctx.beginPath(); ctx.ellipse(0, 0, 4.2, 1.5, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-3.6, 0); ctx.lineTo(-6, -1.8); ctx.lineTo(-6, 1.8); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── aurora: sobre las Franjas de Calma, cortinas de luz que suben del mar ──
+  // Las bandas miden ~60 unidades: la aurora no cabe adentro — SUBE desde ellas,
+  // como cortinas verticales que se mecenden. Cada cortina: gradiente vertical
+  // horneado al vuelo, vaivén de fase lenta, tres temperaturas de color.
+  function pintaAurora(t, ctx, cam, D, noche) {
+    const bandas = [[D.CB_T, D.GL_Y0], [D.GL_Y1, D.CB_B]];
+    const vt = cam.y - 500 / cam.z, vb = cam.y + 500 / cam.z;
+    for (const [a, b] of bandas) {
+      if (vb < a - 140 || vt > b + 60) continue;
+      const x0 = Math.max(0, cam.x - 620 / cam.z), x1 = Math.min(D.W, cam.x + 620 / cam.z);
+      const yC = (a + b) / 2, altoB = Math.max(40, b - a);
+      for (let x = Math.ceil(x0 / 56) * 56; x < x1; x += 56) {
+        const sem = ruido(x * 0.031);
+        const fase = t / 3400 + sem * 9.4;
+        const h = altoB * (1.6 + sem * 2.0), ancho = 4.5 + sem * 5.5;
+        const sway = Math.sin(fase + x / 210) * altoB * 0.3;
+        const hue = sem < 0.5 ? '120,255,205' : (sem < 0.8 ? '150,120,255' : '90,225,255');
+        const g = ctx.createLinearGradient(0, yC + altoB * 0.45, 0, yC - h);
+        g.addColorStop(0, 'rgba(' + hue + ',' + (0.17 * noche).toFixed(3) + ')');
+        g.addColorStop(0.5, 'rgba(' + hue + ',' + (0.10 * noche).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(' + hue + ',0)');
+        ctx.strokeStyle = g; ctx.lineWidth = ancho; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x + sway * 0.4, yC + altoB * 0.45);
+        ctx.quadraticCurveTo(x + sway, yC - h * 0.5, x + sway * 1.8, yC - h);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ── bioluminiscencia: de noche el mar responde con su propia luz ──
+  let _bioChispa = null;
+  function pintaBioluma(t, ctx, cam, D, noche, vis) {
+    if (!_bioChispa) {
+      const c = document.createElement('canvas'); c.width = c.height = 9;
+      const g = c.getContext('2d');
+      const gr = g.createRadialGradient(4.5, 4.5, 0, 4.5, 4.5, 4.5);
+      gr.addColorStop(0, 'rgba(170,255,235,0.9)'); gr.addColorStop(0.5, 'rgba(110,230,255,0.35)'); gr.addColorStop(1, 'rgba(110,230,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 9, 9);
+      _bioChispa = c;
+      _bioChispa.pts = [];
+      for (let k = 0; k < 54; k++) _bioChispa.pts.push([ruido(k * 7.1 + 40) * D.W, 90 + ruido(k * 3.9 + 91) * (D.H - 180), ruido(k * 11.3) * 7]);
+    }
+    for (const [x, y, f] of _bioChispa.pts) {
+      if (!vis(x, y, 30)) continue;
+      const titila = 0.16 + 0.34 * Math.sin(t / 900 + f * 9);
+      ctx.globalAlpha = Math.max(0, titila * noche);
+      ctx.drawImage(_bioChispa, x - 4.5, y - 4.5);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ── arcoíris: cuando una tormenta se disipa, su promesa queda en el cielo ──
+  let _iris = { x: 0, y: 0, hasta: 0, prox: 60000, sprite: null, prev: null };
+  function pintaArcoiris(sim, t, ctx, cam, D, vis) {
+    const ids = (sim.storms || []).map(s => s);
+    if (_iris.prev) for (const vieja of _iris.prev) {
+      if (!ids.some(s => s === vieja) && t > _iris.hasta) { _iris.x = vieja.x; _iris.y = vieja.y + vieja.r * 0.4; _iris.hasta = t + 26000; }
+    }
+    _iris.prev = ids;
+    if (t > _iris.prox) { // incluso sin tormenta que seguir: una cada tanto, cerca de la Gran Ruta
+      _iris.x = ruido(t / 9e5) * D.W; _iris.y = (D.GL_Y0 + D.GL_Y1) / 2 - 60; _iris.hasta = t + 20000;
+      _iris.prox = t + 190000;
+    }
+    if (t >= _iris.hasta || !_iris.sprite) {
+      if (!_iris.sprite) { // arco de siete bandas, horneado una vez
+        const c = document.createElement('canvas'); c.width = 560; c.height = 290;
+        const g = c.getContext('2d');
+        const cols = ['rgba(255,90,90,', 'rgba(255,170,70,', 'rgba(255,240,110,', 'rgba(120,225,130,', 'rgba(105,190,255,', 'rgba(130,120,240,', 'rgba(190,120,230,'];
+        for (let b = 0; b < 7; b++) {
+          g.strokeStyle = cols[b] + '0.13)'; g.lineWidth = 9;
+          g.beginPath(); g.arc(280, 285, 240 - b * 10, Math.PI, 0); g.stroke();
+        }
+        _iris.sprite = c;
+      }
+      if (t >= _iris.hasta) return;
+    }
+    if (!vis(_iris.x, _iris.y, 300)) return;
+    ctx.globalAlpha = 0.75 + Math.sin(t / 1300) * 0.25;
+    ctx.drawImage(_iris.sprite, _iris.x - 280, _iris.y - 285);
+    ctx.globalAlpha = 1;
+  }
+
+  // ── god rays: columnas de sol bajo, solo en la transición día/noche ──
+  let _rayo = null;
+  function pintaRayos(ctx, crepusculo, ancho, alto) {
+    if (!_rayo) { // un haz horneado: trapecio de luz que se desvanece hacia abajo
+      const c = document.createElement('canvas'); c.width = 240; c.height = 560;
+      const g = c.getContext('2d');
+      const gr = g.createLinearGradient(0, 0, 0, 560);
+      gr.addColorStop(0, 'rgba(255,205,130,0.14)'); gr.addColorStop(0.7, 'rgba(255,190,110,0.05)'); gr.addColorStop(1, 'rgba(255,180,100,0)');
+      g.fillStyle = gr;
+      g.beginPath(); g.moveTo(40, 0); g.lineTo(200, 0); g.lineTo(150, 560); g.lineTo(30, 560); g.closePath(); g.fill();
+      _rayo = c;
+    }
+    for (let k = 0; k < 3; k++) {
+      const x = ancho * (0.18 + k * 0.3), esc = alto / 560, vaiv = Math.sin(k * 2.4 + k) * 24;
+      ctx.save();
+      ctx.translate(x + vaiv, -20); ctx.rotate(0.16 - k * 0.07); ctx.scale(1, esc);
+      ctx.globalAlpha = Math.min(1, crepusculo * (0.9 - k * 0.22));
+      ctx.drawImage(_rayo, 0, 0);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // ── luz de escena: el mapa plano respira como el globo — brillo suave al

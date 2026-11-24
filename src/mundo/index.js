@@ -10,6 +10,7 @@ import './ui.js';
 import './main.js';
 import './graficos_mejorados.js';
 import './atmosfera.js';
+import './sonido_mar.js';
 import './puente.js';
 
 // API pública para el resto de One-Latam:

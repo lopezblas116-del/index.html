@@ -588,15 +588,16 @@
   }
 
   const cacheSprites = new Map();
-  // día/noche: la atmósfera la escribe el HUD en <body> cada tick; al cambiar,
-  // la caché de sprites se invalida para que el pueblo se encienda o apague.
+  // día/noche: DOS caches coexistentes (d: / n: prefijo en la clave). El dataset
+  // de <body> lo escriben DOS módulos (hud.js con el reloj real y mundo/ui.js con
+  // la atmósfera del sim) y puede alternar entre frames: vaciar la caché en cada
+  // cambio re-cocinaba TODAS las islas visibles cada frame (medido: 193ms/frame).
+  // Con claves separadas el parpadeo es gratis y el pueblo se enciende y apaga solo.
   const esNoche = () => document.body?.dataset.atmosphere === 'night';
-  let nocheCache = null;
   function spriteDetalle(i) {
-    const hit = cacheSprites.get(i.id);
-    if (hit) { cacheSprites.delete(i.id); cacheSprites.set(i.id, hit); return hit; }
-    const noche = esNoche();
-    if (nocheCache !== noche) { cacheSprites.clear(); nocheCache = noche; }
+    const clave = (esNoche() ? 'n:' : 'd:') + i.id;
+    const hit = cacheSprites.get(clave);
+    if (hit) { cacheSprites.delete(clave); cacheSprites.set(clave, hit); return hit; }
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const r = i.r, tema = i.tema || 'verde';
     const R = Math.ceil(r * 1.9 + 54);
@@ -965,11 +966,12 @@
       rc(-r * 0.62, my - 6, 2.4, 6, '#e8e2d2'); rc(-r * 0.62 + 0.4, my - 8.4, 1.6, 2.6, '#d33');
     }
     i._chimeneas = chimeneas;
-    // LRU generoso: al alejar el zoom entran >16 islas y una cache chica re-cocinaba
-    // sprites completos cada frame (el tirón de FPS en móvil). 40 cubre cualquier vista.
-    if (cacheSprites.size > 40) cacheSprites.delete(cacheSprites.keys().next().value);
+    // LRU generoso: al alejar el zoom la vista entra >40 islas y una cache chica
+    // re-cocinaba sprites completos cada frame (medido: islas 133ms/frame).
+    // 48 por caché (día y noche viven juntas) cubre la peor vista con margen.
+    if (cacheSprites.size > 48) cacheSprites.delete(cacheSprites.keys().next().value);
     const entry = { c, R };
-    cacheSprites.set(i.id, entry);
+    cacheSprites.set(clave, entry);
     return entry;
   }
 
@@ -988,7 +990,7 @@
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
     g.drawImage(big.c, 0, 0, c.width, c.height);
     const entry = { c, R: big.R };
-    if (cacheLejos.size > 40) cacheLejos.delete(cacheLejos.keys().next().value);
+    if (cacheLejos.size > 64) cacheLejos.delete(cacheLejos.keys().next().value);
     cacheLejos.set(i.id, entry);
     return entry;
   }
@@ -1957,8 +1959,29 @@
       const x = ((r.x + (t / 1000) * r.v) % D.W + D.W) % D.W;
       if (x < vx0 || x > vx1) continue;
       const y = r.y + Math.sin(t / 2600 + r.x * 0.01) * 5;
+      // cada tanto, un rey sube a respirar: arco del lomo, salpicadura y anillo de espuma
+      if (!r._sup) r._sup = { prox: t + 16000 + (r.x * 7.9 % 44000), spl: 0 };
+      let sum = 0, esc = 1, arco = 0;
+      if (t >= r._sup.prox && t < r._sup.prox + 5200) {
+        const f = (t - r._sup.prox) / 5200;
+        arco = Math.sin(f * Math.PI);
+        sum = arco * 26; esc = 1 + arco * 0.5;
+        r._sup.spl = (f > 0.06 && f < 0.26) ? arco : 0;
+      } else if (t >= r._sup.prox + 5200) {
+        r._sup.prox = t + 34000 + (r.y * 5.3 % 46000);
+        r._sup.spl = 0;
+      }
       ctx.save();
-      ctx.translate(x, y); ctx.scale(r.v > 0 ? 1 : -1, 1);
+      ctx.translate(x, y - sum); ctx.scale((r.v > 0 ? 1 : -1) * esc, esc);
+      if (r._sup.spl) { // gotas y espuma en el instante de romper la superficie
+        ctx.fillStyle = 'rgba(235,248,255,' + (0.55 * arco).toFixed(2) + ')';
+        for (let p = 0; p < 7; p++) {
+          const a = ruido(p * 3.1 + r.x) * Math.PI - Math.PI * 0.9, dd = 8 + ruido(p + Math.floor(t / 90)) * 20;
+          ctx.beginPath(); ctx.arc(r.L * 0.45 + Math.cos(a) * dd * 1.7, Math.sin(a) * dd - 6, 1.5 + ruido(p * 2) * 1.7, 0, 7); ctx.fill();
+        }
+        ctx.strokeStyle = 'rgba(235,248,255,' + (0.35 * arco).toFixed(2) + ')'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.ellipse(r.L * 0.45, 8, r.L * 0.6, 10 * arco + 3, 0, 0, 7); ctx.stroke();
+      }
       const fase = (t / 900) * r.f;
       // estela suave que deja a flote
       ctx.strokeStyle = 'rgba(230,244,252,0.14)'; ctx.lineWidth = 2;
