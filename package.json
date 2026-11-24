@@ -8,9 +8,7 @@
     "preview": "vite preview --host",
     "test": "node --test tests/*.test.js"
   },
-  "dependencies": {
-    "three": "0.180.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "vite": "7.1.12"
   }

@@ -993,8 +993,8 @@
     const sp = lejos ? spriteLejos(i) : spriteDetalle(i);
     const cx = i.x + ox, cy = i.y, r = i.r;
     ctx.save();
-    // de cerca, píxel nítido; a lo lejos, suavizado para que el mini no vibre
-    ctx.imageSmoothingEnabled = lejos;
+    // pixel art en todo zoom: píxel nítido de cerca y de lejos
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sp.c, cx - sp.R, cy - sp.R, sp.R * 2, sp.R * 2);
     ctx.restore();
     // espuma que respira alrededor de la costa
@@ -1129,13 +1129,13 @@
 
   function sombraIsla(i, ox) {
     ctx.beginPath();
-    ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5, i.r * 1.25, i.r * 0.7, 0, 0, 7);
-    ctx.fillStyle = 'rgba(10,30,50,0.25)'; ctx.fill();
+    ctx.ellipse(i.x + ox + 2, i.y + i.r * 0.5 + 8, i.r * 1.25, i.r * 0.7, 0, 0, 7);
+    ctx.fillStyle = 'rgba(4,12,26,0.5)'; ctx.fill();
   }
 
   // ── flotación: cada isla sube y baja lento con su propia fase (el mar la mece) ──
   // La sombra del agua NO flota: la isla se mece sobre su sombra, como en UMP.
-  function bobIsla(i, t) { return Math.sin(t / 2800 + i.x * 0.13) * 1.8; }
+  function bobIsla(i, t) { return Math.sin(t / 2800 + i.x * 0.13) * 3 - 3; }
   MAPA.bobIsla = bobIsla;
 
   // ── pintaIslaConVida: flotación + resaltado al pasar el cursor ──
@@ -1146,6 +1146,15 @@
     // escala de hover suavizada (lerp por frame: entra y sale sin salto)
     i._hs = (i._hs || 1) + ((hov ? 1.035 : 1) - (i._hs || 1)) * 0.12;
     const cx = i.x + off, cy = i.y, r = i.r;
+    // halo de agua poco profunda: el aro cian vive SIEMPRE bajo la isla
+    ctx.save();
+    const halo = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.8);
+    halo.addColorStop(0, 'rgba(150,220,255,0.55)');
+    halo.addColorStop(0.55, 'rgba(150,220,255,0.22)');
+    halo.addColorStop(1, 'rgba(150,220,255,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, 7); ctx.fill();
+    ctx.restore();
     if (hov) {
       const pulso = 1 + Math.sin(t / 500) * 0.03;
       ctx.save();
@@ -1362,52 +1371,13 @@
     cb.width = Math.round(D.W * esc); cb.height = Math.round(D.H * esc);
     const c = cb.getContext('2d');
     c.scale(esc, esc);
-    // océano CON LA MISMA PALETA del globo: profundo en los polos, vivo en el ecuador
-    const grad = c.createLinearGradient(0, 0, 0, D.H);
-    grad.addColorStop(0, '#164278'); grad.addColorStop(0.24, '#2866ad');
-    grad.addColorStop(0.5, '#2e74bd'); grad.addColorStop(0.76, '#2866ad'); grad.addColorStop(1, '#164278');
-    c.fillStyle = grad; c.fillRect(0, 0, D.W, D.H);
-    // los cuatro BLUE: cada océano del mundo tiene su temperatura de color (los cuadrantes de la cruz)
-    for (const bl of [
-      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],    // NORTH BLUE (noroeste)
-      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],  // EAST BLUE (noreste)
-      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],    // WEST BLUE (suroeste)
-      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']  // SOUTH BLUE (sureste)
-    ]) { c.fillStyle = bl[4]; c.fillRect(bl[0], bl[1], bl[2] - bl[0], bl[3] - bl[1]); }
-    // manchas de dos tonos: el mar nunca es un color plano (las mismas del globo)
-    for (let k = 0; k < 26; k++) {
-      c.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
-      c.beginPath();
-      c.ellipse(ruido(k + 1) * D.W, ruido(k + 50) * D.H, 130 + ruido(k + 99) * 190, 60 + ruido(k + 7) * 90, ruido(k + 3) * 3, 0, 7);
-      c.fill();
-    }
-    // cartografía de profundidad: bancos abisales oscuros y aguas someras claras
-    c.fillStyle = 'rgba(9,34,72,0.13)';
-    for (let k = 0; k < 12; k++) {
-      c.beginPath();
-      c.ellipse(ruido(k + 300) * D.W, ruido(k + 340) * D.H, 170 + ruido(k + 380) * 230, 75 + ruido(k + 420) * 100, ruido(k + 460) * 3, 0, 7);
-      c.fill();
-    }
-    c.fillStyle = 'rgba(140,205,235,0.09)';
-    for (let k = 0; k < 12; k++) {
-      c.beginPath();
-      c.ellipse(ruido(k + 500) * D.W, ruido(k + 540) * D.H, 140 + ruido(k + 580) * 180, 60 + ruido(k + 620) * 90, ruido(k + 660) * 3, 0, 7);
-      c.fill();
-    }
-    // textura de olas en dos tonos: swell largo oscuro + destello claro corto
-    for (let k = 0; k < 700; k++) {
-      const x = ruido(k * 3.1) * D.W, y = ruido(k * 7.7) * D.H, l = 10 + ruido(k) * 22;
-      c.strokeStyle = 'rgba(9,32,68,0.16)'; c.lineWidth = 2.2;
-      c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y); c.stroke();
-    }
-    c.strokeStyle = 'rgba(255,255,255,0.075)'; c.lineWidth = 1.2;
-    for (let k = 0; k < 1100; k++) {
-      const x = ruido(k * 3.1 + 500) * D.W, y = ruido(k * 7.7 + 500) * D.H, l = 7 + ruido(k + 9) * 13;
-      c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y); c.stroke();
-    }
+    // océano profundo sólido + líneas de ola horizontales sutiles (patrón 100% × 30px)
+    c.fillStyle = '#154584'; c.fillRect(0, 0, D.W, D.H);
+    c.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let y = 0; y < D.H; y += 30) c.fillRect(0, y, D.W, 1);
     // ── Franjas de Calma: banda gris-verde pálida con borde punteado ──
     for (const [a, b] of [[D.CB_T, D.GL_Y0], [D.GL_Y1, D.CB_B]]) {
-      c.fillStyle = 'rgba(148,172,166,0.38)';
+      c.fillStyle = 'rgba(74,124,126,0.5)';
       c.fillRect(0, a, D.W, b - a);
       c.strokeStyle = 'rgba(230,240,236,0.4)'; c.lineWidth = 1.5; c.setLineDash([10, 12]);
       c.beginPath(); c.moveTo(0, a + 1); c.lineTo(D.W, a + 1); c.moveTo(0, b - 1); c.lineTo(D.W, b - 1); c.stroke();
@@ -1436,7 +1406,7 @@
     // ── Muralla Roja: cordillera rugosa de polo a polo — EL MISMO relieve que el globo ──
     const x0 = D.RL_X, paso = 12;
     const muroGrad = c.createLinearGradient(0, 0, 0, D.H);
-    muroGrad.addColorStop(0, '#a8503a'); muroGrad.addColorStop(0.5, '#93402c'); muroGrad.addColorStop(1, '#a8503a');
+    muroGrad.addColorStop(0, '#7f2d22'); muroGrad.addColorStop(0.5, '#a33b2b'); muroGrad.addColorStop(1, '#7f2d22');
     const bordeMuro = (dir) => {
       const pts = [];
       for (let y = -paso; y <= D.H + paso; y += paso) {
@@ -1565,27 +1535,12 @@
     const g2 = t.getContext('2d');
     const escX = tw / D.W, escY = th / D.H;
     // océano: profundo en los polos, vivo y saturado en el ecuador
-    const oc = g2.createLinearGradient(0, 0, 0, th);
-    oc.addColorStop(0, '#164278'); oc.addColorStop(0.24, '#2866ad');
-    oc.addColorStop(0.5, '#2e74bd'); oc.addColorStop(0.76, '#2866ad'); oc.addColorStop(1, '#164278');
-    g2.fillStyle = oc; g2.fillRect(0, 0, tw, th);
-    // los cuatro BLUE: la misma temperatura de color que el mapa plano (coherencia total)
-    for (const bl of [
-      [0, 0, D.RL_X, D.GL_Y0, 'rgba(120,190,225,0.10)'],
-      [D.RL_X, 0, D.W, D.GL_Y0, 'rgba(150,210,235,0.08)'],
-      [0, D.GL_Y1, D.RL_X, D.H, 'rgba(62,84,142,0.12)'],
-      [D.RL_X, D.GL_Y1, D.W, D.H, 'rgba(92,180,170,0.10)']
-    ]) { g2.fillStyle = bl[4]; g2.fillRect(bl[0] * escX, bl[1] * escY, (bl[2] - bl[0]) * escX, (bl[3] - bl[1]) * escY); }
-    // manchas amplias de tono: el mar nunca es un color plano
-    for (let k = 0; k < 26; k++) {
-      g2.fillStyle = k % 2 ? 'rgba(104,178,232,0.14)' : 'rgba(8,38,88,0.14)';
-      g2.beginPath();
-      g2.ellipse(ruido(k + 21) * tw, ruido(k + 57) * th, 140 + ruido(k + 91) * 220, 60 + ruido(k + 13) * 110, ruido(k + 5) * 3, 0, 7);
-      g2.fill();
-    }
+    g2.fillStyle = '#154584'; g2.fillRect(0, 0, tw, th);
+    g2.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let y = 0; y < th; y += Math.max(8, Math.round(30 * escY))) g2.fillRect(0, y, tw, 1);
     // Franjas de Calma: bandas claras al norte y al sur de la Gran Ruta
     const bandaCalma = (y0, y1) => {
-      g2.fillStyle = 'rgba(152,202,236,0.28)';
+      g2.fillStyle = 'rgba(74,124,126,0.5)';
       g2.fillRect(0, y0, tw, y1 - y0);
       g2.fillStyle = 'rgba(198,228,246,0.20)';
       for (let x = 0; x < tw; x += 24) {
@@ -1612,7 +1567,7 @@
     // Muralla Roja: cordillera rugosa de polo a polo con vetas y cumbres
     const rx = D.RL_X * escX, paso = 30;
     const muroGrad = g2.createLinearGradient(0, 0, 0, th);
-    muroGrad.addColorStop(0, '#a8503a'); muroGrad.addColorStop(0.5, '#93402c'); muroGrad.addColorStop(1, '#a8503a');
+    muroGrad.addColorStop(0, '#7f2d22'); muroGrad.addColorStop(0.5, '#a33b2b'); muroGrad.addColorStop(1, '#7f2d22');
     const borde = (dir) => {
       const pts = [];
       for (let y = -paso; y <= th + paso; y += paso) {
@@ -1919,14 +1874,18 @@
     if (alpha <= 0) return;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.font = '600 ' + (i.r > 26 ? 11 : 9) + 'px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    // contorno oscuro: el nombre se lee aunque pase un barco por debajo
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(6,12,26,0.8)';
-    ctx.strokeText(i.n, i.x + ox, i.y + i.r + 13);
-    ctx.fillStyle = 'rgba(255,255,255,0.94)';
-    ctx.fillText(i.n, i.x + ox, i.y + i.r + 13);
+    // chip de etiqueta: fondo azul noche, texto blanco 12px, radio 4px, prefijo 📍
+    ctx.font = '600 12px Manrope, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const rotulo = '\ud83d\udccd ' + i.n;
+    const wCh = ctx.measureText(rotulo).width + 16, hCh = 20;
+    const bx = i.x + ox - wCh / 2, by = i.y + i.r + 9;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, wCh, hCh, 4); else ctx.rect(bx, by, wCh, hCh);
+    ctx.fillStyle = '#0b1329'; ctx.fill();
+    ctx.strokeStyle = 'rgba(244,180,26,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(rotulo, bx + wCh / 2, by + hCh / 2 + 0.5);
     if (selIsl === i) {
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(i.x + ox, i.y, i.r + 7, 0, 7); ctx.stroke();

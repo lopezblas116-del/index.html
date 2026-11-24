@@ -5,8 +5,7 @@
    ============================================================ */
 
 /* ---------- Marco del mundo: brackets dorados en las 4 esquinas ---------- */
-#game-container::before {
-  content: ""; position: absolute; inset: 6px; z-index: 2600; pointer-events: none;
+#game-container::before {content: ""; position: absolute; inset: 6px; z-index: 2600; pointer-events: none;
   background:
     linear-gradient(#f4b41a, #f4b41a) left 0 top 0 / 26px 3px no-repeat,
     linear-gradient(#f4b41a, #f4b41a) left 0 top 0 / 3px 26px no-repeat,
@@ -16,22 +15,14 @@
     linear-gradient(#f4b41a, #f4b41a) left 0 bottom 0 / 3px 26px no-repeat,
     linear-gradient(#f4b41a, #f4b41a) right 0 bottom 0 / 26px 3px no-repeat,
     linear-gradient(#f4b41a, #f4b41a) right 0 bottom 0 / 3px 26px no-repeat;
-  opacity: .7;
-}
-
+  opacity: .7; }
 /* ---------- Scanlines CRT muy sutiles sobre el juego (estáticas) ---------- */
-#game-container::after {
-  content: ""; position: absolute; inset: 0; z-index: 2500; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(2, 6, 16, .09) 0 1px, transparent 1px 3px);
-}
-
+#game-container::after {content: ""; position: absolute; inset: 0; z-index: 2500; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(2, 6, 16, .09) 0 1px, transparent 1px 3px); }
 /* ---------- Nubes de 8 bits a la deriva sobre el mapa ---------- */
-#map-panel::before, #map-panel::after {
-  content: ""; position: absolute; width: 6px; height: 6px; z-index: 2; pointer-events: none;
-  left: 0; background: transparent;
-}
-#map-panel::before {
-  top: 14%;
+#map-panel::before, #map-panel::after {content: ""; position: absolute; width: 6px; height: 6px; z-index: 2; pointer-events: none;
+  left: 0; background: transparent; }
+#map-panel::before {top: 14%;
   box-shadow: 6px 0 rgba(216, 231, 246, .16), 12px 0 rgba(216, 231, 246, .16),
     18px 0 rgba(216, 231, 246, .16), 24px 0 rgba(216, 231, 246, .16),
     30px 0 rgba(216, 231, 246, .16), 36px 0 rgba(216, 231, 246, .16),
@@ -41,10 +32,8 @@
     18px 6px rgba(216, 231, 246, .11), 24px 6px rgba(216, 231, 246, .11),
     30px 6px rgba(216, 231, 246, .11), 36px 6px rgba(216, 231, 246, .11),
     42px 6px rgba(216, 231, 246, .11), 0 6px rgba(216, 231, 246, .11);
-  animation: pixel-drift 150s steps(120) infinite;
-}
-#map-panel::after {
-  top: 58%;
+  animation: pixel-drift 150s steps(120) infinite; }
+#map-panel::after {top: 58%;
   box-shadow: 6px 0 rgba(216, 231, 246, .1), 12px 0 rgba(216, 231, 246, .1),
     18px 0 rgba(216, 231, 246, .1), 24px 0 rgba(216, 231, 246, .1),
     30px 0 rgba(216, 231, 246, .1), 12px -6px rgba(216, 231, 246, .08),
@@ -52,36 +41,25 @@
     0 6px rgba(216, 231, 246, .07), 6px 6px rgba(216, 231, 246, .07),
     12px 6px rgba(216, 231, 246, .07), 18px 6px rgba(216, 231, 246, .07),
     24px 6px rgba(216, 231, 246, .07), 30px 6px rgba(216, 231, 246, .07);
-  animation: pixel-drift 210s steps(120) infinite reverse;
-}
+  animation: pixel-drift 210s steps(120) infinite reverse; }
+
 @keyframes pixel-drift {
   from { transform: translateX(-160px); }
   to { transform: translateX(100vw); }
 }
-
 /* ---------- Retratos pixel por capas (avatar del wizard y almas) ---------- */
-.avatar-editor-preview canvas,
-.wizard-portrait canvas, .wizard-portrait,
-.soul-portrait canvas, .soul-portrait,
-.one-hud-chat-avatar canvas, .news-card-portrait canvas {
-  image-rendering: pixelated;
-}
+.avatar-editor-preview canvas, .wizard-portrait canvas, .wizard-portrait, .soul-portrait canvas, .soul-portrait, .one-hud-chat-avatar canvas, .news-card-portrait canvas {image-rendering: pixelated; }
 /* Flotación sutil del avatar (spec: translateY en bucle infinito, ease suave) */
-.avatar-editor-preview canvas,
-.wizard-portrait canvas { animation: avatar-float 3.4s ease-in-out infinite; }
+.avatar-editor-preview canvas, .wizard-portrait canvas {animation: avatar-float 3.4s ease-in-out infinite; }
+
 @keyframes avatar-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
-
 /* ---------- VFX arcade: legibilidad del texto flotante ---------- */
-.vfx-popup { text-shadow: 2px 2px 0 rgba(3, 8, 20, .9); }
-.vfx-chest { text-shadow: 2px 2px 0 #643c1b, 0 0 18px var(--loot-color, #9ba5b4); }
-
+.vfx-popup {text-shadow: 2px 2px 0 rgba(3, 8, 20, .9); }
+.vfx-chest {text-shadow: 2px 2px 0 #643c1b, 0 0 18px var(--loot-color, #9ba5b4); }
 /* ---------- Movimiento reducido: congelar la decoración del mundo ---------- */
-@media (prefers-reduced-motion: reduce) {
-  #map-panel::before, #map-panel::after,
-  .avatar-editor-preview canvas, .wizard-portrait canvas { animation: none !important; }
-}
-body.reduced-motion #map-panel::before, body.reduced-motion #map-panel::after,
-body.reduced-motion .avatar-editor-preview canvas, body.reduced-motion .wizard-portrait canvas { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {#map-panel::before, #map-panel::after,
+  .avatar-editor-preview canvas, .wizard-portrait canvas { animation: none !important; } }
+body.reduced-motion #map-panel::before, body.reduced-motion #map-panel::after, body.reduced-motion .avatar-editor-preview canvas, body.reduced-motion .wizard-portrait canvas {animation: none !important; }

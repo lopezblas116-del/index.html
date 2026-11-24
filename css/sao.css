@@ -8,8 +8,7 @@
    ============================================================ */
 
 /* ── los tokens del sistema ── */
-:root{
-  --sao-panel: rgba(8,13,26,.88);
+:root {--sao-panel: rgba(8,13,26,.88);
   --sao-panel-soft: rgba(14,21,40,.92);
   --sao-line: rgba(255,255,255,.22);
   --sao-line-soft: rgba(255,255,255,.12);
@@ -20,561 +19,448 @@
   --sao-radius: 16px;
   --sao-radius-sm: 10px;
   --sao-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
-  --sao-glow: 0 0 14px rgba(244,180,26,.28);
-}
-
-/* ── el mundo vivo vuelve a ser tocable: el shell es transparente al clic,
-      sus ventanas no (el globo con el badge 9+ moría aquí) ── */
-#mil-globo-wrap, #mil-globo, #mil-globo-menu, #mil-feed-drawer,
-#ov-wizard, #mil-almas-ui .mil-panel{ pointer-events: auto; }
-
+  --sao-glow: 0 0 14px rgba(244,180,26,.28); }
+/* ── el mundo vivo vuelve a ser tocable: el shell es transparente al clic, sus ventanas no (el globo con el badge 9+ moría aquí) ── */
+#mil-globo-wrap, #mil-globo, #mil-globo-menu, #mil-feed-drawer, #ov-wizard, #mil-almas-ui .mil-panel {pointer-events: auto; }
 /* ── PANEL CANÓNICO: un cristal, unas esquinas, un encabezado ── */
-.one-hud-dialog,
-.mil-panel, #mil-feed-drawer, #mil-globo-menu, #pop-isla{
-  background: var(--sao-panel);
+.one-hud-dialog, .mil-panel, #mil-feed-drawer, #mil-globo-menu, #pop-isla {background: var(--sao-panel);
   border: 1px solid var(--sao-line);
   border-radius: var(--sao-radius);
   box-shadow: var(--sao-shadow);
-  backdrop-filter: blur(14px) saturate(1.1);
-}
+  backdrop-filter: blur(14px) saturate(1.1); }
 /* las cuatro esquinas marcadas: la firma de la interfaz */
-.one-hud-dialog::before, .mil-panel::before, #mil-feed-drawer::before,
-#mil-globo-menu::before, #pop-isla::before{
-  content: ""; position: absolute; top: 7px; left: 7px; width: 20px; height: 20px;
+.one-hud-dialog::before, .mil-panel::before, #mil-feed-drawer::before, #mil-globo-menu::before, #pop-isla::before {content: ""; position: absolute; top: 7px; left: 7px; width: 20px; height: 20px;
   border-top: 2px solid var(--sao-gold); border-left: 2px solid var(--sao-gold);
-  border-top-left-radius: 8px; pointer-events: none; opacity: .85;
-}
-.one-hud-dialog::after, .mil-panel::after, #mil-feed-drawer::after,
-#mil-globo-menu::after, #pop-isla::after{
-  content: ""; position: absolute; bottom: 7px; right: 7px; width: 20px; height: 20px;
+  border-top-left-radius: 8px; pointer-events: none; opacity: .85; }
+.one-hud-dialog::after, .mil-panel::after, #mil-feed-drawer::after, #mil-globo-menu::after, #pop-isla::after {content: ""; position: absolute; bottom: 7px; right: 7px; width: 20px; height: 20px;
   border-bottom: 2px solid var(--sao-gold); border-right: 2px solid var(--sao-gold);
-  border-bottom-right-radius: 8px; pointer-events: none; opacity: .85;
-}
-.one-hud-dialog{ position: relative; }
-
+  border-bottom-right-radius: 8px; pointer-events: none; opacity: .85; }
+.one-hud-dialog {position: relative; }
 /* ── ENCABEZADOS: oro en versalitas, nada fuera de jerarquía ── */
-.one-hud-heading{ border-bottom: 1px solid var(--sao-line-soft); }
-.one-hud-heading-title{
-  font-family: 'Manrope', system-ui, sans-serif !important;
+.one-hud-heading {border-bottom: 1px solid var(--sao-line-soft); }
+.one-hud-heading-title {font-family: 'Manrope', system-ui, sans-serif !important;
   font-weight: 800; font-size: clamp(.82rem, 2.4vw, .95rem) !important;
-  letter-spacing: .16em; text-transform: uppercase; color: var(--sao-text);
-}
-.one-hud-heading-title::first-letter{ color: var(--sao-gold); }
-.one-hud-content h3, .mil-panel h2, .mil-panel h3{
-  font-family: 'Manrope', system-ui, sans-serif;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--sao-text); }
+.one-hud-heading-title::first-letter {color: var(--sao-gold); }
+.one-hud-content h3, .mil-panel h2, .mil-panel h3 {font-family: 'Manrope', system-ui, sans-serif;
   font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
-  color: var(--sao-gold); font-size: .72rem;
-}
-.one-hud-content h3{ margin: 14px 0 8px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
-.mil-panel h2, #mil-feed-drawer h2{
-  font-size: .9rem; letter-spacing: .18em; margin-bottom: 8px;
-}
-.mil-panel h3{ margin: 16px 0 6px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
-
+  color: var(--sao-gold); font-size: .72rem; }
+.one-hud-content h3 {margin: 14px 0 8px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
+.mil-panel h2, #mil-feed-drawer h2 {font-size: .9rem; letter-spacing: .18em; margin-bottom: 8px; }
+.mil-panel h3 {margin: 16px 0 6px; padding-left: 10px; border-left: 3px solid var(--sao-gold-soft); }
 /* ── BOTONES: una sola píldora para todos los sistemas ── */
-.one-hud-action, #mil-almas-ui button, .mil-encuentro button, .filtro, .ritmo, .sus{
-  font-family: 'Manrope', system-ui, sans-serif;
+.one-hud-action, #mil-almas-ui button, .mil-encuentro button, .filtro, .ritmo, .sus {font-family: 'Manrope', system-ui, sans-serif;
   min-height: 40px; padding: 8px 14px;
   border: 1px solid var(--sao-line); border-radius: 999px;
   background: rgba(255,255,255,.05); color: var(--sao-text);
   font-size: .82rem; font-weight: 700; letter-spacing: .03em;
-  cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s, transform .1s;
-}
-.one-hud-action:hover:not(:disabled), #mil-almas-ui button:hover:not(:disabled),
-.mil-encuentro button:hover, .filtro:hover, .ritmo:hover, .sus:hover{
-  border-color: var(--sao-gold); background: rgba(244,180,26,.12); box-shadow: var(--sao-glow);
-}
-.one-hud-action:active:not(:disabled), #mil-almas-ui button:active{ transform: translateY(1px); }
-.one-hud-action:disabled, #mil-almas-ui button:disabled{
-  opacity: .42; cursor: not-allowed; filter: grayscale(.5);
-}
-.one-hud-action{ min-height: 38px; padding: 7px 13px; }
-
+  cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s, transform .1s; }
+.one-hud-action:hover:not(:disabled), #mil-almas-ui button:hover:not(:disabled), .mil-encuentro button:hover, .filtro:hover, .ritmo:hover, .sus:hover {border-color: var(--sao-gold); background: rgba(244,180,26,.12); box-shadow: var(--sao-glow); }
+.one-hud-action:active:not(:disabled), #mil-almas-ui button:active {transform: translateY(1px); }
+.one-hud-action:disabled, #mil-almas-ui button:disabled {opacity: .42; cursor: not-allowed; filter: grayscale(.5); }
+.one-hud-action {min-height: 38px; padding: 7px 13px; }
 /* botones primarios: la variante dorada, para la acción más importante */
-.one-hud-nav button[aria-expanded="true"],
-.one-hud-action.sao-primary{
-  background: var(--sao-gold); border-color: var(--sao-gold); color: #0b1329;
-  box-shadow: 0 6px 18px rgba(244,180,26,.3);
-}
-
+.one-hud-nav button[aria-expanded="true"], .one-hud-action.sao-primary {background: var(--sao-gold); border-color: var(--sao-gold); color: #0b1329;
+  box-shadow: 0 6px 18px rgba(244,180,26,.3); }
 /* ── EL DOCK DE COMANDOS: seis órdenes, un solo lugar, orden SAO ── */
-#one-hud .one-hud-nav, #bottom-nav{
-  border: 1px solid var(--sao-line) !important;
+#one-hud .one-hud-nav, #bottom-nav {border: 1px solid var(--sao-line) !important;
   background: var(--sao-panel) !important;
   border-radius: 20px !important;
   backdrop-filter: blur(14px) saturate(1.1) !important;
   box-shadow: var(--sao-shadow) !important;
-  padding: 8px 10px !important;
-}
-#one-hud .one-hud-nav button, #bottom-nav button{
-  display: grid; place-items: center; align-content: center; gap: 3px;
+  padding: 8px 10px !important; }
+#one-hud .one-hud-nav button, #bottom-nav button {display: grid; place-items: center; align-content: center; gap: 3px;
   flex: 1 1 0; min-width: 44px; min-height: 50px; padding: 4px 2px;
   border: 1px solid transparent; border-radius: 14px;
   background: transparent; color: var(--sao-muted);
   font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   white-space: nowrap; overflow: visible;
-  transition: background .15s, color .15s, border-color .15s;
-}
-#one-hud .one-hud-nav button span:first-child, #bottom-nav button span:first-child{ color: var(--sao-text); font-size: 0; }
-#one-hud .one-hud-nav .one-hud-nav-icon, #bottom-nav .one-hud-nav-icon{ display: grid; place-items: center; }
-#one-hud .one-hud-nav .nautical-icon, #bottom-nav .nautical-icon{
-  width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6px;
-  color: var(--sao-text); transition: color .15s;
-}
-#one-hud .one-hud-nav button:hover, #bottom-nav button:hover{ background: rgba(255,255,255,.07); color: var(--sao-text); }
-#one-hud .one-hud-nav button[aria-expanded="true"], #bottom-nav button[aria-expanded="true"]{
-  background: rgba(244,180,26,.14) !important; border-color: var(--sao-gold-soft) !important;
-  color: var(--sao-gold) !important; box-shadow: var(--sao-glow) !important;
-}
-#one-hud .one-hud-nav button[aria-expanded="true"] .nautical-icon,
-#bottom-nav button[aria-expanded="true"] .nautical-icon{ color: var(--sao-gold) !important; }
-
+  transition: background .15s, color .15s, border-color .15s; }
+#one-hud .one-hud-nav button span:first-child, #bottom-nav button span:first-child {color: var(--sao-text); font-size: 0; }
+#one-hud .one-hud-nav .one-hud-nav-icon, #bottom-nav .one-hud-nav-icon {display: grid; place-items: center; }
+#one-hud .one-hud-nav .nautical-icon, #bottom-nav .nautical-icon {width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6px;
+  color: var(--sao-text); transition: color .15s; }
+#one-hud .one-hud-nav button:hover, #bottom-nav button:hover {background: rgba(255,255,255,.07); color: var(--sao-text); }
+#one-hud .one-hud-nav button[aria-expanded="true"], #bottom-nav button[aria-expanded="true"] {background: rgba(244,180,26,.14) !important; border-color: var(--sao-gold-soft) !important;
+  color: var(--sao-gold) !important; box-shadow: var(--sao-glow) !important; }
+#one-hud .one-hud-nav button[aria-expanded="true"] .nautical-icon, #bottom-nav button[aria-expanded="true"] .nautical-icon {color: var(--sao-gold) !important; }
 /* ── CHIPS DE IDENTIDAD: la misma píldora de cristal ── */
-.one-hud-captain, .mil-chip{
-  border: 1px solid var(--sao-line) !important;
+.one-hud-captain, .mil-chip {border: 1px solid var(--sao-line) !important;
   background: var(--sao-panel-soft) !important;
   border-radius: 999px !important;
   backdrop-filter: blur(10px);
-  box-shadow: var(--sao-shadow);
-}
-.one-hud-captain .one-hud-captain-name{ letter-spacing: .1em; }
-.one-hud-captain .one-hud-captain-fac{
-  color: var(--sao-muted); font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
-}
-
+  box-shadow: var(--sao-shadow); }
+.one-hud-captain .one-hud-captain-name {letter-spacing: .1em; }
+.one-hud-captain .one-hud-captain-fac {color: var(--sao-muted); font-size: 9px; letter-spacing: .22em; text-transform: uppercase; }
 /* ── DATOS: filas y mediciones con la misma caligrafía ── */
-.one-hud-stats{
-  display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px;
-}
-.one-hud-stats > div{
-  border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
-  background: rgba(255,255,255,.04); padding: 7px 10px;
-}
-.one-hud-stats strong{ color: var(--sao-text); font-size: .84rem; font-weight: 700; }
-.one-hud-stats span, .one-hud-stats > div{ color: var(--sao-muted); font-size: .72rem; }
-.one-hud-meter progress, progress[data-vital]{ accent-color: var(--sao-gold); }
-/* las barras dejan de ser mudas: HP y XP rotuladas en oro, alineadas al dato */
-.one-hud-vital-tag{
-  align-self: center; justify-self: end;
+.one-hud-stats {display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+.one-hud-stats > div {border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
+  background: rgba(255,255,255,.04); padding: 7px 10px; }
+.one-hud-stats strong {color: var(--sao-text); font-size: .84rem; font-weight: 700; }
+.one-hud-stats span, .one-hud-stats > div {color: var(--sao-muted); font-size: .72rem; }
+.one-hud-meter progress, progress[data-vital] {accent-color: var(--sao-gold); }
+/* las barras dejan de ser mudas: HP y XP rotuladas en oro {align-self: center; justify-self: end;
   font-size: 8.5px; font-weight: 800; letter-spacing: .18em;
-  color: var(--sao-gold); opacity: .9; user-select: none;
-}
-
+  color: var(--sao-gold); opacity: .9; user-select: none; }
 /* ── EL GLOBO DEL MUNDO: mismo cristal, mismo borde ── */
-#mil-globo{
-  border: 1px solid var(--sao-line) !important;
+#mil-globo {border: 1px solid var(--sao-line) !important;
   background: var(--sao-panel-soft) !important;
-  box-shadow: var(--sao-shadow) !important;
-}
-#mil-globo-menu{ padding: 12px; gap: 6px; min-width: 230px; }
-#mil-globo-menu .mil-globo-head{
-  border-bottom: 1px solid var(--sao-line-soft); padding-bottom: 8px; margin-bottom: 6px;
-}
-#mil-globo-menu .mil-globo-head strong{
-  font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--sao-gold);
-}
-#mil-globo-menu .mil-globo-head span{ color: var(--sao-muted); font-size: .72rem; }
-#mil-globo-menu button, #mil-feed-drawer .mil-feed-heading button{ width: 100%; }
-
+  box-shadow: var(--sao-shadow) !important; }
+#mil-globo-menu {padding: 12px; gap: 6px; min-width: 230px; }
+#mil-globo-menu .mil-globo-head {border-bottom: 1px solid var(--sao-line-soft); padding-bottom: 8px; margin-bottom: 6px; }
+#mil-globo-menu .mil-globo-head strong {font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--sao-gold); }
+#mil-globo-menu .mil-globo-head span {color: var(--sao-muted); font-size: .72rem; }
+#mil-globo-menu button, #mil-feed-drawer .mil-feed-heading button {width: 100%; }
 /* la bitácora viva: mismo cristal */
-#mil-feed-drawer{ padding: 14px; }
-#mil-feed-drawer h2{ color: var(--sao-gold); }
-#mil-feed-drawer #feed .fe{ border-bottom: 1px solid rgba(255,255,255,.05); }
-#mil-feed-drawer #feed .fh{ color: var(--sao-muted); }
-
+#mil-feed-drawer {padding: 14px; }
+#mil-feed-drawer h2 {color: var(--sao-gold); }
+#mil-feed-drawer #feed .fe {border-bottom: 1px solid rgba(255,255,255,.05); }
+#mil-feed-drawer #feed .fh {color: var(--sao-muted); }
 /* las ventanas del alma: ficha, atlas, hemeroteca, ajustes, wizard */
-.mil-panel{ padding: 16px; color: var(--sao-text); }
-.mil-panel .mil-close{
-  position: absolute; top: 10px; right: 10px;
+.mil-panel {padding: 16px; color: var(--sao-text); }
+.mil-panel .mil-close {position: absolute; top: 10px; right: 10px;
   width: 34px; height: 34px; min-height: 0; padding: 0;
   display: grid; place-items: center; border-radius: 50% !important;
-  font-size: 15px;
-}
-.mil-panel .mil-eyebrow{
-  font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: var(--sao-muted);
-}
-.mil-panel p, .mil-panel small{ color: #c7d3e6; }
-.mil-panel .obj{ border-color: var(--sao-line-soft); }
-
+  font-size: 15px; }
+.mil-panel .mil-eyebrow {font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: var(--sao-muted); }
+.mil-panel p, .mil-panel small {color: #c7d3e6; }
+.mil-panel .obj {border-color: var(--sao-line-soft); }
 /* ── ENCUENTROS DE ISLA: tarjetas de la misma casa ── */
-.mil-encuentro{
-  border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
-  background: rgba(255,255,255,.04);
-}
-.mil-encuentro b{ color: var(--sao-gold); }
-.mil-encuentro small{ color: var(--sao-muted); }
-
+.mil-encuentro {border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm);
+  background: rgba(255,255,255,.04); }
+.mil-encuentro b {color: var(--sao-gold); }
+.mil-encuentro small {color: var(--sao-muted); }
 /* ── SECCIONES ESPECIALES DEL HUD: Gobierno, tablón, planos ── */
-.one-hud-gobierno, .one-hud-tablon, .one-hud-noble, .one-hud-planos{
-  border-color: var(--sao-line-soft) !important;
-  background: rgba(255,255,255,.04) !important;
-}
-.one-hud-gobierno h3{ margin-top: 0; }
-.one-hud-warning{ color: #ffb3a6; }
-.one-hud-muted{ color: var(--sao-muted); }
-
+.one-hud-gobierno, .one-hud-tablon, .one-hud-noble, .one-hud-planos {border-color: var(--sao-line-soft) !important;
+  background: rgba(255,255,255,.04) !important; }
+.one-hud-gobierno h3 {margin-top: 0; }
+.one-hud-warning {color: #ffb3a6; }
+.one-hud-muted {color: var(--sao-muted); }
 /* ── el ajuste del sistema también es SAO ── */
-.one-hud-settings{
-  border: 1px solid var(--sao-line) !important;
+.one-hud-settings {border: 1px solid var(--sao-line) !important;
   background: var(--sao-panel-soft) !important;
   border-radius: 50% !important; box-shadow: var(--sao-shadow) !important;
-  backdrop-filter: blur(10px);
-}
-.one-hud-backdrop{ background: rgba(3,7,17,.6); backdrop-filter: blur(4px); }
-.one-hud-toast{
-  border: 1px solid var(--sao-gold-soft) !important;
+  backdrop-filter: blur(10px); }
+.one-hud-backdrop {background: rgba(3,7,17,.6); backdrop-filter: blur(4px); }
+.one-hud-toast {border: 1px solid var(--sao-gold-soft) !important;
   background: var(--sao-panel-soft) !important; border-radius: 999px !important;
-  box-shadow: var(--sao-shadow) !important;
-}
-
+  box-shadow: var(--sao-shadow) !important; }
 /* ── móvil: el dock respira y nada se aprieta ── */
-@media (max-width: 640px){
-  #one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; letter-spacing: .04em; min-height: 46px; }
+@media (max-width: 640px) {#one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; letter-spacing: .04em; min-height: 46px; }
   #one-hud .one-hud-nav .nautical-icon, #bottom-nav .nautical-icon{ width: 17px; height: 17px; }
   .one-hud-stats{ grid-template-columns: 1fr 1fr; }
   .mil-panel{ padding: 14px; }
-  #mil-globo-menu{ min-width: 210px; }
-}
-@media (max-width: 600px){
-  #one-hud .one-hud-nav button, #bottom-nav button{ font-size: 8.5px; }
-}
-
+  #mil-globo-menu{ min-width: 210px; } }
+@media (max-width: 600px) {#one-hud .one-hud-nav button, #bottom-nav button {font-size: 8.5px; } }
 /* ============================================================
    V9 · LA BANDERA DEL ALMA + wizard corregido + sub-interfaces
    ============================================================ */
 
 /* ── errores del wizard con voz del juego (adiós burbuja nativa) ── */
-.wz-error{ margin: 6px 0 0; padding: 7px 11px; border: 1px solid rgba(224,110,100,.55); border-radius: 8px; background: rgba(224,110,100,.12); color: #ffb0a6; font-size: .8rem; animation: wzError .25s ease; }
-@keyframes wzError{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:none;} }
-.wz-campo-error{ border-color: rgba(224,110,100,.7) !important; box-shadow: 0 0 0 1px rgba(224,110,100,.4); }
+.wz-error {margin: 6px 0 0; padding: 7px 11px; border: 1px solid rgba(224,110,100,.55); border-radius: 8px; background: rgba(224,110,100,.12); color: #ffb0a6; font-size: .8rem; animation: wzError .25s ease; }
 
+@keyframes wzError{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:none;} }
+.wz-campo-error {border-color: rgba(224,110,100,.7) !important; box-shadow: 0 0 0 1px rgba(224,110,100,.4); }
 /* ── la barra de acciones: pie opaco de verdad, tapa scroll, no contenido ── */
-.wizard-actions{
-  position: sticky; bottom: 0; z-index: 4; margin: 10px -4px -4px;
+.wizard-actions {position: sticky; bottom: 0; z-index: 4; margin: 10px -4px -4px;
   padding: 10px 4px 6px; border-top: 1px solid rgba(244,180,26,.28);
   background: linear-gradient(180deg, rgba(22,34,56,.82), #1a2742 34%, #162238);
-  box-shadow: 0 -12px 26px rgba(0,0,0,.45);
-}
-.wizard-step.active{ padding-bottom: 96px; }
-
+  box-shadow: 0 -12px 26px rgba(0,0,0,.45); }
+.wizard-step.active {padding-bottom: 96px; }
 /* ── el orbe del anillo respira: texto que envuelve, nada cortado ── */
-.rasgo-orbita{ overflow-wrap: anywhere; }
-.rasgo-orbita small{ overflow-wrap: anywhere; hyphens: auto; }
-
+.rasgo-orbita {overflow-wrap: anywhere; }
+.rasgo-orbita small {overflow-wrap: anywhere; hyphens: auto; }
 /* ── EL DISEÑADOR DE BANDERA: la tela que te nombra ── */
-.bandera-seccion{ margin-top: 6px; }
-.bandera-seccion h4{ margin-bottom: 4px; }
-#bandera-lienzo{
-  display: block; width: min(100%, 340px); margin: 10px auto 4px;
+.bandera-seccion {margin-top: 6px; }
+.bandera-seccion h4 {margin-bottom: 4px; }
+#bandera-lienzo {display: block; width: min(100%, 340px); margin: 10px auto 4px;
   border: 1px solid rgba(244,180,26,.5); border-radius: 8px;
   box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 18px rgba(244,180,26,.12);
-  background: #0b1329; image-rendering: auto;
-}
-.bandera-crew{ display: flex; gap: 8px; margin: 10px 0 4px; }
-.bandera-crew input{
-  flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 8px 12px;
+  background: #0b1329; image-rendering: auto; }
+.bandera-crew {display: flex; gap: 8px; margin: 10px 0 4px; }
+.bandera-crew input {flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 8px 12px;
   border: 1px solid var(--sao-line, rgba(255,255,255,.22)); border-radius: 999px;
-  background: rgba(11,19,41,.9); color: #eef4ff; font: 700 .86rem 'Manrope', system-ui, sans-serif;
-}
-.bandera-crew input:focus{ outline: none; border-color: var(--sao-gold, #f4b41a); box-shadow: 0 0 12px rgba(244,180,26,.25); }
-.bandera-crew .button{ flex: 0 0 auto; white-space: nowrap; font-size: .78rem; }
-.bandera-capa{ display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: start; margin: 8px 0; }
-.bandera-capa-titulo{ padding-top: 9px; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: #9fb0cc; }
-.bandera-opciones{ display: flex; flex-wrap: wrap; gap: 5px; }
-.bandera-opcion{
-  display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 9px;
+  background: rgba(11,19,41,.9); color: #eef4ff; font: 700 .86rem 'Manrope', system-ui, sans-serif; }
+.bandera-crew input:focus {outline: none; border-color: var(--sao-gold, #f4b41a); box-shadow: 0 0 12px rgba(244,180,26,.25); }
+.bandera-crew .button {flex: 0 0 auto; white-space: nowrap; font-size: .78rem; }
+.bandera-capa {display: grid; grid-template-columns: 88px 1fr; gap: 8px; align-items: start; margin: 8px 0; }
+.bandera-capa-titulo {padding-top: 9px; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: #9fb0cc; }
+.bandera-opciones {display: flex; flex-wrap: wrap; gap: 5px; }
+.bandera-opcion {display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 9px;
   border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
   background: rgba(11,19,41,.85); color: #c7d3e6; cursor: pointer;
   font: 600 .74rem 'Manrope', system-ui, sans-serif;
-  transition: border-color .15s, background .15s, box-shadow .15s;
-}
-.bandera-opcion:hover{ border-color: rgba(244,180,26,.6); }
-.bandera-opcion.selected{ border-color: #f4b41a; background: rgba(244,180,26,.14); color: #f4d58c; box-shadow: 0 0 10px rgba(244,180,26,.22); }
-.bandera-chip{ width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.45); }
-.bandera-tarjeta-card{ margin: 12px auto 0; max-width: 300px; display: grid; justify-items: center; gap: 7px; padding: 12px; border: 1px solid rgba(244,180,26,.4); border-radius: 12px; background: linear-gradient(160deg, rgba(244,180,26,.08), rgba(11,19,41,.9)); }
-#bandera-tarjeta{ width: 168px; height: 105px; border-radius: 6px; border: 1px solid rgba(255,255,255,.22); background: #0b1329; }
-.bandera-crew-linea{ margin: 0; font-weight: 700; color: #f4d58c !important; }
-
+  transition: border-color .15s, background .15s, box-shadow .15s; }
+.bandera-opcion:hover {border-color: rgba(244,180,26,.6); }
+.bandera-opcion.selected {border-color: #f4b41a; background: rgba(244,180,26,.14); color: #f4d58c; box-shadow: 0 0 10px rgba(244,180,26,.22); }
+.bandera-chip {width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.45); }
+.bandera-tarjeta-card {margin: 12px auto 0; max-width: 300px; display: grid; justify-items: center; gap: 7px; padding: 12px; border: 1px solid rgba(244,180,26,.4); border-radius: 12px; background: linear-gradient(160deg, rgba(244,180,26,.08), rgba(11,19,41,.9)); }
+#bandera-tarjeta {width: 168px; height: 105px; border-radius: 6px; border: 1px solid rgba(255,255,255,.22); background: #0b1329; }
+.bandera-crew-linea {margin: 0; font-weight: 700; color: #f4d58c !important; }
 /* ── LA IZADA: la primera vez que tu bandera sube por el mástil ── */
-#izada-escena{
-  position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center;
+#izada-escena {position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center;
   background: radial-gradient(120% 90% at 50% 108%, #0e2a4a 0%, #071226 44%, #030814 100%);
-  opacity: 0; transition: opacity .55s ease; pointer-events: all;
-}
-#izada-escena.activa{ opacity: 1; }
-#izada-escena.saliendo{ opacity: 0; }
-.izada-mar{ display: grid; justify-items: center; gap: 10px; }
-.izada-barco{ display: grid; justify-items: center; }
-.izada-mastil{
-  position: relative; width: 6px; height: min(34vh, 260px); min-height: 150px;
+  opacity: 0; transition: opacity .55s ease; pointer-events: all; }
+#izada-escena.activa {opacity: 1; }
+#izada-escena.saliendo {opacity: 0; }
+.izada-mar {display: grid; justify-items: center; gap: 10px; }
+.izada-barco {display: grid; justify-items: center; }
+.izada-mastil {position: relative; width: 6px; height: min(34vh, 260px); min-height: 150px;
   background: linear-gradient(180deg, #7a5a34, #4c3a22);
-  border-radius: 3px; box-shadow: 0 0 18px rgba(0,0,0,.6);
-}
-#izada-escena .izada-tela{
-  position: absolute; top: 0; left: 12px; width: 252px; height: 150px;
+  border-radius: 3px; box-shadow: 0 0 18px rgba(0,0,0,.6); }
+#izada-escena .izada-tela {position: absolute; top: 0; left: 12px; width: 252px; height: 150px;
   transform-origin: 0 0;
   transform: translateY(118px) scale(.96); opacity: 0;
   transition: transform 1.6s cubic-bezier(.2,.9,.3,1.05), opacity .5s ease .15s;
-  border-radius: 4px; box-shadow: 0 12px 30px rgba(0,0,0,.55);
-}
-#izada-escena.activa .izada-tela{ transform: translateY(0) scale(1); opacity: 1; }
-.izada-casco{ font-size: 44px; margin-top: 6px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
-.izada-frase{ text-align: center; color: #eef4ff; font: 600 .95rem 'Manrope', system-ui, sans-serif; }
-.izada-frase strong{ display: block; font-size: 1.05rem; color: #f4b41a; letter-spacing: .04em; }
-.izada-frase small{ display: block; margin-top: 5px; color: #9fb0cc; }
-
+  border-radius: 4px; box-shadow: 0 12px 30px rgba(0,0,0,.55); }
+#izada-escena.activa .izada-tela {transform: translateY(0) scale(1); opacity: 1; }
+.izada-casco {font-size: 44px; margin-top: 6px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+.izada-frase {text-align: center; color: #eef4ff; font: 600 .95rem 'Manrope', system-ui, sans-serif; }
+.izada-frase strong {display: block; font-size: 1.05rem; color: #f4b41a; letter-spacing: .04em; }
+.izada-frase small {display: block; margin-top: 5px; color: #9fb0cc; }
 /* ── la bandera junto al capitán: el chip te nombra con tela ── */
-.one-hud-flag{ width: 34px; height: 21px; border-radius: 3px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
-.one-hud-captain{ display: inline-flex !important; align-items: center; gap: 8px; }
-.soul-flag{ display: grid; justify-items: center; gap: 4px; margin-top: 4px; }
-.soul-flag canvas{ width: 126px; height: 78px; border-radius: 5px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 8px 20px rgba(0,0,0,.5); }
-.soul-flag small{ color: #f4d58c; font-weight: 700; letter-spacing: .06em; }
-
+.one-hud-flag {width: 34px; height: 21px; border-radius: 3px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.one-hud-captain {display: inline-flex !important; align-items: center; gap: 8px; }
+.soul-flag {display: grid; justify-items: center; gap: 4px; margin-top: 4px; }
+.soul-flag canvas {width: 126px; height: 78px; border-radius: 5px; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+.soul-flag small {color: #f4d58c; font-weight: 700; letter-spacing: .06em; }
 /* ── sub-interfaces más modernas: la misma casa, mejor acabado ── */
-.mil-panel, .one-hud-dialog, #mil-feed-drawer{
-  animation: saoPanelIn .22s ease-out;
-}
+.mil-panel, .one-hud-dialog, #mil-feed-drawer {animation: saoPanelIn .22s ease-out; }
+
 @keyframes saoPanelIn{ from{ opacity: 0; transform: translateY(10px) scale(.985);} to{ opacity: 1; transform: none;} }
-@media (prefers-reduced-motion: reduce){ .mil-panel, .one-hud-dialog, #mil-feed-drawer{ animation: none !important; } }
-.mil-panel::-webkit-scrollbar, .one-hud-dialog::-webkit-scrollbar, .one-hud-content::-webkit-scrollbar{ width: 8px; }
-.mil-panel::-webkit-scrollbar-thumb, .one-hud-dialog::-webkit-scrollbar-thumb, .one-hud-content::-webkit-scrollbar-thumb{ background: rgba(244,180,26,.35); border-radius: 99px; }
-.mil-panel::-webkit-scrollbar-track, .one-hud-dialog::-webkit-scrollbar-track{ background: rgba(255,255,255,.04); }
-.mil-badge{
-  position: absolute; top: -6px; right: -4px; min-width: 20px; height: 20px; padding: 0 6px;
+@media (prefers-reduced-motion: reduce) {.mil-panel, .one-hud-dialog, #mil-feed-drawer {animation: none !important; } }
+.mil-panel::-webkit-scrollbar, .one-hud-dialog::-webkit-scrollbar, .one-hud-content::-webkit-scrollbar {width: 8px; }
+.mil-panel::-webkit-scrollbar-thumb, .one-hud-dialog::-webkit-scrollbar-thumb, .one-hud-content::-webkit-scrollbar-thumb {background: rgba(244,180,26,.35); border-radius: 99px; }
+.mil-panel::-webkit-scrollbar-track, .one-hud-dialog::-webkit-scrollbar-track {background: rgba(255,255,255,.04); }
+.mil-badge {position: absolute; top: -6px; right: -4px; min-width: 20px; height: 20px; padding: 0 6px;
   display: grid; place-items: center; border-radius: 999px;
   background: #e5544b; color: #fff; font: 800 10px/1 system-ui, sans-serif;
   border: 1px solid rgba(255,255,255,.5); box-shadow: 0 3px 10px rgba(229,84,75,.45);
-  animation: badgePulso 2.4s ease-in-out infinite;
-}
+  animation: badgePulso 2.4s ease-in-out infinite; }
+
 @keyframes badgePulso{ 0%,100%{ transform: scale(1);} 50%{ transform: scale(1.12);} }
-@media (prefers-reduced-motion: reduce){ .mil-badge{ animation: none; } }
+@media (prefers-reduced-motion: reduce) {.mil-badge {animation: none; } }
 /* el minimapa se presenta: marco oro y rótulo (los pone atmosfera.js) */
-#mil-minimapa{ backdrop-filter: blur(3px); }
-.mil-minimapa-etiqueta{ transition: opacity .4s ease; }
-@media (max-width: 700px){
-  .bandera-capa{ grid-template-columns: 1fr; }
-  .bandera-capa-titulo{ padding-top: 2px; }
-  .bandera-crew{ flex-wrap: wrap; }
-  .one-hud-flag{ width: 26px; height: 16px; }
-  #izada-escena .izada-tela{ width: 176px; height: 105px; }
-}
-#izada-escena .izada-tela{ outline: 1px solid rgba(244,180,26,.4); outline-offset: -1px; }
-
+#mil-minimapa {backdrop-filter: blur(3px); }
+.mil-minimapa-etiqueta {transition: opacity .4s ease; }
+@media (max-width: 700px) {.bandera-capa {grid-template-columns: 1fr; }
+.bandera-capa-titulo {padding-top: 2px; }
+.bandera-crew {flex-wrap: wrap; }
+.one-hud-flag {width: 26px; height: 16px; }
+#izada-escena .izada-tela {width: 176px; height: 105px; } }
+#izada-escena .izada-tela {outline: 1px solid rgba(244,180,26,.4); outline-offset: -1px; }
 /* ── V10 · arranque sin esqueleto + canon de mares ── */
-html.boot .app-shell > *:not(#arranque){ display: none !important; }
-#arranque{
-  position: fixed; inset: 0; z-index: 5000; display: grid; place-content: center; justify-items: center; gap: 10px;
+html.boot .app-shell > *:not(#arranque) {display: none !important; }
+#arranque {position: fixed; inset: 0; z-index: 5000; display: grid; place-content: center; justify-items: center; gap: 10px;
   background: radial-gradient(120% 90% at 50% 108%, #0e2a4a 0%, #071226 44%, #030814 100%);
-  color: #eef4ff; text-align: center; padding: 24px;
-}
-.arranque-marca{ font-size: clamp(2.4rem, 8vw, 3.6rem); filter: drop-shadow(0 4px 14px rgba(244,180,26,.35)); animation: arranqueFlote 2.6s ease-in-out infinite; }
-@keyframes arranqueFlote{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-8px);} }
-.arranque-titulo{ margin: 0; font: 800 clamp(1.4rem, 6vw, 2rem) 'Anton', sans-serif; letter-spacing: .12em; color: #f4b41a; }
-.arranque-titulo span{ color: #eef4ff; }
-.arranque-linea{ margin: 0; font: 600 clamp(.8rem, 3vw, .95rem) 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
-.arranque-ola{ width: min(220px, 60vw); height: 3px; border-radius: 99px; background: linear-gradient(90deg, transparent, #f4b41a, transparent); animation: olaAvanza 1.6s ease-in-out infinite; }
-@keyframes olaAvanza{ 0%{ transform: scaleX(.3); opacity:.4;} 50%{ transform: scaleX(1); opacity:1;} 100%{ transform: scaleX(.3); opacity:.4;} }
-@media (prefers-reduced-motion: reduce){ .arranque-marca, .arranque-ola{ animation: none; } }
-/* etiqueta del mar en cada línea del feed: la geografía se ve */
-.fmar{ display: inline-block; margin-right: 5px; padding: 1px 6px; border: 1px solid rgba(244,193,26,.4); border-radius: 99px; background: rgba(244,193,26,.1); color: rgba(244,208,120,.95); font: 700 9px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .08em; vertical-align: 1px; white-space: nowrap; }
-/* la cortina se baja sola: sin boot, el mar manda */
-html:not(.boot) #arranque{ display: none !important; }
+  color: #eef4ff; text-align: center; padding: 24px; }
+.arranque-marca {font-size: clamp(2.4rem, 8vw, 3.6rem); filter: drop-shadow(0 4px 14px rgba(244,180,26,.35)); animation: arranqueFlote 2.6s ease-in-out infinite; }
 
+@keyframes arranqueFlote{ 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-8px);} }
+.arranque-titulo {margin: 0; font: 800 clamp(1.4rem, 6vw, 2rem) 'Anton', sans-serif; letter-spacing: .12em; color: #f4b41a; }
+.arranque-titulo span {color: #eef4ff; }
+.arranque-linea {margin: 0; font: 600 clamp(.8rem, 3vw, .95rem) 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
+.arranque-ola {width: min(220px, 60vw); height: 3px; border-radius: 99px; background: linear-gradient(90deg, transparent, #f4b41a, transparent); animation: olaAvanza 1.6s ease-in-out infinite; }
+
+@keyframes olaAvanza{ 0%{ transform: scaleX(.3); opacity:.4;} 50%{ transform: scaleX(1); opacity:1;} 100%{ transform: scaleX(.3); opacity:.4;} }
+@media (prefers-reduced-motion: reduce) {.arranque-marca, .arranque-ola {animation: none; } }
+/* etiqueta del mar en cada línea del feed: la geografía se ve */
+.fmar {display: inline-block; margin-right: 5px; padding: 1px 6px; border: 1px solid rgba(244,193,26,.4); border-radius: 99px; background: rgba(244,193,26,.1); color: rgba(244,208,120,.95); font: 700 9px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .08em; vertical-align: 1px; white-space: nowrap; }
+/* la cortina se baja sola: sin boot, el mar manda */
+html:not(.boot) #arranque {display: none !important; }
 /* ── V11 · el menú del 🌍: tocar el orbe despliega la lista del mundo ── */
-#mil-globo-wrap{ position: fixed; } /* ancla del menú */
-#mil-globo-wrap .mil-globo-menu{
-  position: absolute; top: calc(100% + 12px); left: 0; transform: none;
+#mil-globo-wrap {position: fixed; }
+/* ancla del menú */
+#mil-globo-wrap .mil-globo-menu {position: absolute; top: calc(100% + 12px); left: 0; transform: none;
   display: grid; gap: 6px; padding: 10px; min-width: min(232px, 74vw);
   border: 1px solid var(--sao-line); border-radius: var(--sao-radius);
   background: var(--sao-panel); box-shadow: var(--sao-shadow);
-  backdrop-filter: blur(14px) saturate(1.1); z-index: 1950;
-}
-.mil-globo-menu.oculto{ display: none; }
-.mil-globo-menu button{
-  display: flex; align-items: center; gap: 9px; width: 100%;
+  backdrop-filter: blur(14px) saturate(1.1); z-index: 1950; }
+.mil-globo-menu.oculto {display: none; }
+.mil-globo-menu button {display: flex; align-items: center; gap: 9px; width: 100%;
   padding: 11px 14px; border: 1px solid rgba(244,193,26,.22); border-radius: var(--sao-radius-sm);
   background: rgba(9,18,36,.72); color: #eef4ff; cursor: pointer; text-align: left;
   font: 700 13.5px/1 'Manrope', system-ui, sans-serif; letter-spacing: .02em;
-  transition: background .15s ease, border-color .15s ease, transform .15s ease;
-}
-.mil-globo-menu button:hover, .mil-globo-menu button:focus-visible{
-  background: rgba(244,180,26,.16); border-color: rgba(244,193,26,.55);
-  transform: translateX(2px); outline: none;
-}
-.mil-globo-menu button span[aria-hidden]{ font-size: 16px; }
+  transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+.mil-globo-menu button:hover, .mil-globo-menu button:focus-visible {background: rgba(244,180,26,.16); border-color: rgba(244,193,26,.55);
+  transform: translateX(2px); outline: none; }
+.mil-globo-menu button span[aria-hidden] {font-size: 16px; }
 /* el capitán del encabezado ya no es una puerta: es solo tu nombre en el puente */
-.one-hud-captain{ cursor: default; pointer-events: none; }
-@media (max-width: 640px){ .mil-globo-menu{ min-width: min(210px, 70vw); } }
-
+.one-hud-captain {cursor: default; pointer-events: none; }
+@media (max-width: 640px) {.mil-globo-menu {min-width: min(210px, 70vw); } }
 /* ── V12 · teleportador total: secciones, subtítulos y orbe que grita ── */
-.mil-globo-menu{ min-width: min(276px, 78vw); padding: 12px 10px 10px; }
-.mil-menu-seccion{
-  margin: 8px 6px 4px; padding: 0;
+.mil-globo-menu {min-width: min(276px, 78vw); padding: 12px 10px 10px; }
+.mil-menu-seccion {margin: 8px 6px 4px; padding: 0;
   font: 800 10px/1 'Manrope', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase;
-  color: rgba(244,193,26,.75);
-}
-.mil-menu-seccion:first-child{ margin-top: 0; }
-.mil-globo-menu button{ align-items: center; padding: 9px 12px; }
-.mil-menu-txt{ display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.mil-menu-txt small{ font: 500 10.5px/1.25 'Manrope', system-ui, sans-serif; color: #9fb0cc; letter-spacing: 0; }
-.mil-globo-menu button:hover .mil-menu-txt small, .mil-globo-menu button:focus-visible .mil-menu-txt small{ color: #c9d2e3; }
+  color: rgba(244,193,26,.75); }
+.mil-menu-seccion:first-child {margin-top: 0; }
+.mil-globo-menu button {align-items: center; padding: 9px 12px; }
+.mil-menu-txt {display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mil-menu-txt small {font: 500 10.5px/1.25 'Manrope', system-ui, sans-serif; color: #9fb0cc; letter-spacing: 0; }
+.mil-globo-menu button:hover .mil-menu-txt small, .mil-globo-menu button:focus-visible .mil-menu-txt small {color: #c9d2e3; }
 /* el badge del teleportador: el ítem Bitácora hereda el grito del mundo */
-.mil-globo-menu button{ position: relative; }
-.mil-globo-menu button .mil-badge{ top: 6px; right: 6px; }
+.mil-globo-menu button {position: relative; }
+.mil-globo-menu button .mil-badge {top: 6px; right: 6px; }
 /* el orbe grita cuando el mundo tiene algo que contarte */
-#mil-globo{ position: relative; }
-.mil-badge-globo{
-  position: absolute; top: -4px; right: -4px; z-index: 2;
+#mil-globo {position: relative; }
+.mil-badge-globo {position: absolute; top: -4px; right: -4px; z-index: 2;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
   display: grid; place-items: center;
   background: #e5484d; color: #fff; border: 2px solid #0a1428;
   font: 800 10px/1 'Manrope', system-ui, sans-serif;
   box-shadow: 0 0 10px rgba(229,72,77,.55);
-  pointer-events: none;
-}
+  pointer-events: none; }
 /* el caracol transpondedor */
-.mil-feed-kacha{ margin: -6px 18px 10px; font: 500 11.5px/1.4 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
-.mil-feed-kacha em{ color: rgba(244,193,26,.8); font-style: italic; }
-
+.mil-feed-kacha {margin: -6px 18px 10px; font: 500 11.5px/1.4 'Manrope', system-ui, sans-serif; color: #9fb0cc; }
+.mil-feed-kacha em {color: rgba(244,193,26,.8); font-style: italic; }
 /* ── V13 · UNA SOLA INTERFAZ: los internos del cristal hablan SAO ── */
-#one-hud .one-hud-backdrop{ background: rgba(4,9,20,.62); backdrop-filter: blur(7px) saturate(1.05); }
+#one-hud .one-hud-backdrop {background: rgba(4,9,20,.62); backdrop-filter: blur(7px) saturate(1.05); }
 /* pestañas y filtros: pastillas fantasma — oro solo en la activa */
-#one-hud .one-hud-tabs{ display: flex; flex-wrap: wrap; gap: 7px; background: none; border: none; padding: 0; margin: 4px 0 12px; }
-#one-hud .one-hud-tabs button{
-  display: inline-flex; align-items: center; gap: 6px;
+#one-hud .one-hud-tabs {display: flex; flex-wrap: wrap; gap: 7px; background: none; border: none; padding: 0; margin: 4px 0 12px; }
+#one-hud .one-hud-tabs button {display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 13px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--sao-line); background: rgba(9,18,36,.5);
   color: #c9d2e3; font: 700 11.5px/1 'Manrope', system-ui, sans-serif; letter-spacing: .06em;
-  transition: border-color .15s ease, color .15s ease, background .15s ease;
-}
-#one-hud .one-hud-tabs button svg{ width: 14px; height: 14px; }
-#one-hud .one-hud-tabs button:hover{ border-color: rgba(244,193,26,.4); color: var(--sao-text); }
-#one-hud .one-hud-tabs button[aria-selected="true"]{ background: rgba(244,180,26,.14); border-color: rgba(244,193,26,.6); color: var(--sao-gold); }
+  transition: border-color .15s ease, color .15s ease, background .15s ease; }
+#one-hud .one-hud-tabs button svg {width: 14px; height: 14px; }
+#one-hud .one-hud-tabs button:hover {border-color: rgba(244,193,26,.4); color: var(--sao-text); }
+#one-hud .one-hud-tabs button[aria-selected="true"] {background: rgba(244,180,26,.14); border-color: rgba(244,193,26,.6); color: var(--sao-gold); }
 /* botones de acción: cristal con filo dorado */
-#one-hud .one-hud-action{
-  display: inline-flex; align-items: center; gap: 8px;
+#one-hud .one-hud-action {display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 16px; border-radius: var(--sao-radius-sm); cursor: pointer;
   border: 1px solid rgba(244,193,26,.3); background: rgba(244,180,26,.08);
   color: var(--sao-text); font: 700 12.5px/1.2 'Manrope', system-ui, sans-serif; letter-spacing: .03em;
-  transition: background .15s ease, border-color .15s ease, transform .15s ease;
-}
-#one-hud .one-hud-action:hover{ background: rgba(244,180,26,.18); border-color: rgba(244,193,26,.6); transform: translateY(-1px); }
-#one-hud .one-hud-action:disabled{ opacity: .45; cursor: not-allowed; transform: none; }
+  transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+#one-hud .one-hud-action:hover {background: rgba(244,180,26,.18); border-color: rgba(244,193,26,.6); transform: translateY(-1px); }
+#one-hud .one-hud-action:disabled {opacity: .45; cursor: not-allowed; transform: none; }
 /* stats: cajitas de cristal con etiqueta de oro */
-#one-hud .one-hud-stats{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
-#one-hud .one-hud-stats > div{ border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 9px 12px; }
-#one-hud .one-hud-stats strong{ display: block; font: 800 9.5px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: rgba(244,193,26,.8); margin-bottom: 3px; }
+#one-hud .one-hud-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+#one-hud .one-hud-stats > div {border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 9px 12px; }
+#one-hud .one-hud-stats strong {display: block; font: 800 9.5px/1.4 'Manrope', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: rgba(244,193,26,.8); margin-bottom: 3px; }
 /* listas y medidores: líneas suaves, oro en la carga */
-#one-hud .one-hud-list{ list-style: none; margin: 8px 0; padding: 0; }
-#one-hud .one-hud-list li{ padding: 8px 4px; border-bottom: 1px solid var(--sao-line-soft); color: #d7e1f2; font-size: 13px; }
-#one-hud .one-hud-list li:last-child{ border-bottom: none; }
-#one-hud .one-hud-meter{ margin: 8px 0; }
-#one-hud .one-hud-meter progress{ height: 6px; border: 1px solid rgba(244,180,26,.4); background: #07101f; border-radius: 99px; }
-#one-hud .one-hud-meter progress::-webkit-progress-value{ background: linear-gradient(90deg,#a8842c,#f4c11a); }
-#one-hud .one-hud-meter progress::-moz-progress-bar{ background: linear-gradient(90deg,#a8842c,#f4c11a); }
+#one-hud .one-hud-list {list-style: none; margin: 8px 0; padding: 0; }
+#one-hud .one-hud-list li {padding: 8px 4px; border-bottom: 1px solid var(--sao-line-soft); color: #d7e1f2; font-size: 13px; }
+#one-hud .one-hud-list li:last-child {border-bottom: none; }
+#one-hud .one-hud-meter {margin: 8px 0; }
+#one-hud .one-hud-meter progress {height: 6px; border: 1px solid rgba(244,180,26,.4); background: #07101f; border-radius: 99px; }
+#one-hud .one-hud-meter progress::-webkit-progress-value {background: linear-gradient(90deg,#a8842c,#f4c11a); }
+#one-hud .one-hud-meter progress::-moz-progress-bar {background: linear-gradient(90deg,#a8842c,#f4c11a); }
 /* tarjetas de contrato, ajustes y noticias: mismo cristal, filo dorado en vez de azul */
-#one-hud .one-hud-contract, #one-hud .one-hud-settings-group{ border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 12px 14px; margin: 10px 0; }
-#one-hud .one-hud-muted{ color: #9fb0cc; }
-#one-hud .news-card{ border: 1px solid var(--sao-line-soft); border-left: 3px solid var(--sao-gold-soft); background: rgba(9,18,36,.45); border-radius: var(--sao-radius-sm); }
-#one-hud .news-card-time{ color: rgba(244,193,26,.75); }
+#one-hud .one-hud-contract, #one-hud .one-hud-settings-group {border: 1px solid var(--sao-line-soft); border-radius: var(--sao-radius-sm); background: rgba(9,18,36,.45); padding: 12px 14px; margin: 10px 0; }
+#one-hud .one-hud-muted {color: #9fb0cc; }
+#one-hud .news-card {border: 1px solid var(--sao-line-soft); border-left: 3px solid var(--sao-gold-soft); background: rgba(9,18,36,.45); border-radius: var(--sao-radius-sm); }
+#one-hud .news-card-time {color: rgba(244,193,26,.75); }
 /* el contenido respira y rueda fino */
-#one-hud .one-hud-content{ scrollbar-width: thin; scrollbar-color: rgba(244,193,26,.35) transparent; }
-#one-hud .one-hud-content::-webkit-scrollbar{ width: 6px; }
-#one-hud .one-hud-content::-webkit-scrollbar-thumb{ background: rgba(244,193,26,.35); border-radius: 99px; }
-
+#one-hud .one-hud-content {scrollbar-width: thin; scrollbar-color: rgba(244,193,26,.35) transparent; }
+#one-hud .one-hud-content::-webkit-scrollbar {width: 6px; }
+#one-hud .one-hud-content::-webkit-scrollbar-thumb {background: rgba(244,193,26,.35); border-radius: 99px; }
 /* ── V14 · prolijidad total: chip de capitán, alma de cristal, chat y formularios SAO ── */
 /* la barra ancha de arriba muere: un chip compacto de cristal junto al ⚙️ */
-#one-hud .one-hud-brand{
-  top:calc(max(10px,env(safe-area-inset-top)) + 104px);
+#one-hud .one-hud-brand {top:calc(max(10px,env(safe-area-inset-top)) + 104px);
   left:auto; right:calc(max(16px,env(safe-area-inset-right)) + 56px);
   transform:none; width:max-content; padding:7px 14px; gap:12px;
   border:1px solid var(--sao-line); border-radius:999px;
-  background:rgba(9,18,36,.55); backdrop-filter:blur(10px); box-shadow:var(--sao-shadow);
-}
-#one-hud .one-hud-brand .one-hud-captain{ gap:8px; }
-#one-hud .one-hud-brand .one-hud-captain-name{ font: 800 12.5px/1.2 'Manrope', system-ui, sans-serif; letter-spacing:.04em; }
-#one-hud .one-hud-brand .one-hud-captain-fac{ font: 600 9px/1 'Manrope', system-ui, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:rgba(244,193,26,.8); }
-#one-hud .one-hud-count{ font: 800 13px/1 'Manrope', system-ui, sans-serif; }
-@media(max-width:600px){
-  #one-hud .one-hud-brand{ top:calc(max(8px,env(safe-area-inset-top)) + 158px); right:calc(10px + 52px); left:auto; width:max-content; padding:6px 10px; gap:8px; }
-  #one-hud .one-hud-brand .one-hud-captain-name{ font-size:11px; }
-  #one-hud .one-hud-brand .one-hud-captain-fac{ display:none; }
-  #one-hud .one-hud-settings{ top:calc(max(8px,env(safe-area-inset-top)) + 158px); }
-}
+  background:rgba(9,18,36,.55); backdrop-filter:blur(10px); box-shadow:var(--sao-shadow); }
+#one-hud .one-hud-brand .one-hud-captain {gap:8px; }
+#one-hud .one-hud-brand .one-hud-captain-name {font: 800 12.5px/1.2 'Manrope', system-ui, sans-serif; letter-spacing:.04em; }
+#one-hud .one-hud-brand .one-hud-captain-fac {font: 600 9px/1 'Manrope', system-ui, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:rgba(244,193,26,.8); }
+#one-hud .one-hud-count {font: 800 13px/1 'Manrope', system-ui, sans-serif; }
+@media(max-width:600px) {#one-hud .one-hud-brand {top:calc(max(8px,env(safe-area-inset-top)) + 158px); right:calc(10px + 52px); left:auto; width:max-content; padding:6px 10px; gap:8px; }
+#one-hud .one-hud-brand .one-hud-captain-name {font-size:11px; }
+#one-hud .one-hud-brand .one-hud-captain-fac {display:none; }
+#one-hud .one-hud-settings {top:calc(max(8px,env(safe-area-inset-top)) + 158px); } }
 /* el pergamino del alma se convierte en cristal SAO */
-#one-hud .one-hud-soul{
-  padding:16px; border:1px solid var(--sao-line); border-radius:var(--sao-radius);
+#one-hud .one-hud-soul {padding:16px; border:1px solid var(--sao-line); border-radius:var(--sao-radius);
   background:rgba(9,18,36,.45); color:#d7e1f2;
-  box-shadow:var(--sao-shadow);
-}
-#one-hud .one-hud-soul h3, #one-hud .one-hud-soul .one-hud-stats strong{
-  color:var(--sao-gold); font-family:'Manrope', system-ui, sans-serif;
-}
-#one-hud .one-hud-soul .one-hud-stats div{ border-color:var(--sao-line-soft); background:rgba(9,18,36,.5); }
-#one-hud .one-hud-soul .soul-motto{ color:#c9d2e3; font-family:'Manrope', system-ui, sans-serif; font-style:italic; }
-#one-hud .one-hud-soul .soul-alignment{ color:var(--sao-gold); border-color:rgba(244,193,26,.4); background:rgba(244,180,26,.1); font-family:'Manrope', system-ui, sans-serif; }
-#one-hud .one-hud-soul .one-hud-soul-registration{ color:rgba(244,193,26,.7); font:800 .7rem 'Manrope', system-ui, sans-serif; letter-spacing:.16em; }
-#one-hud .soul-portrait{ border:1px solid rgba(244,193,26,.5); background:rgba(9,18,36,.6); box-shadow:0 0 18px rgba(244,180,26,.12); }
-#one-hud .psychology-choice{
-  border:1px solid var(--sao-line); border-radius:var(--sao-radius-sm);
+  box-shadow:var(--sao-shadow); }
+#one-hud .one-hud-soul h3, #one-hud .one-hud-soul .one-hud-stats strong {color:var(--sao-gold); font-family:'Manrope', system-ui, sans-serif; }
+#one-hud .one-hud-soul .one-hud-stats div {border-color:var(--sao-line-soft); background:rgba(9,18,36,.5); }
+#one-hud .one-hud-soul .soul-motto {color:#c9d2e3; font-family:'Manrope', system-ui, sans-serif; font-style:italic; }
+#one-hud .one-hud-soul .soul-alignment {color:var(--sao-gold); border-color:rgba(244,193,26,.4); background:rgba(244,180,26,.1); font-family:'Manrope', system-ui, sans-serif; }
+#one-hud .one-hud-soul .one-hud-soul-registration {color:rgba(244,193,26,.7); font:800 .7rem 'Manrope', system-ui, sans-serif; letter-spacing:.16em; }
+#one-hud .soul-portrait {border:1px solid rgba(244,193,26,.5); background:rgba(9,18,36,.6); box-shadow:0 0 18px rgba(244,180,26,.12); }
+#one-hud .psychology-choice {border:1px solid var(--sao-line); border-radius:var(--sao-radius-sm);
   background:rgba(9,18,36,.5); color:#d7e1f2;
   font:700 12px/1.3 'Manrope', system-ui, sans-serif;
-  transition:border-color .15s ease, background .15s ease;
-}
-#one-hud .psychology-choice:hover, #one-hud .psychology-choice[aria-pressed="true"]{
-  border-color:rgba(244,193,26,.6); background:rgba(244,180,26,.12);
-  box-shadow:0 0 12px rgba(244,180,26,.15);
-}
+  transition:border-color .15s ease, background .15s ease; }
+#one-hud .psychology-choice:hover, #one-hud .psychology-choice[aria-pressed="true"] {border-color:rgba(244,193,26,.6); background:rgba(244,180,26,.12);
+  box-shadow:0 0 12px rgba(244,180,26,.15); }
 /* chat y taberna: el mismo idioma */
-#one-hud .one-hud-chat-feed{ border:1px solid var(--sao-line-soft); border-radius:var(--sao-radius-sm); background:rgba(9,18,36,.45); }
-#one-hud .one-hud-chat-message{ border:1px solid var(--sao-line-soft); border-left:2px solid var(--sao-gold-soft); background:rgba(9,18,36,.5); }
-#one-hud .one-hud-chat-avatar{ border:1px solid rgba(244,193,26,.4); }
+#one-hud .one-hud-chat-feed {border:1px solid var(--sao-line-soft); border-radius:var(--sao-radius-sm); background:rgba(9,18,36,.45); }
+#one-hud .one-hud-chat-message {border:1px solid var(--sao-line-soft); border-left:2px solid var(--sao-gold-soft); background:rgba(9,18,36,.5); }
+#one-hud .one-hud-chat-avatar {border:1px solid rgba(244,193,26,.4); }
 /* formularios de todo el HUD: una sola voz */
-#one-hud .one-hud-content input,
-#one-hud .one-hud-content select,
-#one-hud .one-hud-content textarea{
-  border:1px solid var(--sao-line); border-radius:var(--sao-radius-sm);
+#one-hud .one-hud-content input, #one-hud .one-hud-content select, #one-hud .one-hud-content textarea {border:1px solid var(--sao-line); border-radius:var(--sao-radius-sm);
   background:rgba(9,18,36,.6); color:#d7e1f2;
   font:600 12.5px/1.4 'Manrope', system-ui, sans-serif;
-  padding:8px 10px; outline:none;
-}
-#one-hud .one-hud-content input:focus,
-#one-hud .one-hud-content select:focus,
-#one-hud .one-hud-content textarea:focus{ border-color:rgba(244,193,26,.55); box-shadow:0 0 0 2px rgba(244,180,26,.12); }
-#one-hud .one-hud-content input::placeholder{ color:#7d8cab; }
-#one-hud .one-hud-content select option{ background:#0a1428; color:#d7e1f2; }
+  padding:8px 10px; outline:none; }
+#one-hud .one-hud-content input:focus, #one-hud .one-hud-content select:focus, #one-hud .one-hud-content textarea:focus {border-color:rgba(244,193,26,.55); box-shadow:0 0 0 2px rgba(244,180,26,.12); }
+#one-hud .one-hud-content input::placeholder {color:#7d8cab; }
+#one-hud .one-hud-content select option {background:#0a1428; color:#d7e1f2; }
 /* las celdas del cofre y del mercado: mismo cristal */
-#one-hud .one-hud-grid > *{ border:1px solid var(--sao-line-soft); border-radius:var(--sao-radius-sm); background:rgba(9,18,36,.45); }
-
+#one-hud .one-hud-grid > * {border:1px solid var(--sao-line-soft); border-radius:var(--sao-radius-sm); background:rgba(9,18,36,.45); }
 /* ── V15 · el vidrio azul del mundo vivo para los diálogos raíz ── */
-/* La ficha, el atlas y la hemeroteca usan los tokens --ma-* (azul translúcido,
-   borde azul, oro champán). Los diálogos raíz re-declaran los tokens SAO para
+/* La ficha, el atlas y la hemeroteca usan los tokens --ma-* (azul translúcido, borde azul, oro champán). Los diálogos raíz re-declaran los tokens SAO para
    apuntar a esa misma paleta: un solo vidrio, un solo oro, una sola voz. */
-.one-hud-backdrop{
-  --sao-panel: var(--ma-panel);
+.one-hud-backdrop {--sao-panel: var(--ma-panel);
   --sao-line: var(--ma-border);
   --sao-line-soft: rgba(90, 140, 190, .22);
   --sao-gold: var(--ma-gold);
   --sao-gold-soft: rgba(242, 207, 107, .5);
   --sao-text: #e9f0f7;
   --sao-muted: #a7b8c8;
-  font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-.one-hud-backdrop .one-hud-dialog{
-  background: var(--ma-panel);
+  font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif; }
+.one-hud-backdrop .one-hud-dialog {background: var(--ma-panel);
   border: 1px solid var(--ma-border);
   border-radius: 12px;
   box-shadow: 0 10px 34px rgba(0, 0, 0, .53);
   backdrop-filter: blur(12px);
-  color: #e9f0f7;
-}
+  color: #e9f0f7; }
 /* esquinas idénticas a las de la ficha del mundo vivo */
-.one-hud-backdrop .one-hud-dialog::before,
-.one-hud-backdrop .one-hud-dialog::after{
-  width: 20px; height: 20px; opacity: .85;
-  border-color: var(--ma-gold);
-}
-.one-hud-backdrop .one-hud-dialog::before{ top: 7px; left: 7px; border-radius: 8px 0 0 0; }
-.one-hud-backdrop .one-hud-dialog::after{ bottom: 7px; right: 7px; border-radius: 0 0 8px 0; }
+.one-hud-backdrop .one-hud-dialog::before, .one-hud-backdrop .one-hud-dialog::after {width: 20px; height: 20px; opacity: .85;
+  border-color: var(--ma-gold); }
+.one-hud-backdrop .one-hud-dialog::before {top: 7px; left: 7px; border-radius: 8px 0 0 0; }
+.one-hud-backdrop .one-hud-dialog::after {bottom: 7px; right: 7px; border-radius: 0 0 8px 0; }
 /* la tipografía del mundo vivo también en los h3 internos */
-#one-hud .one-hud-backdrop h3{ font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif !important; }
+#one-hud .one-hud-backdrop h3 {font-family: 'Manrope', system-ui, -apple-system, "Segoe UI", sans-serif !important; }
+/* ── V16 · refinamiento premium según spec: botones, paneles y dock ── */
+/* botón fantasma: borde dorado, mayúsculas espaciadas; hover: fondo dorado, texto oscuro */
+.button:not(.button-primary) {background: transparent; color: var(--sao-text);
+  border: 1px solid var(--sao-gold-soft);
+  text-transform: uppercase; letter-spacing: .1em;
+  font: 700 11.5px/1.2 'Manrope', system-ui, sans-serif;
+  transition: background .2s ease, color .2s ease, border-color .2s ease; }
+.button:not(.button-primary):hover {background: var(--sao-gold); border-color: var(--sao-gold); color: #171a20; }
+/* paneles del shell (wizard y bitácora): azul noche, borde dorado sutil, radio 12, blur */
+.panel {background: rgba(11, 19, 41, .82); color: var(--sao-text);
+  border: 1px solid rgba(244, 180, 26, .2);
+  border-radius: 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(8px); }
+/* dock inferior: barra flotante azul noche, esquinas superiores de 16px, íconos claros */
+#one-hud .one-hud-nav {background: rgba(11, 19, 41, .88);
+  border: 1px solid rgba(244, 180, 26, .2);
+  border-top-left-radius: 16px; border-top-right-radius: 16px;
+  backdrop-filter: blur(8px); }
+#one-hud .one-hud-nav button {color: #f0f6fc; }
+/* insignia de aviso: círculo rojo con número en la esquina del ícono */
+.mil-badge-globo {background: #e63946; color: #fff; border-color: rgba(230, 57, 70, .95); }
+/* botón fantasma: borde dorado, mayúsculas espaciadas; hover: fondo dorado, texto oscuro */
+.button:not(.button-primary) {background: transparent; color: var(--sao-text);
+  border: 1px solid var(--sao-gold-soft);
+  text-transform: uppercase; letter-spacing: .1em;
+  font: 700 11.5px/1.2 'Manrope', system-ui, sans-serif;
+  transition: background .2s ease, color .2s ease, border-color .2s ease; }
+.button:not(.button-primary):hover {background: var(--sao-gold); border-color: var(--sao-gold); color: #171a20; }
+/* paneles del shell (wizard y bitácora): azul noche, borde dorado sutil, radio 12, blur */
+.panel {background: rgba(11, 19, 41, .82); color: var(--sao-text);
+  border: 1px solid rgba(244, 180, 26, .2);
+  border-radius: 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(8px); }
+/* dock inferior: barra flotante azul noche, esquinas superiores de 16px, íconos claros */
+#one-hud .one-hud-nav {background: rgba(11, 19, 41, .88);
+  border: 1px solid rgba(244, 180, 26, .2);
+  border-top-left-radius: 16px; border-top-right-radius: 16px;
+  backdrop-filter: blur(8px); }
+#one-hud .one-hud-nav button {color: #f0f6fc; }
+/* insignia de aviso: círculo rojo con número en la esquina del ícono */
+.one-hud-nav .nav-aviso, .mil-badge-globo {background: #e63946; color: #fff; border-color: rgba(230, 57, 70, .95); }
