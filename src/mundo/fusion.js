@@ -205,13 +205,12 @@ function installWorldUi() {
       else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
       else if (accion === "linaje") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
       else if (accion === "sistema") document.querySelector('.one-hud-settings')?.click();
-      else if (accion === "atlas") window.UI?.abrirAtlas?.();
-      else if (accion === "alma") window.UI?.abrirFicha?.();
-      else if (accion === "hemeroteca") window.UI?.abrirPeriodico?.();
-      else if (accion === "hora") {
-        const drawer = byId("mil-feed-drawer");
-        if (drawer) { drawer.classList.remove("oculto"); window.UI?.renderFeed?.(true); }
-      }
+      // UNA PUERTA, UN DESTINO: el orbe apunta a las puertas del dock (mismo panel,
+      // mismo diseño, mismo cierre). Los modales flotantes propios se retiran.
+      else if (accion === "atlas") document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
+      else if (accion === "alma") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
+      else if (accion === "hemeroteca") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
+      else if (accion === "hora") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
     });
     document.addEventListener("click", (event) => {
       if (!menuMundo.classList.contains("oculto") && !event.target.closest("#mil-globo-wrap")) cerrarMenu();

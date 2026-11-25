@@ -111,7 +111,7 @@
       // Rápido durante el vuelo, con el zoom cerca y MIENTRAS HAYA GESTOS (arrastre/pinza/rueda):
       // así el mapa se siente fluido al tocarlo y ahorra batería en reposo.
       const rapido = (typeof MAPA.volando === 'function' && MAPA.volando()) || MAPA.cam.z >= (MAPA.LOD_ZOOM || 1.5) || MAPA.interactuando;
-      if (!document.hidden && $('mapa').offsetParent && t - ultimoFrame >= (rapido ? 16 : 50)) {
+      if (!document.hidden && $('mapa').offsetParent && t - ultimoFrame >= (rapido ? 16 : 33)) {
         // La cámara avanza ANTES de renderizar: funciona igual con el mapa base o con GFX.
         if (typeof MAPA.volando === 'function' && MAPA.volando() && typeof MAPA.avanzaVuelo === 'function') MAPA.avanzaVuelo(t);
         MAPA.render(J.sim, t);

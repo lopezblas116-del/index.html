@@ -320,4 +320,172 @@ import { getMapIslands } from '../map.js';
     $('ajustes').classList.remove('oculto');
   };
   UI.cerrarAjustes = function () { $('ajustes').classList.add('oculto'); };
+  // ═══ CONTENIDO DEL MUNDO DENTRO DEL PANEL DEL HUD ═══
+  // El mundo deja de tener paneles flotantes propios: estos renderizadores
+  // escriben en una <section> que el HUD le pasa. Una puerta, un destino,
+  // un diseño. (Los modales antiguos siguen existiendo pero ya no se abren.)
+  const seccion = (caja, titulo) => {
+    const h = document.createElement('h3');
+    h.textContent = titulo; h.style.cssText = 'margin:2px 0 8px';
+    caja.append(h);
+  };
+  const fila = (caja, b, s2) => caja.insertAdjacentHTML('beforeend', '<p class="one-hud-muted" style="margin:2px 0">' + esc(b) + (s2 ? ' <small>' + esc(s2) + '</small>' : '') + '</p>');
+  const accion = (caja, txt, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'one-hud-action'; b.textContent = txt;
+    b.addEventListener('click', fn); caja.append(b);
+    return b;
+  };
+
+  // ── Última hora: el feed del mar vivo, con sus filtros canónicos ──
+  UI.pintaFeedEn = function (caja) {
+    seccion(caja, '🐌 Última hora del mar');
+    if (!sim || !sim.user) { fila(caja, 'El mundo aún no despierta.'); return; }
+    const usuario = sim.user;
+    const marDelUsuario = D.ISLA[usuario.isl] ? D.ISLA[usuario.isl].reg : null;
+    let lista = sim.feed.slice(-40).reverse();
+    if (filtro === 'mimar') lista = marDelUsuario ? lista.filter(e => e.reg === marDelUsuario || !e.reg || e.ids.includes(usuario.id)) : lista;
+    if (filtro === 'importante') lista = lista.filter(e => e.imp >= 4);
+    if (filtro === 'mio') lista = lista.filter(e => e.ids.includes(usuario.id));
+    const chips = document.createElement('div');
+    chips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px';
+    [['mimar', 'Mi mar'], ['importante', 'Lo importante'], ['mio', 'Lo mío']].forEach(([k, n]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'filtro' + (filtro === k ? ' sel' : ''); b.dataset.f = k; b.textContent = n;
+      b.addEventListener('click', () => { UI.setFiltro(k); });
+      chips.append(b);
+    });
+    caja.append(chips);
+    const html = lista.map(e => {
+      const cls = e.imp >= 6 ? 'imp-alta' : e.imp >= 4 ? 'imp-media' : '';
+      const mar = e.reg && D.NOMBRE_MAR[e.reg] ? '<span class="fmar">' + esc(D.NOMBRE_MAR[e.reg]) + '</span>' : '';
+      return '<div class="fe ' + cls + '"><span class="fh">D' + Math.floor(e.t / 1440) + ' ' + hhmm(e.t % 1440) + '</span> ' + mar + esc(e.txt) + '</div>';
+    }).join('');
+    caja.insertAdjacentHTML('beforeend', html || '<p class="one-hud-muted">Silencio en el mar…</p>');
+    UI.marcarLeidas();
+  };
+
+  // ── Hemeroteca: todo lo que el mundo vivió ──
+  UI.pintaHemerotecaEn = function (caja) {
+    seccion(caja, '📰 Hemeroteca');
+    if (!sim) { fila(caja, 'El mundo aún no despierta.'); return; }
+    const lista = sim.archive.slice(-30).reverse();
+    caja.insertAdjacentHTML('beforeend', lista.length
+      ? lista.map(e => '<div class="fe imp-media"><span class="fh">D' + Math.floor(e.t / 1440) + '</span> ' + esc(e.txt) + '</div>').join('')
+      : '<p class="one-hud-muted">Nada importante aún.</p>');
+  };
+
+  // ── Tu alma en el mundo: la ficha viva, dentro del panel Alma del HUD ──
+  UI.pintaFichaEn = function (caja) {
+    seccion(caja, '👤 Tu alma en el mundo');
+    const a = sim && sim.user;
+    if (!a) { fila(caja, 'Tu alma aún no existe: creala desde la portada.'); return; }
+    const S = D.SUEÑOS.find(x => x.k === a.sueno);
+    const rz = (D.RAZAS_SIM[a.raza] || D.RAZAS_SIM.human).n;
+    caja.insertAdjacentHTML('beforeend',
+      '<div class="one-hud-stats">' +
+      '<div><strong>' + esc(a.name) + '</strong><span class="one-hud-muted">' + esc(a.epi ? '«' + a.epi + '»' : 'sin apodo todavía') + '</span></div>' +
+      '<div><strong>' + esc(D.FACCIONES[a.fac].n) + '</strong><span>' + esc(D.RANGOS[a.fac][Math.min(a.rank, D.RANGOS[a.fac].length - 1)]) + '</span></div>' +
+      '<div><strong>' + esc(rz) + '</strong><span>' + (D.OPRIMIDAS.includes(a.raza) ? 'raza perseguida' : 'raza sin tributo') + '</span></div>' +
+      '<div><strong>Nivel ' + a.level + '</strong><span>' + a.xp + '/' + G.Sim.XP_NEED(a.level) + ' XP · ' + esc(D.SUEÑOS.find(x => x.k === a.sueno) ? S.n : '') + '</span></div>' +
+      '</div>');
+    caja.insertAdjacentHTML('beforeend', '<p class="soul-motto">«' + esc(S ? S.cita : '') + '»</p>');
+    fila(caja, fmtBelis(a.berries) + ' Belis' + (a.bounty > 0 ? ' · Cartel: ' + fmtBelis(a.bounty) : ' · Sin cartel. Todavía.'), 'HP ' + a.hp + ' · ' + (a.state === 'libre' ? (a.act || 'Libre') : a.state));
+    if (a.fruta) { const F = D.FRUTAS.find(f => f.k === a.fruta); fila(caja, 'Fruta: ' + (F ? F.n : '?'), 'maestría ' + a.maestria); }
+    const cofre = (a.cofre || []).slice(-5).reverse();
+    if (cofre.length) {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin:6px 0';
+      cofre.forEach(o => { const sp = document.createElement('span'); sp.className = 'rar r-' + o.r; sp.textContent = o.n; sp.title = o.d || ''; div.append(sp); });
+      caja.append(div);
+    } else fila(caja, 'Cofre vacío. A explorar.');
+    // susurros: tu voluntad contra su carácter
+    const sus = document.createElement('div');
+    sus.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin:8px 0';
+    D.SUSURROS.forEach(x => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'one-hud-action';
+      b.textContent = x.n + ' ' + Math.round(sim.probObediencia(a, x.k) * 100) + '%';
+      b.addEventListener('click', () => {
+        const r = sim.doWhisper(a, x.k);
+        UI.toast(r.reinterpret ? 'Reinterpreta tu consejo a su manera…' : r.obe ? 'Te ha hecho caso.' : 'No te ha hecho caso.');
+        b.textContent = x.n + ' ' + Math.round(sim.probObediencia(a, x.k) * 100) + '%';
+      });
+      sus.append(b);
+    });
+    caja.append(sus);
+  };
+
+  // ── Atlas del Alma: progreso, momentos, Cubos ──
+  UI.pintaAtlasEn = function (caja) {
+    seccion(caja, '🗺️ Atlas del Alma');
+    const a = sim && sim.user;
+    if (!a) { fila(caja, 'Tu alma aún no existe.'); return; }
+    const total = D.ISLAS.filter(i => !i.oculta && !i.noNav && i.reg !== 'RL' && i.reg !== 'BM').length;
+    const pisadas = Object.keys(a.atlas || {});
+    const pct = Math.min(100, Math.round(pisadas.length * 100 / Math.max(1, total)));
+    caja.insertAdjacentHTML('beforeend',
+      '<p><b>' + pisadas.length + '</b> de ' + total + ' islas cartografiadas (' + pct + '%)</p>' +
+      '<progress max="100" value="' + pct + '" style="width:100%"></progress>');
+    const mos = (sim.archive || []).filter(r => r.ids && r.ids.includes(a.id)).slice(-6).reverse();
+    caja.insertAdjacentHTML('beforeend', '<h4 style="margin:10px 0 4px">Momentos</h4>' +
+      (mos.length ? mos.map(r => '<p class="one-hud-muted" style="margin:2px 0"><small>Día ' + Math.ceil(r.t / 1440) + '</small> ' + esc(r.txt) + '</p>').join('') : '<p class="one-hud-muted">Tu historia apenas empieza: zarpa, explora, pelea.</p>'));
+    // los Cuatro Cubos Rojos
+    const cubos = sim.cubos || {};
+    if (Object.keys(cubos).length) {
+      caja.insertAdjacentHTML('beforeend', '<h4 style="margin:10px 0 4px">Cuatro Cubos Rojos</h4>');
+      Object.keys(cubos).forEach(id => {
+        const c = cubos[id], isl = D.ISLA[id]; if (!isl) return;
+        const estado = c.hallado ? (c.esMio ? 'hallado por ti' : 'hallado por ' + esc(c.por || 'otros')) : (c.pistas ? c.pistas + ' pista(s)' : 'sin pistas');
+        fila(caja, isl.n, estado + (c.pista && !c.hallado ? ' · «' + esc(c.pista) + '»' : ''));
+      });
+      fila(caja, sim.cubosFin ? 'La ruta final está abierta.' : 'Las tabernas susurran pistas; quien reúna los cuatro escribe la próxima era.');
+    }
+  };
+
+  // ── Sistema del mundo: ritmo, sonido, guardado — dentro del panel Mundo ──
+  UI.pintaAjustesEn = function (caja) {
+    seccion(caja, '⚙️ Sistema del mundo');
+    const J = window.JUEGO || {};
+    const fil = document.createElement('div');
+    fil.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin:8px 0';
+    fila(caja, 'Ritmo del mundo:');
+    [1, 2, 4].forEach(r => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'one-hud-action' + (J.ritmo === r ? '' : '');
+      b.textContent = '×' + r;
+      b.addEventListener('click', () => { J.ritmo = r; UI.toast('Ritmo ×' + r); });
+      fil.append(b);
+    });
+    caja.append(fil);
+    if (window.SFX) {
+      const bS = accion(caja, window.SFX.silencio() ? '🔇 Sonido pentatónico: apagado' : '🔊 Sonido pentatónico: encendido', () => {
+        window.SFX.toggle();
+        bS.textContent = window.SFX.silencio() ? '🔇 Sonido pentatónico: apagado' : '🔊 Sonido pentatónico: encendido';
+      });
+    }
+    if (window.MARSON) {
+      const bM = accion(caja, window.MARSON.activo ? '🔊 Mar sonoro: encendido' : '🔇 Mar sonoro: apagado', () => {
+        window.MARSON.alternar();
+        bM.textContent = window.MARSON.activo ? '🔊 Mar sonoro: encendido' : '🔇 Mar sonoro: apagado';
+      });
+    }
+    accion(caja, '💾 Guardar el mundo', () => J.guardar && J.guardar(false));
+    accion(caja, '⬇️ Exportar partida', () => {
+      if (!J.guardar) return;
+      J.guardar(true);
+      try {
+        const raw = localStorage.getItem('mp-latam-save-v1');
+        const blob = new Blob([raw || '{}'], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'mundo-pirata-' + Date.now() + '.json';
+        a.click();
+      } catch (e) { UI.toast('No se pudo exportar.'); }
+    });
+    accion(caja, '🗑️ Empezar un mundo nuevo', () => {
+      if (confirm('¿Empezar un mundo nuevo? Se borra la partida actual.')) { if (J.borrar) J.borrar(); location.reload(); }
+    });
+    fila(caja, 'El Panel GM y los Ajustes del Sistema raíz siguen en el engranaje ⚙️ de la cabecera.');
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -343,6 +343,12 @@
   MAPA.zoom = function (direction, cx, cy) {
     const z0 = zT;
     zT = clamp(zT * (direction > 0 ? 1.16 : 0.86), Z_MIN, Z_MAX);
+    // la banda 0.42–0.48 (medio globo, medio mar) era el limbo que mareaba: ahora
+    // el cruce es UNA DECISIÓN — del mar saltas AL globo completo, del globo sales
+    // FRANCO al mar. Ningún punto de descanso en la zona de mezcla.
+    if (z0 > UMBRAL_GLOBO && zT < 0.55) zT = Z_MIN;       // del mar: compromiso total con el globo
+    else if (z0 <= UMBRAL_GLOBO && zT > 0.44) zT = 0.62;  // del globo: salida clara al mar
+    else if (z0 <= UMBRAL_GLOBO) zT = Z_MIN;              // dentro del globo: sigue globo
     if (cx != null && globoFT(zT) < 0.5 && cv) {
       const r = cv.getBoundingClientRect();
       const mx = cx - r.left, my = cy - r.top;
@@ -598,6 +604,7 @@
     const clave = (esNoche() ? 'n:' : 'd:') + i.id;
     const hit = cacheSprites.get(clave);
     if (hit) { cacheSprites.delete(clave); cacheSprites.set(clave, hit); return hit; }
+    const noche = esNoche(); // las ventanas del pueblo se encienden de noche dentro del sprite
     const T = D.TEMAS[i.tema] || D.TEMAS.verde;
     const r = i.r, tema = i.tema || 'verde';
     const R = Math.ceil(r * 1.9 + 54);
@@ -620,11 +627,13 @@
     };
     const clipLand = () => { g.save(); g.beginPath(); pts.forEach(([dx, dy], k) => { const X = dx * 0.82, Y = dy * 0.82; if (k) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.closePath(); g.clip(); };
 
-    // ── sombra, bajío y arena ──
-    el(2, 5, r * 1.62, r * 1.3, 'rgba(6,26,48,0.30)');
-    el(0, 0, r * 1.95, r * 1.56, 'rgba(16,58,110,0.12)'); // aguas profundas: borde cartográfico
-    el(0, 0, r * 1.68, r * 1.36, 'rgba(150,205,232,0.30)');
-    el(0, 0, r * 1.38, r * 1.12, 'rgba(168,216,238,0.42)');
+    // ── sombra, aguas costeras orgánicas y arena ──
+    // los aros SIGUEN la forma real de la costa (polígono escalado): nada de óvalos
+    el(2, 5, r * 1.62, r * 1.3, 'rgba(6,26,48,0.30)'); // sombra de asiento
+    poly(1.72, 'rgba(16,58,110,0.14)');                // borde cartográfico de aguas profundas
+    poly(1.52, 'rgba(150,205,232,0.18)');
+    poly(1.32, 'rgba(172,218,240,0.27)');
+    poly(1.14, 'rgba(196,232,250,0.28)');
     poly(1.04, rgb2(T.sand), 'rgba(255,255,255,0.5)', 1.2);
     poly(0.92, 'rgba(196,168,104,0.55)'); // arena mojada
     poly(0.82, rgb2(T.land));
@@ -983,11 +992,13 @@
     const hit = cacheLejos.get(i.id);
     if (hit) { cacheLejos.delete(i.id); cacheLejos.set(i.id, hit); return hit; }
     const big = spriteDetalle(i);
-    const F = 2; // píxeles del mini-sprite por unidad de mundo
+    const F = 1.7; // píxeles del mini-sprite por unidad de mundo
     const c = document.createElement('canvas');
     c.width = c.height = Math.max(4, Math.round(big.R * 2 * F));
     const g = c.getContext('2d');
-    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    // NÍTIDO, no suavizado: la vista mundo era un puré porque escalaba con blur.
+    // Con vecinos exactos el pixel art se ve como pixel art a cualquier distancia.
+    g.imageSmoothingEnabled = false;
     g.drawImage(big.c, 0, 0, c.width, c.height);
     const entry = { c, R: big.R };
     if (cacheLejos.size > 64) cacheLejos.delete(cacheLejos.keys().next().value);
@@ -1389,8 +1400,31 @@
     cb.width = Math.round(D.W * esc); cb.height = Math.round(D.H * esc);
     const c = cb.getContext('2d');
     c.scale(esc, esc);
-    // océano profundo sólido + olas como trazos dispersos (el idioma del mar de la referencia)
-    c.fillStyle = '#154584'; c.fillRect(0, 0, D.W, D.H);
+    // océano VIVO: gradiente de profundidad norte→sur + fondos irregulares +
+    // grano dither — el mar deja de ser un rectángulo plano y gana relieve cartográfico
+    const marGrad = c.createLinearGradient(0, 0, 0, D.H);
+    marGrad.addColorStop(0, '#0d3a6e');
+    marGrad.addColorStop(0.28, '#144a80');
+    marGrad.addColorStop(0.5, '#154584');
+    marGrad.addColorStop(0.78, '#1a5a96');
+    marGrad.addColorStop(1, '#0d3a6e');
+    c.fillStyle = marGrad; c.fillRect(0, 0, D.W, D.H);
+    // fondos irregulares: plataformas y fosas suaves (el mar tiene geografía)
+    for (let q = 0; q < 26; q++) {
+      const bx = ruido(q * 13.7 + 3) * D.W, by = ruido(q * 7.9 + 11) * D.H;
+      const br = 120 + ruido(q * 5.3) * 260;
+      const profundo = ruido(q * 3.1) > 0.5;
+      const g = c.createRadialGradient(bx, by, 0, bx, by, br);
+      g.addColorStop(0, profundo ? 'rgba(10,42,86,0.30)' : 'rgba(46,110,170,0.22)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.ellipse(bx, by, br, br * 0.72, 0, 0, 7); c.fill();
+    }
+    // grano dither: dos tonos de espuma mineral dispersa (textura de mapa antiguo)
+    for (let q = 0; q < 5200; q++) {
+      const px = ruido(q * 1.37) * D.W, py = ruido(q * 2.77 + 41) * D.H;
+      c.fillStyle = ruido(q * 3.7) > 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(8,30,66,0.10)';
+      c.fillRect(px, py, 1.4, 1.4);
+    }
     c.strokeStyle = 'rgba(255,255,255,0.13)'; c.lineWidth = 1.5;
     c.fillStyle = 'rgba(255,255,255,0.12)';
     for (let y = 24; y < D.H; y += 40) {
@@ -1406,11 +1440,39 @@
     }
     // ── Franjas de Calma: banda gris-verde pálida con borde punteado ──
     for (const [a, b] of [[D.CB_T, D.GL_Y0], [D.GL_Y1, D.CB_B]]) {
-      c.fillStyle = 'rgba(74,124,126,0.5)';
+      const calma = c.createLinearGradient(0, a, 0, b);
+      calma.addColorStop(0, 'rgba(96,152,148,0.42)');
+      calma.addColorStop(0.5, 'rgba(120,168,158,0.28)');
+      calma.addColorStop(1, 'rgba(96,152,148,0.42)');
+      c.fillStyle = calma;
       c.fillRect(0, a, D.W, b - a);
+      c.strokeStyle = 'rgba(226,244,238,0.22)'; c.lineWidth = 1.2;
+      for (let yy = a + 6; yy < b - 4; yy += 9) { // veta de agua quieta: trazos horizontales cortos
+        for (let xx = (yy % 18); xx < D.W; xx += 96) {
+          c.beginPath(); c.moveTo(xx, yy); c.lineTo(xx + 16, yy); c.stroke();
+        }
+      }
       c.strokeStyle = 'rgba(230,240,236,0.4)'; c.lineWidth = 1.5; c.setLineDash([10, 12]);
       c.beginPath(); c.moveTo(0, a + 1); c.lineTo(D.W, a + 1); c.moveTo(0, b - 1); c.lineTo(D.W, b - 1); c.stroke();
       c.setLineDash([]);
+    }
+    // ── aguas costeras de CADA isla: aros concéntricos que siguen la costa real ──
+    // (la forma orgánica de la isla escalada: el mar alrededor ya no es un halo radial)
+    for (const isl of D.ISLAS) {
+      if (isl.oculta) continue;
+      const pts = suaviza(formaIsla(isl), 2);
+      const aro = (esc, col, lw) => {
+        c.beginPath();
+        pts.forEach(([dx, dy], k) => { const X = isl.x + dx * esc, Y = isl.y + dy * esc * 1.0; if (k) c.lineTo(X, Y); else c.moveTo(X, Y); });
+        c.closePath(); c.strokeStyle = col; c.lineWidth = lw; c.stroke();
+      };
+      // bajío exterior → medio → interior: tres pasos de aguas someras
+      c.fillStyle = 'rgba(150,205,232,0.07)';
+      c.beginPath(); pts.forEach(([dx, dy], k) => { const X = isl.x + dx * 1.72, Y = isl.y + dy * 1.72 * 0.82 / 0.82; if (k) c.lineTo(X, Y); else c.moveTo(X, Y); }); c.closePath(); c.fill();
+      aro(1.62, 'rgba(160,212,238,0.15)', 5);
+      aro(1.42, 'rgba(178,222,244,0.19)', 3.5);
+      aro(1.2, 'rgba(198,234,250,0.22)', 2.5);
+      aro(1.08, 'rgba(255,255,255,0.30)', 1.2); // línea de espuma pegada a la arena
     }
     // ── Gran Ruta: corredor más claro con retícula tenue de navegación ──
     c.fillStyle = 'rgba(255,255,255,0.05)';
