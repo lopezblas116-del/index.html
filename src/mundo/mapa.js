@@ -1068,9 +1068,63 @@
   function elVivo(x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
 
   // ── el capitán en el mapa: figura pixel a zoom cercano, cubo a lo lejos ──
+  // el barco del JUGADOR: casco y vela con los colores de TU bandera del wizard,
+  // estela espumosa, banderín propio y tu nombre — cuando navegás, tu barco te representa
+  function dibujaBarcoJugador(sim, u, plan, t) {
+    const F = u._bandera || {};
+    const vela = F.acentoA || '#e6c356';
+    const casco = F.acentoB || '#7a4a2a';
+    const prog = clamp((sim.t - plan.t0) / Math.max(1, plan.dur), 0, 1);
+    const wx = plan.x0 + (plan.x1 - plan.x0) * prog, wy = plan.y0 + (plan.y1 - plan.y0) * prog;
+    const bob = Math.sin(t / 260) * 1.1;
+    ctx.save();
+    ctx.translate(wx, wy + bob);
+    // estela de espuma a popa
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-9, 1.6); ctx.quadraticCurveTo(-4.5, 2.8, 0, 1.9); ctx.stroke();
+    // casco con tu color de banda
+    ctx.fillStyle = casco; ctx.fillRect(-4.5, 0.2, 9, 2.7);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-4.5, 2.1, 9, 0.8);
+    ctx.strokeStyle = 'rgba(30,22,12,0.55)'; ctx.lineWidth = 0.5; ctx.strokeRect(-4.5, 0.2, 9, 2.7);
+    // mástil + vela ondeando con tu acento
+    ctx.fillStyle = '#5b3f28'; ctx.fillRect(-0.4, -6.5, 0.8, 6.9);
+    const onda = Math.sin(t / 200) * 0.8;
+    ctx.fillStyle = vela;
+    ctx.beginPath();
+    ctx.moveTo(0.4, -6.2); ctx.quadraticCurveTo(4.4, -3.4 + onda, 0.6, -0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,22,12,0.4)'; ctx.lineWidth = 0.4; ctx.stroke();
+    // banderín al tope
+    ctx.fillStyle = vela;
+    ctx.beginPath(); ctx.moveTo(0.4, -6.5); ctx.lineTo(2.7 + onda * 0.4, -5.7); ctx.lineTo(0.4, -4.9); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // tu nombre sobre el barco (el mismo chip del capitán)
+    if (cam.z >= 0.8 && u.name) {
+      const nombre = u.name;
+      const s = 1;
+      ctx.font = `600 ${(11 / cam.z).toFixed(1)}px Manrope, sans-serif`;
+      const tw2 = ctx.measureText(nombre).width + 10 / cam.z, fh = 15 / cam.z;
+      const bx = wx - tw2 / 2, by = wy - 13 - 20 / cam.z;
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, tw2, fh, 4 / cam.z); else ctx.rect(bx, by, tw2, fh);
+      ctx.fillStyle = 'rgba(18,29,54,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(244,180,26,0.45)'; ctx.lineWidth = 0.8 / cam.z; ctx.stroke();
+      ctx.fillStyle = '#f0f6fc';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(nombre, wx, by + fh / 2);
+      ctx.restore();
+    }
+  }
+
   function avatarMundo(sim, t) {
     const u = sim && sim.user;
-    if (!u || !u.isl || sim._fusionAtSea || u.plan) return;
+    if (!u) return;
+    // EN EL MAR TU BARCO TE REPRESENTA: rumbo real, tu bandera, tu nombre.
+    // Antes el capitán DESAPARECÍA al zarpar — el mundo se quedaba sin protagonista.
+    if (u.plan && u.plan.x1 != null) { dibujaBarcoJugador(sim, u, u.plan, t); return; }
+    if (!u.isl || sim._fusionAtSea) return;
     const isl = D.ISLA[u.isl];
     if (!isl) return;
     // el capitán PISA la isla: camina hacia el punto tocado (tap-to-walk), no flota
@@ -1090,6 +1144,14 @@
       // ojos y sonrisa — proporción de héroe (algo más alto que una casa, nunca gigante)
       const s = 1.15 * clamp(cam.z / 2.6, 1, 2.0);
       const O = 'rgba(30,22,12,0.55)';
+      // TU apariencia del wizard manda: piel, ropa, pelo y cabeza — el capitán eres TÚ
+      const AP = u._apariencia || {};
+      const PIEL = { 'Clara': '#f2d5b8', 'Bronceada': '#d4a97f', 'Oscura': '#9c6b42' };
+      const piel = PIEL[AP.skin] || '#e8c8a0';
+      const ROPA = { 'Escarlata': '#c0392b', 'Rojo': '#b03a3a', 'Azul': '#2c5f9e', 'Celeste': '#5a9bd4', 'Turquesa': '#2e9e8f', 'Verde': '#3e8e4f', 'Amarillo': '#d9b451', 'Cobre': '#b06a3b', 'Marrón': '#7a4a2a', 'Vino': '#7a2a3a', 'Rosa': '#d478a0', 'Violeta': '#7a4a9e', 'Negro': '#2b2b33', 'Blanco': '#e8e4da' };
+      const ropa = ROPA[AP.outfitColor] || '#c0392b';
+      const PELO = { 'Negro': '#1c1c22', 'Moreno': '#4a2c17', 'Rubio': '#d9b451', 'Rojo': '#a03520', 'Blanco': '#dcdcd4' };
+      const pelo = PELO[AP.hair] || null;
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(px + 0.2 * s, py + 0.5 * s, 2.1 * s, 0.85 * s, 0, 0, 7);
@@ -1101,25 +1163,50 @@
       ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
       ctx.strokeStyle = O; ctx.lineWidth = 0.35;
       ctx.strokeRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
-      // torso: camisa roja con luz del norte y dos botones
-      ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
+      // torso: TU color de ropa con luz del norte y dos botones
+      ctx.fillStyle = ropa; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 0.4 * s);
       ctx.strokeStyle = O; ctx.strokeRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
       ctx.fillStyle = 'rgba(30,22,12,0.5)'; ctx.fillRect(px - 0.2 * s, py - 3.35 * s + bob, 0.4 * s, 0.4 * s); ctx.fillRect(px - 0.2 * s, py - 2.55 * s + bob, 0.4 * s, 0.4 * s);
-      // brazos con puños: la piel del capitán es de mar
-      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s);
+      // brazos con puños: la piel que ELEGISTE en el creador
+      ctx.fillStyle = piel; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s);
       ctx.fillStyle = '#d4a97f'; ctx.fillRect(px - 1.6 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s); ctx.fillRect(px + 1.1 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s);
-      // cara: piel, ojos y la sonrisa del que ya eligió su mar
-      ctx.fillStyle = '#e8c8a0'; ctx.fillRect(px - 0.85 * s, py - 5 * s + bob, 1.7 * s, 1.35 * s);
+      // cara: TU piel, y tu pelo si vas a pelo; ojos y la sonrisa del que ya eligió su mar
+      ctx.fillStyle = piel; ctx.fillRect(px - 0.85 * s, py - 5 * s + bob, 1.7 * s, 1.35 * s);
+      if (pelo && (AP.accessory === 'Ninguno' || AP.accessory === 'Bandana')) {
+        ctx.fillStyle = pelo; ctx.fillRect(px - 0.9 * s, py - 5.3 * s + bob, 1.8 * s, 0.55 * s);
+        ctx.fillRect(px - 0.95 * s, py - 4.95 * s + bob, 0.25 * s, 0.8 * s);
+        ctx.fillRect(px + 0.7 * s, py - 4.95 * s + bob, 0.25 * s, 0.8 * s);
+      }
       ctx.fillStyle = '#2b1c10'; ctx.fillRect(px - 0.55 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s); ctx.fillRect(px + 0.2 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s);
       ctx.fillRect(px - 0.15 * s, py - 3.95 * s + bob, 0.3 * s, 0.16 * s);
-      // sombrero de paja: ala ancha, copa, cinta roja y brillo del ala
-      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.75 * s);
-      ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 1.55 * s, py - 5.05 * s + bob, 3.1 * s, 0.4 * s);
-      ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
-      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.22 * s);
-      ctx.strokeStyle = O;
-      ctx.strokeRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 1.1 * s); ctx.strokeRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+      // cabeza: el sombrero que ELEGISTE — paja, bandana, tricornio, gorra, capucha o tu pelo
+      const acc = AP.accessory || 'Sombrero de paja';
+      if (acc === 'Sombrero de paja') {
+        ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.75 * s);
+        ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 1.55 * s, py - 5.05 * s + bob, 3.1 * s, 0.4 * s);
+        ctx.fillStyle = '#e6c356'; ctx.fillRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 0.22 * s);
+        ctx.strokeStyle = O;
+        ctx.strokeRect(px - 1.55 * s, py - 5.7 * s + bob, 3.1 * s, 1.1 * s); ctx.strokeRect(px - 0.95 * s, py - 6.35 * s + bob, 1.9 * s, 0.65 * s);
+      } else if (acc === 'Bandana') {
+        ctx.fillStyle = '#b03a3a'; ctx.fillRect(px - 0.95 * s, py - 5.6 * s + bob, 1.9 * s, 0.6 * s);
+        ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(px - 0.95 * s, py - 5.6 * s + bob, 1.9 * s, 0.2 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(px - 0.95 * s, py - 5.6 * s + bob, 1.9 * s, 0.6 * s);
+      } else if (acc === 'Tricornio') {
+        ctx.fillStyle = '#2b2b33'; ctx.fillRect(px - 1.5 * s, py - 5.7 * s + bob, 3 * s, 0.55 * s);
+        ctx.fillRect(px - 0.85 * s, py - 6.25 * s + bob, 1.7 * s, 0.6 * s);
+        ctx.fillStyle = '#f6e05e'; ctx.fillRect(px - 0.3 * s, py - 5.95 * s + bob, 0.6 * s, 0.22 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(px - 1.5 * s, py - 5.7 * s + bob, 3 * s, 0.55 * s);
+      } else if (acc === 'Gorra marina') {
+        ctx.fillStyle = '#e8e4da'; ctx.fillRect(px - 1 * s, py - 5.85 * s + bob, 2 * s, 0.75 * s);
+        ctx.fillStyle = '#2c5f9e'; ctx.fillRect(px - 1 * s, py - 5.25 * s + bob, 2 * s, 0.35 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(px - 1 * s, py - 5.85 * s + bob, 2 * s, 0.75 * s);
+      } else if (acc === 'Capucha') {
+        ctx.fillStyle = ropa; ctx.fillRect(px - 1.1 * s, py - 5.9 * s + bob, 2.2 * s, 1.5 * s);
+        ctx.fillStyle = piel; ctx.fillRect(px - 0.6 * s, py - 5 * s + bob, 1.2 * s, 0.85 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(px - 1.1 * s, py - 5.9 * s + bob, 2.2 * s, 1.5 * s);
+      }
       ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 0.6;
       ctx.beginPath(); ctx.arc(px, py - 2.6 * s + bob, 3.6 * s + Math.sin(t / 300) * 0.5, 0, 7); ctx.stroke();
       // nombre flotante sobre el capitán: chip oscuro redondeado, texto legible a todo zoom

@@ -205,6 +205,9 @@ import { rollLineageRace } from '../races.js';
     this.feed.push(rec);
     if (this.feed.length > 500) this.feed.splice(0, this.feed.length - 500);
     if (imp >= 5) { this.archive.push(rec); if (this.archive.length > 400) this.archive.splice(0, this.archive.length - 400); }
+    // EL MUNDO SE VE: cada evento notifica a los testigos del mapa (pings, humo,
+    // burbujas) — lo importante pasa VISUALMENTE, no solo en la bitácora.
+    if (this.onEvento) { try { this.onEvento(rec, vars, opts); } catch (e) { /* un testigo roto no tumba el mundo */ } }
   };
 
   // ── Fuerza y combate ──
@@ -1167,6 +1170,11 @@ import { rollLineageRace } from '../races.js';
       fac: cfg.camino === 'avent' ? 'ciu' : cfg.camino,
       name: cfg.nombre, level: 1, birthIsl: birth, isl: birth, user: true
     });
+    // el alma del mundo ES tu personaje: raza elegida en el Gacha (antes caía una
+    // raza al azar) y apariencia/bandera del creador para el avatar y el barco
+    if (cfg.raza && D.RAZAS_SIM[cfg.raza]) a.raza = cfg.raza;
+    a._apariencia = cfg.apariencia || null;
+    a._bandera = cfg.bandera || null;
     a.nacidoT = this.t; a.bounty = 0; a.inf = 0; a.berries = 10000;
     a.sueno = cfg.sueno; a.oficio = cfg.oficio;
     D.EJES.forEach((e, i) => { a.rasgos[e.k] = cfg.rasgos[e.k] || 0; });

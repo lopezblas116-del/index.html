@@ -464,3 +464,17 @@ html:not(.boot) #arranque {display: none !important; }
 #one-hud .one-hud-nav button {color: #f0f6fc; }
 /* insignia de aviso: círculo rojo con número en la esquina del ícono */
 .one-hud-nav .nav-aviso, .mil-badge-globo {background: #e63946; color: #fff; border-color: rgba(230, 57, 70, .95); }
+/* ── EL MUNDO VIVO DETRÁS DEL WIZARD: la portada flota sobre el mar real ── */
+body.wizard-active #one-hud,
+body.wizard-active #mil-almas-ui { display: none !important; }
+body.wizard-active #game-container { filter: saturate(1.08) brightness(1.02); }
+body.wizard-active #wizard-container {
+  background: rgba(6, 16, 34, 0.30);
+  backdrop-filter: blur(2.5px);
+  -webkit-backdrop-filter: blur(2.5px);
+}
+body.wizard-active .wizard-card {
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+}
+body.wizard-active #mar-sonido-btn,
+body.wizard-active #mil-chip { display: none !important; }

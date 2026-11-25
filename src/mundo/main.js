@@ -102,6 +102,24 @@
     const cargado = J.cargar();
     if (!cargado) { J.nuevo(); }
     UI.setSim(J.sim);
+    // LOS TESTIGOS DEL MUNDO: cada evento importante deja huella VISIBLE en el mapa
+    // (anillo expansivo, icono, humo de pelea) — lo que leés en la bitácora lo VES pasar.
+    J.sim.onEvento = function (rec, vars) {
+      try {
+        if (!rec.imp || rec.imp < 4) return;
+        const nIsla = vars && (vars.isla || vars.dest);
+        const isl = nIsla ? D.ISLAS.find((x) => x.n === nIsla) : null;
+        let x = isl ? isl.x : null, y = isl ? isl.y : null;
+        if (x == null && rec.ids && rec.ids.length) {
+          const a = J.sim.byId ? J.sim.byId(rec.ids[0]) : null;
+          if (a && a.isl && D.ISLA[a.isl]) { x = D.ISLA[a.isl].x; y = D.ISLA[a.isl].y; }
+        }
+        if (x == null) return;
+        const pings = J.sim._pings = J.sim._pings || [];
+        pings.push({ x, y, t0: performance.now(), key: rec.key, imp: rec.imp });
+        if (pings.length > 30) pings.splice(0, pings.length - 30);
+      } catch (e) { /* un ping perdido no tumba nada */ }
+    };
     MAPA.init($('mapa'), (i) => { if (i && typeof MAPA.enfocarIsla === 'function') MAPA.enfocarIsla(i); UI.abrirIsla(i); });
     wire();
     UI.renderHeader(); UI.renderFeed(true);

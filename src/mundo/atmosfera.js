@@ -108,6 +108,79 @@
         pintaRayos(ctx, crepusculo, ancho, alto); // columnas de sol bajo en el horizonte
       }
     }
+    // 2.5) TESTIGOS DEL MUNDO: lo que la bitácora cuenta, el mar lo MUESTRA.
+    //      Dibujo en coordenadas de mundo (mismo transform que el resto de la capa).
+    ctx.save();
+    ctx.translate(ancho / 2, alto / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
+    const ahora = performance.now();
+    const pings = sim._pings || [];
+    const ICONOS = {
+      tesoro: ['💰', '255,214,120'], combate: ['⚔️', '255,130,100'],
+      social: ['✨', '195,155,255'], fama: ['🏴', '255,214,120'], aviso: ['📰', '225,238,250']
+    };
+    const tipoDe = { monedas: 'tesoro', reliquia: 'tesoro', hallazgo: 'tesoro', secreto: 'tesoro', cava: 'tesoro', cuboHallado: 'tesoro', cuboAzul: 'tesoro', cuboDorado: 'tesoro', cubosFin: 'tesoro', rutaFinal: 'tesoro', hito: 'tesoro', pozoFin: 'tesoro', derrota: 'combate', robo: 'combate', robo_pilla: 'combate', arresto: 'combate', arresto_gran: 'combate', naufragio: 'combate', fuga: 'combate', rescate: 'combate', funda: 'social', recluta: 'social', abandona: 'social', nuevoCap: 'social', amistad: 'social', rivalidad: 'social', heredero: 'social', despierta: 'social', nivel: 'social', habilidad: 'social', festival: 'social', cartel: 'fama', sube: 'fama', supernova: 'fama', emperador: 'fama', reymar: 'fama', flota: 'fama', primera: 'fama', fruta: 'social' };
+    for (const p of pings) {
+      const edad = ahora - p.t0;
+      if (edad > 6500) continue;
+      if (!vis(p.x, p.y, 40)) continue;
+      const par = ICONOS[tipoDe[p.key] || 'aviso'];
+      const k = edad / 6500;
+      const alfa = (k < 0.12 ? k / 0.12 : 1 - Math.max(0, (k - 0.72) / 0.28));
+      ctx.save();
+      // anillo expansivo doble: el mar reacciona
+      ctx.globalAlpha = alfa * 0.75;
+      ctx.strokeStyle = 'rgba(' + par[1] + ',1)'; ctx.lineWidth = 1.6 / cam.z;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5 + k * 30, 0, 7); ctx.stroke();
+      ctx.globalAlpha = alfa * 0.35;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5 + k * 52, 0, 7); ctx.stroke();
+      // icono que asciende y se apaga
+      ctx.globalAlpha = alfa;
+      ctx.font = (13 / cam.z).toFixed(1) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(par[0], p.x, p.y - 10 / cam.z - k * 16 / cam.z);
+      // pelea o saqueo: humo que sube de la isla
+      if (tipoDe[p.key] === 'combate') {
+        ctx.globalAlpha = alfa * 0.3; ctx.fillStyle = '#cfd8e0';
+        for (let q = 0; q < 3; q++) {
+          const off = (edad / 900 + q * 0.45) % 1.6;
+          ctx.beginPath(); ctx.arc(p.x + (q - 1) * 6 / cam.z, p.y - off * 26 / cam.z, (2.5 + off * 3) / cam.z, 0, 7); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+    // LAS CHARLAS SE VEN: burbuja sobre la isla donde dos almas conversan AHORA
+    if (cam.z >= 0.9 && sim.charlasActivas && sim.charlasActivas.length) {
+      ctx.save();
+      ctx.font = '600 ' + (11 / cam.z).toFixed(1) + 'px Manrope, sans-serif';
+      let vistas = 0;
+      for (const c of sim.charlasActivas) {
+        if (vistas >= 3) break;
+        if (!(sim.t < c.t1) || !c.guion || !c.guion.l) continue;
+        const isl = D.ISLA[c.isl]; if (!isl || !vis(isl.x, isl.y, 60)) continue;
+        const A = sim.byId(c.A), B = sim.byId(c.B); if (!A || !B) continue;
+        const idx = Math.min(c.guion.l.length - 1, Math.floor((sim.t - c.t0) / 7));
+        const lin = c.guion.l[idx]; if (!lin) continue;
+        const quien = lin[0] === 'A' ? A : B;
+        const texto = String(lin[1]);
+        const txt = quien.name + ': ' + texto.slice(0, 40) + (texto.length > 40 ? '…' : '');
+        const tw = ctx.measureText(txt).width + 14 / cam.z, fh = 16 / cam.z;
+        const bx = isl.x - tw / 2, by = isl.y - isl.r - 26 / cam.z;
+        ctx.globalAlpha = 0.94;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, tw, fh, 4 / cam.z); else ctx.rect(bx, by, tw, fh);
+        ctx.fillStyle = 'rgba(14,24,46,0.92)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(130,200,255,0.55)'; ctx.lineWidth = 0.8 / cam.z; ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(isl.x - 3 / cam.z, by + fh); ctx.lineTo(isl.x, by + fh + 5 / cam.z); ctx.lineTo(isl.x + 3 / cam.z, by + fh);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(14,24,46,0.92)'; ctx.fill();
+        ctx.fillStyle = '#eaf2fc'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(txt, isl.x, by + fh / 2);
+        vistas++;
+      }
+      ctx.restore();
+    }
+    ctx.restore();
     // 3) pantalla: luz de escena (como la del globo) + minimapa + rosa de los vientos
     pintaLuzEscena(ctx, cam, ancho, alto);
     pintaMini(sim, t, cam, D);

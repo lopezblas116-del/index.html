@@ -71,10 +71,13 @@ import { getMapIslands } from '../map.js';
     if (sim && sim.feed.length) leidasHasta = sim.feed[sim.feed.length - 1].i;
     pintaBadges();
   };
-  UI.setFiltro = function (f) { filtro = f; UI.renderFeed(true); };
+  UI.setFiltro = function (f) {
+    filtro = f; UI.renderFeed(true);
+    if (UI._refrescoFeed) UI._refrescoFeed(); // la Bitácora del HUD se repinta con el filtro nuevo
+  };
   UI.renderFeed = function (soloNuevos) {
     const caja = $('feed');
-    if (!caja) return;
+    if (!caja || !caja.offsetParent) return; // el drawer viejo ya no existe: no pintar en lo invisible
     let lista = sim.feed.slice(-120).reverse();
     const usuario = sim.user;
     const marDelUsuario = usuario && D.ISLA[usuario.isl] ? D.ISLA[usuario.isl].reg : null;
@@ -145,8 +148,14 @@ import { getMapIslands } from '../map.js';
       const viajar = $('pi-viajar');
       if (viajar) {
         viajar.classList.toggle('oculto', !i.juego);
-        viajar.disabled = true;
-        viajar.title = 'Viaje directo pendiente: seleccionar un destino solo permite sugerir un rumbo, no zarpar.';
+        viajar.disabled = false;
+        viajar.title = 'Zarpar hacia ' + i.n;
+        // EL CAMINO CÓMODO: tocás la isla en el mapa → popover → ⛵ Viajar aquí.
+        // El zarpe corre en el motor y la cámara te lleva volando con la ruta dorada.
+        viajar.onclick = () => {
+          document.dispatchEvent(new CustomEvent('onepiece:hud-sail-suggest', { detail: { location: { name: i.n, x: i.x, y: i.y } } }));
+          MAPA.volar(i.x, i.y, 1.5, 800);
+        };
       }
     }
     UI.pintaPopDinamico(i);
@@ -363,6 +372,7 @@ import { getMapIslands } from '../map.js';
     }).join('');
     caja.insertAdjacentHTML('beforeend', html || '<p class="one-hud-muted">Silencio en el mar…</p>');
     UI.marcarLeidas();
+    UI._refrescoFeed = () => { caja.innerHTML = ''; UI.pintaFeedEn(caja); };
   };
 
   // ── Hemeroteca: todo lo que el mundo vivió ──
@@ -458,19 +468,27 @@ import { getMapIslands } from '../map.js';
       fil.append(b);
     });
     caja.append(fil);
-    if (window.SFX) {
-      const bS = accion(caja, window.SFX.silencio() ? '🔇 Sonido pentatónico: apagado' : '🔊 Sonido pentatónico: encendido', () => {
-        window.SFX.toggle();
-        bS.textContent = window.SFX.silencio() ? '🔇 Sonido pentatónico: apagado' : '🔊 Sonido pentatónico: encendido';
-      });
-    }
-    if (window.MARSON) {
-      const bM = accion(caja, window.MARSON.activo ? '🔊 Mar sonoro: encendido' : '🔇 Mar sonoro: apagado', () => {
-        window.MARSON.alternar();
-        bM.textContent = window.MARSON.activo ? '🔊 Mar sonoro: encendido' : '🔇 Mar sonoro: apagado';
-      });
-    }
+    // el sonido vive en SU puerta (el chip flotante del mar y el engranaje): aquí no se repite
     accion(caja, '💾 Guardar el mundo', () => J.guardar && J.guardar(false));
+    accion(caja, '📂 Importar partida', () => {
+      // el importar vive aquí: su única puerta es este panel (el modal viejo se retiró)
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'application/json';
+      inp.addEventListener('change', () => {
+        const f = inp.files[0]; if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          try {
+            const d = JSON.parse(rd.result);
+            if (d.v !== 1 || !d.agents) throw new Error('formato');
+            localStorage.setItem('mp-latam-save-v1', JSON.stringify(d));
+            location.reload();
+          } catch (err) { UI.toast('Archivo no válido'); }
+        };
+        rd.readAsText(f);
+      });
+      inp.click();
+    });
     accion(caja, '⬇️ Exportar partida', () => {
       if (!J.guardar) return;
       J.guardar(true);

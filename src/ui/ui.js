@@ -286,7 +286,23 @@ export function showSetup() {
   document.body.classList.add("wizard-active");
   document.body.classList.remove("game-active");
   if (wizard) { wizard.hidden = false; wizard.style.display = "grid"; }
-  if (game) { game.hidden = true; game.style.display = "none"; }
+  // EL MUNDO YA VIVE MIENTRAS CREAS TU PERSONAJE: tormentas, barcos, día y noche
+  // corren de fondo — la portada flota sobre un mar vivo, no sobre un vacío negro.
+  if (game) {
+    game.hidden = false; game.style.display = "";
+    // el mapa nació oculto: al revelarlo, que recalcule su tamaño y empiece a pintar
+    if (window.MAPA?.resize) requestAnimationFrame(() => window.MAPA.resize());
+    // y la cámara mira el MAR VIVO (no el espacio del globo: la esfera caería
+    // justo detrás de la tarjeta). Barcos, tormentas e islas venden el juego solos.
+    if (window.MAPA?.volar && window.D) {
+      requestAnimationFrame(() => window.MAPA.volar(window.D.W * 0.62, window.D.H * 0.55, 0.85, 1800));
+    }
+    // a prueba de cache: ocultar por inline lo que no debe verse durante la creación
+    ["mil-chip", "mil-almas-ui", "mar-sonido-btn"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.setProperty("display", "none");
+    });
+  }
   if (reset) reset.hidden = true;
   closeDialog("legacy-modal");
   animateWizardPreview();

@@ -111,12 +111,9 @@ function installWorldUi() {
         <p class="mil-menu-seccion">Tu historia</p>
         <button type="button" data-mil-accion="bitacora"><span aria-hidden="true">📜</span><span class="mil-menu-txt">Bitácora del Mar<small>Misiones, crónicas y tu cartel SE BUSCA</small></span></button>
         <button type="button" data-mil-accion="alma"><span aria-hidden="true">👤</span><span class="mil-menu-txt">Mi alma<small>Tu tarjeta viva en el mundo</small></span></button>
-        <button type="button" data-mil-accion="linaje"><span aria-hidden="true">🧬</span><span class="mil-menu-txt">Rasgos y linaje<small>Carácter, panteón y herederos</small></span></button>
         <button type="button" data-mil-accion="atlas"><span aria-hidden="true">🗺️</span><span class="mil-menu-txt">Atlas del Alma<small>Tu viaje, islas pisadas y ruta dorada</small></span></button>
         <p class="mil-menu-seccion">El mundo</p>
         <button type="button" data-mil-accion="enciclopedia"><span aria-hidden="true">📖</span><span class="mil-menu-txt">Enciclopedia del Mar<small>Frutas, razas, islas y reliquias</small></span></button>
-        <button type="button" data-mil-accion="hemeroteca"><span aria-hidden="true">📰</span><span class="mil-menu-txt">Hemeroteca<small>Todo lo que el mundo vivió hasta hoy</small></span></button>
-        <button type="button" data-mil-accion="hora"><span aria-hidden="true">🐌</span><span class="mil-menu-txt">Última hora<small>El caracol de tu mar, al minuto</small></span></button>
         <p class="mil-menu-seccion">Sistema</p>
         <button type="button" data-mil-accion="sistema"><span aria-hidden="true">⚙️</span><span class="mil-menu-txt">Sistema, GM y datos<small>Sonido, guardado, exportar y panel GM</small></span></button>
       </nav>
@@ -201,16 +198,13 @@ function installWorldUi() {
       cerrarMenu();
       const accion = item.dataset.milAccion;
       // teleportador: las puertas del HUD existen (ocultas en el dock) y el menú las pisa a distancia
+      // UNA PUERTA, UN DESTINO: cinco ítems, cinco destinos distintos — cero
+      // repeticiones, cero puertas muertas (la Enciclopedia vuelve vía su puerta oculta).
       if (accion === "bitacora") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
-      else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
-      else if (accion === "linaje") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
-      else if (accion === "sistema") document.querySelector('.one-hud-settings')?.click();
-      // UNA PUERTA, UN DESTINO: el orbe apunta a las puertas del dock (mismo panel,
-      // mismo diseño, mismo cierre). Los modales flotantes propios se retiran.
-      else if (accion === "atlas") document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
       else if (accion === "alma") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
-      else if (accion === "hemeroteca") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
-      else if (accion === "hora") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
+      else if (accion === "atlas") document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
+      else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
+      else if (accion === "sistema") document.querySelector('.one-hud-settings')?.click();
     });
     document.addEventListener("click", (event) => {
       if (!menuMundo.classList.contains("oculto") && !event.target.closest("#mil-globo-wrap")) cerrarMenu();
@@ -277,7 +271,9 @@ function updateChip(character) {
   }
   const island = user?.isl ? window.D.ISLA[user.isl] : null;
   const region = character.location?.region || window.D?.REGIONS?.[island?.reg]?.name;
-  chip.textContent = `📍 ${character.location?.island || island?.n || "Puerto desconocido"} · ${SEA_ES[region] || region || "Mar desconocido"}`;
+  const lugar = `📍 ${character.location?.island || island?.n || "Puerto desconocido"} · ${SEA_ES[region] || region || "Mar desconocido"}`;
+  // el chip tiene identidad: TU nombre primero, luego dónde estás
+  chip.textContent = user?.name ? `${user.name} · ${lugar}` : lugar;
 }
 
 function originCode(character) {
@@ -346,7 +342,10 @@ function registerCharacter(character) {
     mar: originCode(character),
     sueno: DREAMS[character.soulCard?.dream] || "libertad",
     oficio: PROFESSIONS[character.profession] || "navegante",
-    rasgos: traitsFor(character)
+    rasgos: traitsFor(character),
+    raza: character.race,
+    apariencia: character.appearance || null,
+    bandera: character.flag || null
   });
   user._oneLatamId = character.id;
   syncCharacter(character);
