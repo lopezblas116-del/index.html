@@ -71,6 +71,7 @@
       if (d.control) sim.control = d.control;
       sim.abrirRutaFinal(); // las rutas se recalculan al cargar: reabre la final si la saga ya cerró
       sim.resemillarIds && sim.resemillarIds(); // los ids nuevos no pueden colisionar con herederos guardados
+      sim.ensureJefes && sim.ensureJefes(); // el que manda existe también en mundos guardados antes
       // migración de mundos antiguos (creados antes de las razas y la política):
       // cada alma recibe raza por sorteo ponderado con la semilla del mundo, y
       // el mapa político arranca si no existía (bases de la Marina, tirano, células rev)
@@ -95,6 +96,7 @@
   J.nuevo = function () {
     J.borrar();
     J.sim = new Sim(Math.floor(Math.random() * 90000) + 1000);
+    J.sim.ensureJefes && J.sim.ensureJefes(); // cada isla canónica nace con su jefe
     J.sim.onMuerte = onMuerteHandler;
   };
 

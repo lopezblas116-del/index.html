@@ -107,6 +107,15 @@ import { getMapIslands } from '../map.js';
     islaAbierta = i;
     if (cambio) {
       $('pi-titulo').textContent = i.n;
+      // EL QUE MANDA AQUÍ: la visión del spec hecha alma viva — se ve ANTES de pisar
+      const jefe = D.JEFES && D.JEFES[i.id];
+      const S = window.JUEGO && window.JUEGO.sim;
+      const vive = jefe ? (S && S.agents || []).some(a => a.jefe && a.isl === i.id && a.state !== 'retirado') : false;
+      let pj = document.getElementById('pi-jefe');
+      if (!pj) { pj = document.createElement('p'); pj.id = 'pi-jefe'; pj.className = 'one-hud-muted'; pj.style.margin = '4px 0'; $('pi-region').insertAdjacentElement('afterend', pj); }
+      pj.textContent = !jefe ? '👑 Sin amo conocido: tierra libre.'
+        : vive ? '👑 Manda aquí: ' + jefe.nombre + ' · nivel ' + jefe.nivel + (jefe.recompensa ? ' · cabeza por ฿' + (jefe.recompensa >= 1e9 ? (jefe.recompensa / 1e9) + 'B' : (jefe.recompensa / 1e6) + 'M') : ' · ' + (jefe.fac === 'mar' ? 'rango de la Marina' : 'corona sin precio')) + ' — ' + jefe.d
+        : '👑 ' + jefe.nombre + ' ya no manda: la isla respira libre.';
       $('pi-region').textContent = (D.REGIONS[i.reg] ? D.REGIONS[i.reg].name : i.reg === 'RL' ? 'Línea Roja' : i.reg === 'CB' ? 'Franja de Calma' : 'Bajo el Mar') +
         (i.noNav ? ' · aguas sin viento (no navegable)' : '') + (i.oculta ? ' · Isla oculta' : '');
       // encuentros jugables: crisis narrativa, tributo, sabotaje, comitiva noble
@@ -437,6 +446,18 @@ import { getMapIslands } from '../map.js';
     caja.insertAdjacentHTML('beforeend',
       '<p><b>' + pisadas.length + '</b> de ' + total + ' islas cartografiadas (' + pct + '%)</p>' +
       '<progress max="100" value="' + pct + '" style="width:100%"></progress>');
+    // LA RUTA DEL LOG POSE: la progresión canónica de la Gran Ruta — Paraíso
+    // y Nuevo Mundo en orden de visita, marcada con ✓ donde ya pusiste pieza
+    const ruta = D.RUTA_GL || {};
+    const marca = (id) => ((a.islasPisadas && a.islasPisadas[id]) || (a.atlas && a.atlas[id])) ? ' ✓' : '';
+    const pintaRuta = (etiqueta, ids) => {
+      if (!ids || !ids.length) return;
+      const seq = ids.map(id => (D.ISLA[id] ? D.ISLA[id].n : id) + marca(id)).join(' → ');
+      caja.insertAdjacentHTML('beforeend', '<h4 style="margin:10px 0 4px">' + etiqueta + '</h4>' +
+        '<p class="one-hud-muted" style="margin:2px 0">' + esc(seq) + '</p>');
+    };
+    pintaRuta('Ruta del Log Pose · Paraíso', ruta.PAR);
+    pintaRuta('Ruta del Log Pose · Nuevo Mundo', ruta.NW);
     const mos = (sim.archive || []).filter(r => r.ids && r.ids.includes(a.id)).slice(-6).reverse();
     caja.insertAdjacentHTML('beforeend', '<h4 style="margin:10px 0 4px">Momentos</h4>' +
       (mos.length ? mos.map(r => '<p class="one-hud-muted" style="margin:2px 0"><small>Día ' + Math.ceil(r.t / 1440) + '</small> ' + esc(r.txt) + '</p>').join('') : '<p class="one-hud-muted">Tu historia apenas empieza: zarpa, explora, pelea.</p>'));

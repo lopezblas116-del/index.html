@@ -280,6 +280,12 @@ import { rollLineageRace } from '../races.js';
     if (esArresto) { this.arrestar(win, lose, por); }
     else if (lose.fac === 'pir' && win.fac !== 'ciu') { this.addInf(lose, lose.bounty ? lose.bounty * 0.06 : 2e6 * (MULT_MAR[this.islReg(lose)] || 1)); }
     this.ev('derrota', { a: this.nm(win), b: this.nm(lose), isla: this.isl(win).n, por }, { ids: [win.id, lose.id], impAdd: (win.user || lose.user) ? 1 : 0 });
+    if (lose.jefe && (lose.hp <= 1 || esArresto) && this.t - (lose._jefeCaeT || -9e9) > 720) {
+      // máximo una vez cada 12 h de sim por jefe: la caída es un HITO, no ruido
+      lose._jefeCaeT = this.t;
+      this.ev('jefecae', { a: this.nm(win), jefe: lose.name, isla: this.isl(win).n, esJugador: !!win.user }, { ids: [win.id], impAdd: win.user ? 2 : 0 });
+      if (win.user) { win.insignias['cazajefes'] = 'cazajefes'; this.addInf(win, Math.max(2e7, lose.bounty || 0)); }
+    }
     win.victorias = (win.victorias || 0) + 1;
     if (win.victorias >= 10 && !win.insignias['veterano']) win.insignias['veterano'] = 'veterano';
     return { win, lose, por, esArresto };
@@ -844,7 +850,9 @@ import { rollLineageRace } from '../races.js';
   Sim.prototype.reclutar = function (a) {
     const crew = this.crewOf(a);
     if (!crew || a.crew < 0 || crew.mem.length >= 12) return;
-    const cand = this.popOf(a.isl).find(x => x.id !== a.id && x.fac !== 'mar' && x.crew < 0 && x.state === 'libre' && (x.opinion[a.id] || 0) >= 0);
+    // EL QUE MANDA NO SE ALISTA: los jefes de isla quedan fuera de cualquier
+    // crew — una tripulación llevaba a Crocodile de gira por el Paraíso
+    const cand = this.popOf(a.isl).find(x => x.id !== a.id && x.fac !== 'mar' && !x.jefe && x.crew < 0 && x.state === 'libre' && (x.opinion[a.id] || 0) >= 0);
     if (cand && this.rng.chance(0.4 + (a.ocultos.social + cand.ocultos.social) * 0.03)) {
       cand.crew = crew.id; crew.mem.push(cand.id);
       this.ev('recluta', { a: this.nm(cand), crew: crew.name, esJugador: cand.user || a.user }, { ids: [cand.id, a.id] });
@@ -875,6 +883,34 @@ import { rollLineageRace } from '../races.js';
     a.crew = -1; a.rank = 0;
     this.ev('abandona', { a: this.nm(a), crew: crew.name, esJugador: !!a.user }, { ids: [a.id] });
   };
+  // EL QUE MANDA EXISTE: cada jefe de D.JEFES es un agente real del mundo —
+  // fuerte, con recompensa, clavado a su tierra (patrulla, entrena, defiende).
+  // Se llama al crear un mundo Y al cargar: los mundos guardados antes de este
+  // sistema reciben a sus jefes igual (los retirados no vuelven).
+  Sim.prototype.ensureJefes = function () {
+    // migración: un jefe que una crew vieja reclutó queda LIBRE de vuelta
+    for (const a of this.agents) {
+      if (a.jefe && a.crew >= 0) {
+        const crew = this.crews[a.crew];
+        if (crew) crew.mem = crew.mem.filter(id => id !== a.id);
+        a.crew = -1;
+      }
+    }
+    const mandan = new Set(this.agents.filter(a => a.jefe && a.state !== 'retirado').map(a => a.isl));
+    Object.keys(D.JEFES).forEach(islId => {
+      if (mandan.has(islId) || !D.ISLA[islId]) return;
+      const j = D.JEFES[islId];
+      const a = this.mkAgent({ fac: j.fac, name: j.nombre, level: j.nivel, birthIsl: islId, isl: islId, bounty: j.recompensa, jefe: 1, homeIsl: islId });
+      a.epi = j.d || 'Manda en ' + D.ISLA[islId].n;
+      a.inf = Math.max(a.inf || 0, j.recompensa);
+      this.agents.push(a); this.pushPop(a);
+    });
+    // y los que ya existían reciben su trono oficial
+    for (const a of this.agents) {
+      if (a.jefe && !a.homeIsl && D.JEFES[a.isl]) a.homeIsl = a.isl;
+    }
+  };
+
   Sim.prototype.popArrastre = function (cap, preso) {
     const crew = this.crewOf(preso);
     if (crew) {
@@ -901,6 +937,29 @@ import { rollLineageRace } from '../races.js';
     }
     if (a.state === 'navegando') return; // lo mueve el barco
     if (a.hp < 35) { a.act = 'Descansando'; a.hp = Math.min(100, a.hp + 8); return; }
+    if (a.jefe) {
+      // EL QUE MANDA NO SE MUDA: sostiene su isla, patrulla, entrena — el mundo
+      // lo ve como el alma más fuerte del lugar. Solo una pelea lo saca de aquí…
+      // y si algo lo soltó lejos de su trono (captura, rescate, mar), REGRESA
+      // por las rutas que existen: la montaña o el buceo, como todo el mundo.
+      if (a.homeIsl && a.isl !== a.homeIsl) {
+        const hogar = D.ISLA[a.homeIsl];
+        if (hogar) {
+          const vec = this.rutas.filter(r => r.a === a.isl || r.b === a.isl)
+            .map(r => r.a === a.isl ? D.ISLA[r.b] : D.ISLA[r.a]).filter(Boolean);
+          const aqui = D.ISLA[a.isl];
+          const paso = vec.filter(i => dist(i.x, i.y, hogar.x, hogar.y) < dist(aqui.x, aqui.y, hogar.x, hogar.y))
+            .sort((p, q) => dist(p.x, p.y, hogar.x, hogar.y) - dist(q.x, q.y, hogar.x, hogar.y))[0];
+          if (paso && this.zarpar(a, paso.id)) { a.act = 'Regresa a su trono en ' + hogar.n; return; }
+        }
+        return; // sin ruta práctica: espera en tierra hasta que exista
+      }
+      const mi = this.isl(a);
+      const dado = this.rng.rango(0, 1);
+      a.act = dado < 0.34 ? 'Patrulla ' + mi.n : dado < 0.67 ? 'Manda en ' + mi.n : 'Entrena en ' + mi.n;
+      if (this.rng.chance(0.12)) a.hp = Math.min(100, a.hp + 6);
+      return;
+    }
     const isl = this.isl(a);
     const noche = esNoche(this.minOfDay());
     const S = D.SUEÑOS.find(s => s.k === a.sueno);

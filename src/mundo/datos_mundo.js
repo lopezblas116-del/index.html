@@ -89,8 +89,67 @@ import { getMapIslands } from '../map.js';
     I('egghead', 'Egghead', 'NW', 1100, 610, 36, 'futurista', { tienda: 1 }),
     I('laugh', 'Isla JAJAJA', 'NW', 1185, 815, 33, 'calavera', { oculta: 1, final: 1 })
   ];
+  // el canon del spec completa el mundo: los gigantes de Elbaf y el reino de Sabo
+  D.ISLAS.push(I('elbaf', 'Elbaf, Tierra de Gigantes', 'NW', 390, 600, 39, 'bosque', { pirata: 1 }));
+  D.ISLAS.push(I('sorbet', 'Reino de Sorbet', 'SB', 1655, 1090, 30, 'verde'));
   D.ISLA = {};
   D.ISLAS.forEach(i => { D.ISLA[i.id] = i; });
+
+  // ── EL QUE MANDA: jefes de isla de la visión del mundo (canon de One Piece;
+  //    niveles y recompensas son balance propio de este juego). fac: mar, pir,
+  //    caz, ciu, rev. Cada jefe nace como AGENTE REAL del sim que defiende su
+  //    tierra con el sistema de peleas que ya existe — si pierde, cae y se canta.
+  D.JEFES = {
+    // East Blue
+    shells: { nombre: 'Morgan Mano-Hacha', nivel: 6, recompensa: 0, fac: 'mar', d: '"Justicia" tallada a hachazos en cada recluta.' },
+    naranja: { nombre: 'Buggy el Payaso', nivel: 8, recompensa: 15e6, fac: 'pir', d: 'Cuchillos que flotan y una ciudad que paga tributo al circo.' },
+    syrup: { nombre: 'Kuro, el Gato Negro', nivel: 9, recompensa: 16e6, fac: 'pir', d: 'Planea en silencio: su mayordomo lleva años contando hasta tres.' },
+    baratie: { nombre: 'Don Krieg', nivel: 10, recompensa: 18e6, fac: 'pir', d: 'Flota de acero y veneno: gana por armamento, no por honor.' },
+    arlong: { nombre: 'Arlong Dientes-Sierra', nivel: 11, recompensa: 20e6, fac: 'pir', d: 'Cobra por aldea, por mapa y por sonrisa en el Parque Arlong.' },
+    logue: { nombre: 'Smoker el Cazador', nivel: 12, recompensa: 0, fac: 'mar', d: 'Humo que se mete en cada barco que sale a la Gran Ruta.' },
+    // North Blue
+    germa: { nombre: 'Judge Vinsmoke', nivel: 14, recompensa: 0, fac: 'ciu', d: 'Un ejército de clones y hijos diseñados: la guerra es su industria.' },
+    basen: { nombre: 'Vergo de la G-6', nivel: 17, recompensa: 0, fac: 'mar', d: 'El bastón de la G-6: su justicia muerde según le convenga.' },
+    // South Blue
+    sorbet: { nombre: 'Rey Sterry', nivel: 8, recompensa: 0, fac: 'ciu', d: 'Corona exiliada en su propio país de fuegos artificiales.' },
+    // Franja de Calma
+    lily: { nombre: 'Boa Hancock, Emperatriz Pirata', nivel: 21, recompensa: 80e6, fac: 'pir', d: 'La que aman y temen en Kuja: un flechazo y te conviertes en piedra.' },
+    impel: { nombre: 'Magellan', nivel: 23, recompensa: 0, fac: 'mar', d: 'El veneno Nivel 4: el infierno tiene un alcaide y es él.' },
+    // Paraíso (Gran Ruta)
+    whisky: { nombre: 'Miss Wednesday (Baroque Works)', nivel: 12, recompensa: 10e6, fac: 'pir', d: 'Cazadores de recompensas entre cactus: la ciudad que celebra y duerme.' },
+    littlegarden: { nombre: 'Mr. 3', nivel: 13, recompensa: 32e6, fac: 'pir', d: 'Cera que atrapa gigantes: en su jardín todo se congela en cirio.' },
+    drum: { nombre: 'Wapol de Hojalata', nivel: 14, recompensa: 26e6, fac: 'pir', d: 'Devora reinos y médicos: se comió un país y aún tiene hambre.' },
+    arabasta: { nombre: 'Crocodile, Sr. 0', nivel: 24, recompensa: 81e6, fac: 'pir', d: 'Arena que seca un reino entero: Baroque Works opera desde el desierto.' },
+    jaya: { nombre: 'Bellamy la Hiena', nivel: 15, recompensa: 38e6, fac: 'pir', d: 'Muelle resorte: la era nueva, dice él, pertenece a los que ríen.' },
+    skypiea: { nombre: 'Enel, el Dios', nivel: 26, recompensa: 100e6, fac: 'pir', d: '20 millones de voltios para los que duden de su divinidad.' },
+    longring: { nombre: 'Foxy el Zorro Plateado', nivel: 16, recompensa: 24e6, fac: 'pir', d: 'Davy Back Fight: roba tripulación con las reglas puestas por él.' },
+    water7: { nombre: 'Franky de la Familia Franky', nivel: 18, recompensa: 48e6, fac: 'ciu', d: 'Cola-robot y contrabando de cuerpos: la ciudad de los carpinteros lo adora.' },
+    enies: { nombre: 'Rob Lucci de la CP9', nivel: 27, recompensa: 0, fac: 'mar', d: 'Seis poderes al máximo: la justicia silenciosa del Gobierno.' },
+    momoiro: { nombre: 'Ivankov, Okama Rey', nivel: 28, recompensa: 0, fac: 'rev', d: 'Hormonas que reescriben cuerpos: el ejército revolucionario respira aquí.' },
+    kuraigana: { nombre: 'Mihawk, Ojos de Halcón', nivel: 32, recompensa: 0, fac: 'pir', d: 'El mejor espadachín del mundo no cobra: espera a alguien que valga.' },
+    thriller: { nombre: 'Gekko Moria', nivel: 29, recompensa: 320e6, fac: 'pir', d: 'Roba sombras y las cosecha en un ejército de zombis triangulares.' },
+    marineford: { nombre: 'Akainu', nivel: 35, recompensa: 0, fac: 'mar', d: 'Justicia Absoluta: el magma no negocia, no olvida, no se retira.' },
+    // Bajo el Mar
+    fishman: { nombre: 'Hody Jones', nivel: 25, recompensa: 110e6, fac: 'pir', d: 'Odio heredado en píldoras: el Nuevo Arlong Planea mil años de rencor.' },
+    // Nuevo Mundo
+    g5: { nombre: 'Smoker de la G-5', nivel: 30, recompensa: 0, fac: 'mar', d: 'La rama más sucia y más leal de la Marina: humo y pulso en el Nuevo Mundo.' },
+    punk: { nombre: 'Caesar Clown', nivel: 31, recompensa: 300e6, fac: 'pir', d: 'Gas de la muerte SAD: sus niños-jaula respiran porque él lo permite.' },
+    dressrosa: { nombre: 'Doflamingo', nivel: 36, recompensa: 340e6, fac: 'pir', d: 'Hilos de marioneta sobre un reino entero: el Joker del Submundo.' },
+    greenbit: { nombre: 'Leo de los Tontatta', nivel: 20, recompensa: 0, fac: 'ciu', d: 'Mil enanos guerreros invisible bajo la selva: cruzar la flor es firmar pacto.' },
+    zou: { nombre: 'Jack la Peste', nivel: 33, recompensa: 1e9, fac: 'pir', d: 'Elefante de guerra en un país que camina: a la espalda de Zou no hay paz.' },
+    tottoland: { nombre: 'Big Mom', nivel: 39, recompensa: 4.38e9, fac: 'pir', d: 'El alma se paga: su isla cobra años de vida como impuesto de dulces.' },
+    wano: { nombre: 'Kaido de las Cien Bestias', nivel: 40, recompensa: 4.61e9, fac: 'pir', d: 'El más fuerte del mundo: Onigashima bebe sake sobre fábricas de armas.' },
+    hachinosu: { nombre: 'Barbanegra', nivel: 38, recompensa: 3.99e9, fac: 'pir', d: 'Dos frutas del diablo y una jauría de las peores: Hachinosu es su nido.' },
+    egghead: { nombre: 'Kizaru', nivel: 34, recompensa: 0, fac: 'mar', d: 'Luz que llega antes que la noticia: la isla del futuro tiene centinela.' },
+    elbaf: { nombre: 'Dorry y Brogy', nivel: 36, recompensa: 1.8e9, fac: 'pir', d: 'Cien años de duelo honorable: los gigantes pelean por honor, no por miedo.' }
+  };
+
+  // ── LA RUTA DEL LOG POSE: la progresión canónica de la Gran Ruta (la que
+  //    sigue el canon; las rutas alternativas del grafo son navegables igual) ──
+  D.RUTA_GL = {
+    PAR: ['whisky', 'littlegarden', 'drum', 'arabasta', 'jaya', 'skypiea', 'longring', 'water7', 'enies', 'thriller', 'sabaody'],
+    NW: ['g5', 'punk', 'dressrosa', 'greenbit', 'zou', 'tottoland', 'elbaf', 'wano', 'hachinosu', 'egghead', 'laugh']
+  };
 
   // Islas del juego que ya existen en el mundo vivo con otro nombre/id.
   const ENLACES = {

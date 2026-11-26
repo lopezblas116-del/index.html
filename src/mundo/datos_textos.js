@@ -33,6 +33,7 @@
     reymar: { t: 'Un Rey Marino asoma cerca de {isla}. El mar se queda quieto.', imp: 5 },
     reymarCruce: { t: 'Un Rey Marino corta el paso de {crew} por la Franja de Calma cerca de {isla}: rodearlo cuesta horas y casco.', imp: 5 },
     cruceGL: { t: '{a} escala la Montaña Inversa contra la corriente y entra a la Gran Ruta: el Log Pose apunta al horizonte.', imp: 5 },
+    jefecae: { t: 'CAYÓ EL QUE MANDABA: {jefe} pierde {isla} a manos de {a}. Las tabernas lo cantan de punta a punta.', imp: 6 },
     cruceNW: { t: '{a} se sumerge con burbuja de recubrimiento bajo la Ruta Roja y emerge en el Nuevo Mundo.', imp: 5 },
     festival: { t: 'Festival en {isla}: la taberna llena hasta la mañana.', imp: 2 },
     rumor: { t: 'Corre un rumor en {isla}: se dice que hay un cofre escondido durante dos días.', imp: 2 },
