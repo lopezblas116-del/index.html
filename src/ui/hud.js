@@ -65,6 +65,11 @@ const PANEL_ID={news:"modal-noticias",mundo:"modal-mundo",chest:"modal-cofre",pr
 let root;let activeCharacter=null;let currentPanel=null;let selectedItem=null;let selectedPsych=null;let confirmingReset=false;let selectedBoardTab="commerce";let selectedChestTab="supplies";let selectedChatTab="global";let selectedMundoTab="atlas";let toastTimer=null;let modalHistoryId=null;let gmAuthorized=false;let gmGatePending=false;let panelSig="";const fmt=n=>new Intl.NumberFormat("es-ES").format(Number(n)||0);const esc=s=>String(s??"");
 function emit(name,detail={}){document.dispatchEvent(new CustomEvent(`onepiece:hud-${name}`,{detail}))}
 function closePanel(fromHistory=false){if(!currentPanel)return;const id=modalHistoryId;modalHistoryId=null;currentPanel=null;selectedItem=null;selectedPsych=null;confirmingReset=false;gmAuthorized=false;panelSig="";const overlay=root?.querySelector(".one-hud-backdrop");if(!overlay)return;overlay.classList.remove("open");overlay.setAttribute("aria-hidden","true");overlay.removeAttribute("id");root.querySelectorAll("[data-hud-panel]").forEach(button=>button.setAttribute("aria-expanded","false"));document.dispatchEvent(new CustomEvent("onepiece:modal-visibility",{detail:{open:false}}));if(!fromHistory&&id&&history.state?.onepieceModal===id)history.back()}
+// VISTA MUNDIAL: el estado del mundo compartido, soberanía y clima — viva
+// como tab del panel Mundo (antes: panel flotante desde el engranaje).
+function renderVistaMundial(container,c){
+  const travel=c.travel||{docked:true,logPoseCharge:0,climate:"normal",weather:"clear"};const shared=world.shared||{};const island=getMapIslands(c).find(item=>item.name===c.location?.island);const control=shared.world?.islands_control?.find(item=>item.island_id===island?.id);const connection=shared.status==="online"?"Mundo compartido conectado":shared.status==="connecting"?"Conectando al mundo compartido":shared.status==="offline"?"Sin conexión; simulación local":"Simulación local (servidor no configurado)";stats(container,[["Día",world.day||0],["Año",world.year||1],["Era",world.era||"Era de los Grandes Descubrimientos"],["Ubicación",c.location?.atSea?"Mar abierto":c.location?.island||"Mar abierto"],["Bioma",c.location?.atSea?"Mar abierto":island?.biome||"Desconocido"],["Control",c.location?.atSea?"—":`${control?.faction||island?.control||"Desconocido"}${control?.owner_name?` · ${control.owner_name}`:""}`],["Marea política",describePoliticalStance(c)],["Red",connection],["Clima",climateLabel(travel.climate)],["Tiempo",travel.weather==="storm"?"Tormenta":"Despejado"],["Carabela",`${c.ship?.health??100}%`]]);if(shared.error||shared.pending){const p=document.createElement("p");p.textContent=`${shared.error||""}${shared.pending?` · ${shared.pending} eventos pendientes en esta sesión`:""}`;container.append(p)}if(travel.docked)meter(container,"Carga de Log Pose",travel.logPoseCharge||0);const zones=document.createElement("div");zones.className="one-hud-climate-zones";for(const [zone,label] of [["normal","Mar Normal"],["calm-belt","Franja de Calma"],["grand-line","Grand Line"]]){const button=document.createElement("button");button.type="button";button.className="one-hud-action";button.textContent=label;button.setAttribute("aria-pressed",String((c.climateZone||"normal")===zone));button.addEventListener("click",()=>emit("set-climate",{zone}));zones.append(button)}container.append(zones)
+}
 function stats(content,rows){const grid=document.createElement("div");grid.className="one-hud-stats";for(const [label,value] of rows){const box=document.createElement("div"),strong=document.createElement("strong");strong.textContent=label;box.append(strong,document.createTextNode(esc(value)));grid.append(box)}content.append(grid)}
 function meter(content,label,value){const row=document.createElement("div");row.className="one-hud-meter";const title=document.createElement("strong");title.textContent=`${label}: ${value}%`;const bar=document.createElement("progress");bar.max=100;bar.value=value;row.append(title,bar);content.append(row)}
 function list(content,items,empty){const ul=document.createElement("ul");ul.className="one-hud-list";if(!items.length){const li=document.createElement("li");li.textContent=empty;ul.append(li)}else items.forEach(item=>{const li=document.createElement("li");li.textContent=esc(item);ul.append(li)});content.append(ul)}
@@ -266,34 +271,12 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       }
       content.append(gobierno);
     }
-    const verMapa=document.createElement("button");verMapa.type="button";verMapa.className="one-hud-action";
-    verMapa.textContent="Ver mi isla en el mapa vivo";
-    verMapa.disabled=Boolean(c.location?.atSea)||c.status==="dead";
-    verMapa.addEventListener("click",()=>{closePanel();emit("volar-isla")});
-    content.append(verMapa);
-    const list=document.createElement("div");list.className="one-hud-contracts";
-    const islas=getMapIslands(c);const actual=c.location?.island;
-    const visibles=islas.slice(0,14);
-    for(const isla of visibles){
-      const row=document.createElement("div");row.className="one-hud-contract";
-      const h=document.createElement("h3");h.textContent=isla.name;row.append(h);
-      const p=document.createElement("p");p.className="one-hud-muted";
-      p.textContent=`${isla.biome||"Bioma por descubrir"}${isla.sea?` · ${isla.sea}`:""}`;
-      row.append(p);
-      const btn=document.createElement("button");btn.type="button";btn.className="one-hud-action";
-      const esActual=!c.location?.atSea&&isla.name===actual;
-      const hayBarco=Boolean(c.ship?.acquired);
-      btn.textContent=esActual?"Puerto actual":hayBarco?"Sugerir zarpar aquí":"Sugerir rumbo aquí";
-      btn.disabled=esActual||c.location?.atSea||c.status==="dead";
-      btn.addEventListener("click",()=>{
-        closePanel();
-        if(hayBarco){emit("sail-suggest",{location:{x:isla.x,y:isla.y,name:isla.name}});}
-        else{emit("redirect",{location:{x:isla.x,y:isla.y,name:isla.name}});showToast(`Rumbo sugerido: ${isla.name}`);}
-      });
-      row.append(btn);list.append(row);
-    }
-    content.append(list);
-    if(islas.length>visibles.length){const mas=document.createElement("p");mas.className="one-hud-muted";mas.textContent=`… y ${islas.length-visibles.length} islas más en el mapa del mundo.`;content.append(mas)}
+    // EL MAPA ES LA CARTA: elegir isla y zarpar se hace tocando el mundo vivo
+    // (pop de isla → ⛵ Viajar aquí). Este panel ya no copia una lista de islas
+    // ni repite el botón "ver mi isla": la cámara ya vive en el mapa.
+    const rumbo=document.createElement("p");rumbo.className="one-hud-muted";
+    rumbo.textContent="El mapa vivo es tu carta de navegación: tocá una isla y elegí ⛵ Viajar aquí.";
+    content.append(rumbo);
   }
   else if(panel==="chest"){
     title.textContent="Barco";
@@ -329,7 +312,8 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       ...(c.systems?.treasureMaps||[]).map(map=>({name:map.name||"Mapa de reliquia",type:map.clue||"Mapa sin descifrar: los glifos guardan su pista",rarity:"Raro"})),
       ...(c.ancientLanguage?.fragments||[]).map(fragment=>({name:`Fragmento: ${fragment.id}`,type:fragment.clue||"Fragmento antiguo",rarity:"Raro"}))
     ];
-    const soulCard=document.createElement("section");soulCard.className="one-hud-soul";renderSoulCard(soulCard,c,lineage);content.append(soulCard);
+    // TU IDENTIDAD VIVE EN ALMA (una sola ficha en todo el juego): este panel
+    // es logística del barco — slots, astillero, tripulación, cofre, testamento.
     const groups=[
       {key:"supplies",label:"Consumibles",items:entries.filter(entry=>entry.consumable||entry.kind==="provision")},
       {key:"documents",label:"Calcos & Mapas",items:documents},
@@ -360,7 +344,7 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       const visitors=getTavernCandidates(c);const roster=document.createElement("div");roster.className="one-hud-tavern-roster";
       visitors.forEach(visitor=>{const card=document.createElement("article");card.className="one-hud-contract one-hud-tavern-card";const heading=document.createElement("h3");heading.textContent=visitor.name;const detail=document.createElement("p");detail.textContent=`${visitor.role} · Rasgo: ${visitor.trait} · Fuerza ${visitor.attributes.strength} · Agilidad ${visitor.attributes.agility} · Ingenio ${visitor.attributes.ingenuity}`;const loyalty=document.createElement("div");loyalty.className="one-hud-loyalty";const loyaltyLabel=document.createElement("span");loyaltyLabel.textContent=`Lealtad ${visitor.loyalty}%`;const bar=document.createElement("progress");bar.max=100;bar.value=visitor.loyalty;loyalty.append(loyaltyLabel,bar);const actions=document.createElement("div");actions.className="one-hud-contract-actions";for(const [action,label] of [["round","Invitar una Ronda · ฿25"],["recruit","Reclutar · ฿75"]]){const button=document.createElement("button");button.type="button";button.className="one-hud-action";button.textContent=label;button.disabled=action==="recruit"&&visitor.loyalty<60;button.addEventListener("click",()=>emit("tavern-action",{visitorId:visitor.id,action}));actions.append(button)}card.append(heading,detail,loyalty,actions);roster.append(card)});
       if(!visitors.length){const empty=document.createElement("p");empty.className="one-hud-muted";empty.textContent="No quedan mercenarios disponibles en este puerto.";roster.append(empty)}panelContent.append(roster);
-      if(c.crew?.length){const crew=document.createElement("section");crew.className="one-hud-crew";const heading=document.createElement("h3");heading.textContent="Tripulación";crew.append(heading);list(crew,c.crew.map(member=>`${member.name} · ${member.role} · ${member.trait} · Lealtad ${member.loyalty}%`),"");panelContent.append(crew)}
+      // la lista de tripulación vive SOLO en Barco (única, con despedir)
       const mercado=document.createElement("button");mercado.type="button";mercado.className="one-hud-action";mercado.textContent="Mercado del puerto";mercado.addEventListener("click",()=>openPanel("market"));panelContent.append(mercado);
     };
     renderTabs(content,[
@@ -378,9 +362,9 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
   }else if(panel==="news"){
     // UNA PUERTA, UN DESTINO (v2): la Bitácora reúne TODO lo narrativo en un solo
     // panel — Última hora del mar vivo, Hemeroteca y las crónicas de la raíz.
-    // Antes había cuatro puertas con el mismo nombre: ya no.
-    if(window.UI?.pintaFeedEn){const sec=document.createElement("section");sec.className="one-hud-contract";window.UI.pintaFeedEn(sec);content.append(sec)}
-    if(window.UI?.pintaHemerotecaEn){const sec=document.createElement("section");sec.className="one-hud-contract";window.UI.pintaHemerotecaEn(sec);content.append(sec)}
+    // UN SOLO FEED: la Gaceta (tabs Mi mar / Importante / Lo mío + cartel SE
+    // BUSCA) es la bitácora entera — el feed crudo y la hemeroteca ya no se
+    // apilan encima repitiendo los mismos eventos tres veces.
     renderNewspaper(content,c,(location)=>{closePanel();emit("investigate-news",{location})},(location)=>{closePanel();emit("redirect",{location})});
   }else if(panel==="profile"){
     if(window.UI?.pintaFichaEn){const sec=document.createElement("section");sec.className="one-hud-contract";window.UI.pintaFichaEn(sec);content.append(sec)}
@@ -401,7 +385,8 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
     // viven aquí, con el mismo diseño, la misma cabecera y el mismo cierre que todo.
     const secciones=[
       {key:"atlas",label:"Atlas del Alma",render:p=>{if(window.UI?.pintaAtlasEn)window.UI.pintaAtlasEn(p);else p.append("Atlas no disponible")}},
-      {key:"sistema",label:"Sistema del mundo",render:p=>{if(window.UI?.pintaAjustesEn)window.UI.pintaAjustesEn(p);else p.append("Sistema no disponible")}}
+      {key:"sistema",label:"Sistema del mundo",render:p=>{if(window.UI?.pintaAjustesEn)window.UI.pintaAjustesEn(p);else p.append("Sistema no disponible")}},
+      {key:"world",label:"Vista Mundial",render:p=>{renderVistaMundial(p,c)}}
     ];
     renderTabs(content,secciones,selectedMundoTab||"atlas",key=>{selectedMundoTab=key});
   }
@@ -422,7 +407,7 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       if(pendientes>0){const pend=document.createElement("p");pend.className="one-hud-muted";pend.textContent=`${pendientes} eventos esperando sincronización.`;statusGroup.append(pend)}
       const pantalla=document.createElement("button");pantalla.type="button";pantalla.className="one-hud-setting-link";pantalla.textContent="Ajustes de pantalla";pantalla.addEventListener("click",()=>openPanel("settings"));statusGroup.append(pantalla);
       // una puerta por destino: la Enciclopedia vive en el dock; aquí van los controles del mundo
-      const estadoMundo=document.createElement("button");estadoMundo.type="button";estadoMundo.className="one-hud-setting-link";estadoMundo.textContent="Estado del mundo";estadoMundo.addEventListener("click",()=>openPanel("world"));statusGroup.append(estadoMundo);       const sonido=document.createElement("button");sonido.type="button";sonido.className="one-hud-setting-link";sonido.textContent="Sonido · activar o silenciar";sonido.addEventListener("click",()=>{const s=window.SFX?.toggle();showToast(s?"Sonido silenciado.":"Sonido activado.")});statusGroup.append(sonido);       const datosMundo=document.createElement("button");datosMundo.type="button";datosMundo.className="one-hud-setting-link";datosMundo.textContent="Datos del mundo vivo (guardar · exportar · importar)";datosMundo.addEventListener("click",()=>{selectedMundoTab="sistema";openPanel("mundo")});statusGroup.append(datosMundo);              
+      const sonido=document.createElement("button");sonido.type="button";sonido.className="one-hud-setting-link";sonido.textContent="Sonido · activar o silenciar";sonido.addEventListener("click",()=>{const s=window.SFX?.toggle();showToast(s?"Sonido silenciado.":"Sonido activado.")});statusGroup.append(sonido);       // guardar/exportar/importar viven SOLO en el panel Mundo → tab Sistema              
       wrap.append(statusGroup);
       if(isLocalGMAvailable(c)){const gmGroup=document.createElement("section");gmGroup.className="one-hud-settings-group";const gmHeading=document.createElement("h3");gmHeading.textContent="Herramientas de dirección";const gm=document.createElement("button");gm.type="button";gm.className="one-hud-setting-link";gm.textContent="Panel Admin GM";gm.addEventListener("click",()=>openPanel("adminGM"));gmGroup.append(gmHeading,gm);wrap.append(gmGroup)}
       const resetGroup=document.createElement("section");resetGroup.className="one-hud-settings-group";const resetHeading=document.createElement("h3");resetHeading.textContent="Partida";const reset=document.createElement("button");reset.type="button";reset.className="one-hud-setting-link one-hud-reset-link";reset.textContent="Reiniciar Avatar";reset.addEventListener("click",()=>{confirmingReset=true;openPanel("more")});resetGroup.append(resetHeading,reset);wrap.append(resetGroup);
@@ -447,7 +432,7 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
     const back=document.createElement("button");back.type="button";back.className="one-hud-action";back.textContent="← Volver a Ajustes";back.addEventListener("click",()=>openPanel("more"));content.append(back);const settings=readJSON(STORAGE_KEYS.settings,{});const label=document.createElement("label");label.className="one-hud-setting";const toggle=document.createElement("input");toggle.type="checkbox";toggle.checked=Boolean(settings.reducedMotion);toggle.addEventListener("change",()=>{settings.reducedMotion=toggle.checked;if(!writeJSON(STORAGE_KEYS.settings,settings)){showToast("No se pudieron guardar los ajustes.");return}document.body.classList.toggle("reduced-motion",toggle.checked)});label.append(toggle,document.createTextNode(" Reducir movimiento y animaciones"));content.append(label)
   }
   else if(panel==="whispers")stats(content,[["Sintonía",`${c.whisper?.affinity??55}%`],["Rebeldía",`${c.whisper?.rebellion??45}%`],["Estado",c.autonomy?.paused?"En pausa":"Activo"]]);
-  else if(panel==="world"){const volver=document.createElement("button");volver.type="button";volver.className="one-hud-action";volver.textContent="← Volver a Ajustes";volver.addEventListener("click",()=>openPanel("more"));content.append(volver);const travel=c.travel||{docked:true,logPoseCharge:0,climate:"normal",weather:"clear"};const shared=world.shared||{};const island=getMapIslands(c).find(item=>item.name===c.location?.island);const control=shared.world?.islands_control?.find(item=>item.island_id===island?.id);const connection=shared.status==="online"?"Mundo compartido conectado":shared.status==="connecting"?"Conectando al mundo compartido":shared.status==="offline"?"Sin conexión; simulación local":"Simulación local (servidor no configurado)";stats(content,[["Día",world.day||0],["Año",world.year||1],["Era",world.era||"Era de los Grandes Descubrimientos"],["Ubicación",c.location?.atSea?"Mar abierto":c.location?.island||"Mar abierto"],["Bioma",c.location?.atSea?"Mar abierto":island?.biome||"Desconocido"],["Control",c.location?.atSea?"—":`${control?.faction||island?.control||"Desconocido"}${control?.owner_name?` · ${control.owner_name}`:""}`],["Marea política",describePoliticalStance(c)],["Red",connection],["Clima",climateLabel(travel.climate)],["Tiempo",travel.weather==="storm"?"Tormenta":"Despejado"],["Carabela",`${c.ship?.health??100}%`]]);if(shared.error||shared.pending){const p=document.createElement("p");p.textContent=`${shared.error||""}${shared.pending?` · ${shared.pending} eventos pendientes en esta sesión`:""}`;content.append(p)}if(travel.docked)meter(content,"Carga de Log Pose",travel.logPoseCharge||0);const zones=document.createElement("div");zones.className="one-hud-climate-zones";for(const [zone,label] of [["normal","Mar Normal"],["calm-belt","Franja de Calma"],["grand-line","Grand Line"]]){const button=document.createElement("button");button.type="button";button.className="one-hud-action";button.textContent=label;button.setAttribute("aria-pressed",String((c.climateZone||"normal")===zone));button.addEventListener("click",()=>emit("set-climate",{zone}));zones.append(button)}content.append(zones)}
+  else if(panel==="world"){renderVistaMundial(content,c)} // la Vista Mundial vive como tab del panel Mundo
   // la Taberna y el Mercado se abren desde el nav (Taberna) — nada de botones duplicados aquí
   else if(panel==="chat"||panel==="quick"){const sections=[{key:"global",label:"Chat Global",render:panelContent=>renderGlobalChat(panelContent,c,world.shared?.world?.global_events||[])},{key:"consciousness",label:"Nexo de Conciencia",render:panelContent=>renderConsciousnessChat(panelContent,c)}];const initial=panel==="quick"?"consciousness":selectedChatTab;renderTabs(content,sections,initial==="coliseo"?"global":initial,key=>{selectedChatTab=key})}
   renderTerritoryControls(content,c);
@@ -547,3 +532,10 @@ export function openIslandPanel(panel){
   if(panel==="blackmarket"&&!getMapIslands(activeCharacter).some(island=>island.name===activeCharacter.location?.island&&island.auctionHouse))return;
   openPanel(panel);
 }
+
+// PUENTE PARA EL ORBE (fusion.js): el menú que vive sobre el mapa abre las
+// puertas del HUD desde fuera del módulo — una API mínima, cero duplicación.
+window.ONE_HUD = {
+  abrirMundo(tab) { selectedMundoTab = tab || "atlas"; openPanel("mundo"); },
+  abrirPanel(tab) { openPanel(tab); }
+};

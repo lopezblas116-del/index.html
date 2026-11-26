@@ -39,6 +39,15 @@ let lastCharacter = null;
 
 // Apariencia pixel determinista para almas del sim sin retrato definido.
 function aparicionDe(agente) {
+  // el alma del JUGADOR muestra su cara real, no un hash al azar
+  if (agente.user && agente._apariencia) {
+    return {
+      name: agente.name,
+      skin: agente._apariencia.skin || 'Clara',
+      hair: agente._apariencia.hair || 'Negro',
+      outfit: agente._apariencia.outfitColor || 'Rojo'
+    };
+  }
   let h = 0;
   for (const ch of String(agente.id)) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
   return {
@@ -204,7 +213,7 @@ function installWorldUi() {
       else if (accion === "alma") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
       else if (accion === "atlas") document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
       else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
-      else if (accion === "sistema") document.querySelector('.one-hud-settings')?.click();
+      else if (accion === "sistema") (window.ONE_HUD?.abrirMundo ? window.ONE_HUD.abrirMundo("sistema") : document.querySelector('.one-hud-settings')?.click());
     });
     document.addEventListener("click", (event) => {
       if (!menuMundo.classList.contains("oculto") && !event.target.closest("#mil-globo-wrap")) cerrarMenu();
@@ -380,6 +389,12 @@ function syncCharacter(character) {
   user.sueno = DREAMS[character.soulCard?.dream] || user.sueno;
   user.oficio = PROFESSIONS[character.profession] || user.oficio;
   user.rasgos = { ...user.rasgos, ...traitsFor(character) };
+  // TU CARA SIEMPRE: los mundos guardados antes de que la apariencia cruzara
+  // al sim vivían con un Luffy genérico — ahora apariencia, bandera y raza se
+  // refrescan en cada latido del espejo, sin importar cuándo se creó el alma.
+  user._apariencia = character.appearance || user._apariencia || null;
+  user._bandera = character.flag || user._bandera || null;
+  if (character.race && window.D.RAZAS_SIM[character.race]) user.raza = character.race;
   user.state = character.status === "dead" ? "muerto" : "libre";
 
   syncLocation(character);

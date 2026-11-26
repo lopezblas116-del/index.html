@@ -1075,7 +1075,26 @@
     const vela = F.acentoA || '#e6c356';
     const casco = F.acentoB || '#7a4a2a';
     const prog = clamp((sim.t - plan.t0) / Math.max(1, plan.dur), 0, 1);
-    const wx = plan.x0 + (plan.x1 - plan.x0) * prog, wy = plan.y0 + (plan.y1 - plan.y0) * prog;
+    let wx, wy;
+    if (plan.pts && plan.pts.length > 1) {
+      const P = plan.pts;
+      const lens = []; let total = 0;
+      for (let i = 0; i < P.length - 1; i++) { const L = Math.hypot(P[i + 1].x - P[i].x, P[i + 1].y - P[i].y) || 0.001; lens.push(L); total += L; }
+      let dd = prog * total;
+      wx = P[0].x; wy = P[0].y;
+      for (let i = 0; i < lens.length; i++) {
+        if (dd <= lens[i] || i === lens.length - 1) {
+          const kk = clamp(dd / lens[i], 0, 1);
+          wx = P[i].x + (P[i + 1].x - P[i].x) * kk;
+          wy = P[i].y + (P[i + 1].y - P[i].y) * kk;
+          break;
+        }
+        dd -= lens[i];
+      }
+    } else {
+      wx = plan.x0 + (plan.x1 - plan.x0) * prog;
+      wy = plan.y0 + (plan.y1 - plan.y0) * prog;
+    }
     const bob = Math.sin(t / 260) * 1.1;
     ctx.save();
     ctx.translate(wx, wy + bob);
@@ -1446,6 +1465,17 @@
     let x, y, ang;
     if (s.state === 'navegando' && s.plan) {
       const k = clamp((sim.t - s.plan.t0) / Math.max(1, s.plan.dur), 0, 1);
+      if (s.plan.pts && s.plan.pts.length > 1) {
+        // ruta doblada por el portal: el barco navega CADA tramo (montaña/buceo)
+        const P = s.plan.pts;
+        const lens = []; let total = 0;
+        for (let i = 0; i < P.length - 1; i++) { const L = Math.hypot(P[i + 1].x - P[i].x, P[i + 1].y - P[i].y) || 0.001; lens.push(L); total += L; }
+        let dd = k * total, seg = lens.length - 1, kk = 1;
+        for (let i = 0; i < lens.length; i++) { if (dd <= lens[i]) { seg = i; kk = dd / lens[i]; break; } dd -= lens[i]; }
+        x = P[seg].x + (P[seg + 1].x - P[seg].x) * kk;
+        y = P[seg].y + (P[seg + 1].y - P[seg].y) * kk;
+        ang = Math.atan2(P[seg + 1].y - P[seg].y, P[seg + 1].x - P[seg].x);
+      } else {
       const x0 = s.plan.x0, x1 = s.plan.x1;
       let dx = x1 - x0;
       if (Math.abs(dx) > D.W / 2) { // ruta que cruza el borde: interpola por el lado corto
@@ -1454,6 +1484,7 @@
       } else x = x0 + dx * k;
       y = s.plan.y0 + (s.plan.y1 - s.plan.y0) * k;
       ang = Math.atan2(s.plan.y1 - s.plan.y0, dx + (Math.abs(dx) > D.W / 2 ? (dx > 0 ? -D.W : D.W) : 0));
+      }
     } else {
       const isl = D.ISLA[s.isl]; if (!isl) return;
       // anclado en el AGUA, fuera del bajío: nunca encima de la arena ni del muelle

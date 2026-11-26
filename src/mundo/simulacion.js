@@ -56,7 +56,8 @@ import { rollLineageRace } from '../races.js';
     const rev = D.ISLA.reverse;
     [EB, NB, WB, SB].forEach(i => add(i.id, rev.id, 3)); // cada mar escala el Monte Contracorriente
     add(rev.id, D.ISLA.whisky.id, 3);      // bajar de la montaña a la Gran Ruta
-    add(D.ISLA.sabaody.id, 'g5', 4);       // cruce a Nuevo Mundo (nivel 16+)
+    // el cruce a Nuevo Mundo ES el buceo: sabaody → fishman → g5. La arista
+    // directa atravesaba la Ruta Roja por arriba y hacía a Isla Gyojin opcional.
     add(D.ISLA.jaya.id, 'skypiea', 4);     // corriente ascendente
     add(D.ISLA.sabaody.id, 'fishman', 3);  // burbuja de recubrimiento
     add('fishman', 'g5', 3);               // subir al Nuevo Mundo
@@ -447,6 +448,24 @@ import { rollLineageRace } from '../races.js';
   };
 
   // ── Movimiento entre islas (barcos) ──
+  // RUTAS LÓGICAS: ningún viaje atraviesa la Ruta Roja en línea recta — si el
+  // tramo cruza el muro, se dobla por el portal canónico (la Montaña Inversa
+  // entre los Blues y la Gran Ruta, o el buceo por Isla Gyojin al Nuevo Mundo).
+  // El plan guarda los pasos y la duración suma los tramos.
+  Sim.prototype.rutaConPasos = function (orig, dest) {
+    const cruzanMuro = (orig.x - D.RL_X) * (dest.x - D.RL_X) < 0;
+    const pts = [{ x: orig.x, y: orig.y }];
+    if (cruzanMuro) {
+      const enGranRuta = (r) => r && r.y > D.GL_Y0 && r.y < D.GL_Y1;
+      const portal = enGranRuta(orig) || enGranRuta(dest) ? D.ISLA.fishman : D.ISLA.reverse;
+      if (portal && portal.x != null) pts.push({ x: portal.x, y: portal.y });
+    }
+    pts.push({ x: dest.x, y: dest.y });
+    let d = 0;
+    for (let i = 0; i < pts.length - 1; i++) d += dist(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+    return { pts, durMin: Math.max(30, Math.round(d / 5.2)) };
+  };
+
   Sim.prototype.zarpar = function (a, destId, roba) {
     const crew = this.crewOf(a);
     const orig = D.ISLA[a.isl], dest = D.ISLA[destId];
@@ -472,9 +491,10 @@ import { rollLineageRace } from '../races.js';
       }
     }
     if (!ship || ship.state !== 'puerto' || ship.isl !== a.isl) return false;
-    const durMin = Math.max(30, Math.round(dist(orig.x, orig.y, dest.x, dest.y) / 5.2));
+    const ruta = this.rutaConPasos(orig, dest);
+    const durMin = ruta.durMin;
     ship.state = 'navegando'; ship.dest = destId; ship.t0 = this.t; ship.dur = durMin;
-    ship.plan = { x0: orig.x, y0: orig.y, x1: dest.x, y1: dest.y, t0: this.t, dur: durMin };
+    ship.plan = { x0: orig.x, y0: orig.y, x1: dest.x, y1: dest.y, t0: this.t, dur: durMin, pts: ruta.pts };
     if (ship.crew === -1 && !crew) ship.crew = -1; // bote en solitario
     // pasan a navegar el que zarpa y sus compañeros de tripulación presentes
     const viajeros = crew
@@ -482,7 +502,7 @@ import { rollLineageRace } from '../races.js';
       : [a];
     for (const m of viajeros) {
       this.leaveIsland(m); m.state = 'navegando';
-      m.plan = { ship: ship.id, x0: orig.x, y0: orig.y, x1: dest.x, y1: dest.y, t0: this.t, dur: durMin };
+      m.plan = { ship: ship.id, x0: orig.x, y0: orig.y, x1: dest.x, y1: dest.y, t0: this.t, dur: durMin, pts: ruta.pts };
     }
     this.ev(crew && crew.cap === a.id ? 'zarpar' : 'navega', { a: this.nm(a), crew: crew ? crew.name : 'bote de ' + a.name, isla: orig.n, dest: dest.n, esJugador: !!a.user }, { ids: [a.id] });
     a.act = 'Navegando a ' + dest.n;
@@ -712,6 +732,7 @@ import { rollLineageRace } from '../races.js';
   };
 
   Sim.prototype.llegarIsla = function (a, islId) {
+    const regPrevio = a.isl && D.ISLA[a.isl] ? D.ISLA[a.isl].reg : null;
     this.leaveIsland(a);
     a.isl = islId; a.state = 'libre'; a.plan = null; a.pos = { x: this.rng.rango(-0.6, 0.6), y: this.rng.rango(-0.6, 0.6) };
     this.pushPop(a);
@@ -737,6 +758,13 @@ import { rollLineageRace } from '../races.js';
       const reg = a.atlas[islId] || (a.atlas[islId] = { n: 0, t0: Math.floor(this.t) });
       reg.n++;
       if (islId === 'laugh') a.insignias['final'] = 'final'; // llegar a la isla final merece su insignia
+      // LOS CRUCES SE CUENTAN: entrar a la Gran Ruta por la montaña o sumergirse
+      // al Nuevo Mundo son hitos del mundo — y se VEN en el mapa (ping + icono)
+      const BLUES = { EB: 1, NB: 1, WB: 1, SB: 1 };
+      if (regPrevio && regPrevio !== isl.reg) {
+        if (BLUES[regPrevio] && isl.reg === 'PAR') this.ev('cruceGL', { a: this.nm(a), isla: isl.n, esJugador: true }, { ids: [a.id] });
+        else if (regPrevio === 'PAR' && isl.reg === 'NW') this.ev('cruceNW', { a: this.nm(a), isla: isl.n, esJugador: true }, { ids: [a.id] });
+      }
     }
     this.ev('atraca', { a: this.nm(a), isla: isl.n, esJugador: !!a.user }, { ids: [a.id] });
     // un capitán legendario puede hacerse con un Cubo Rojo aunque no seas tú
@@ -1040,12 +1068,26 @@ import { rollLineageRace } from '../races.js';
         s.hull = Math.max(0, s.hull - this.rng.int(2, 6));
         if (s.hull <= 20 && !s._naufragio) { s._naufragio = true; this.ev('naufragio', { crew: crew.name, isla: D.ISLA[s.dest || s.isl].n, esJugador: cap && cap.user }, { ids: crew.mem.slice(0, 3) }); }
       }
-      if (this.rng.chance(0.004) && s.dest) {
-        // Rey Marino (raro y peligroso)
-        this.ev('reymar', { isla: D.ISLA[s.dest || s.isl].n }, {});
-        if (cap && this.rng.chance(0.35) && cap.state === 'navegando') {
-          cap.hp = Math.max(1, cap.hp - 60);
-          if (cap.hp <= 1 && cap.user) this.muerte(cap, 'reymar');
+      if (s.dest) {
+        // REYES MARINOS CON LÓGICA: guardan las Franjas de Calma — cruzarlas es
+        // temerario (retraso y casco); en mar abierto son un susurro raro. Las
+        // rutas peligrosas (escalar la montaña) multiplican el riesgo.
+        const pb = this.posBarco(s);
+        const enCalma = (pb.y > D.CB_T && pb.y < D.GL_Y0) || (pb.y > D.GL_Y1 && pb.y < D.CB_B);
+        const ruta = this.rutas.find(r => (r.a === s.isl && r.b === s.dest) || (r.b === s.isl && r.a === s.dest));
+        const peligro = (ruta && ruta.danger ? ruta.danger : 1) * (enCalma ? 0.006 : 0.0006);
+        if (this.rng.chance(peligro)) {
+          if (enCalma) {
+            this.ev('reymarCruce', { crew: crew.name, isla: D.ISLA[s.dest || s.isl].n }, { ids: crew.mem.slice(0, 3) });
+            s.dur += this.rng.int(30, 90); // la serpiente corta el paso: rodear cuesta horas
+            s.hull = Math.max(0, s.hull - this.rng.int(4, 10));
+          } else {
+            this.ev('reymar', { isla: D.ISLA[s.dest || s.isl].n }, {});
+          }
+          if (cap && this.rng.chance(enCalma ? 0.45 : 0.3) && cap.state === 'navegando') {
+            cap.hp = Math.max(1, cap.hp - 60);
+            if (cap.hp <= 1 && cap.user) this.muerte(cap, 'reymar');
+          }
         }
       }
     }
@@ -1054,6 +1096,19 @@ import { rollLineageRace } from '../races.js';
   Sim.prototype.posBarco = function (s) {
     if (!s.plan) return { x: D.ISLA[s.isl] ? D.ISLA[s.isl].x : 800, y: D.ISLA[s.isl] ? D.ISLA[s.isl].y : 400 };
     const p = s.plan, k = clamp((this.t - p.t0) / Math.max(1, p.dur), 0, 1);
+    // ruta doblada por el portal: recorre los tramos según su longitud real
+    if (p.pts && p.pts.length > 1) {
+      let total = 0; const lens = [];
+      for (let i = 0; i < p.pts.length - 1; i++) { const L = dist(p.pts[i].x, p.pts[i].y, p.pts[i + 1].x, p.pts[i + 1].y) || 0.001; lens.push(L); total += L; }
+      let d = k * total;
+      for (let i = 0; i < lens.length; i++) {
+        if (d <= lens[i] || i === lens.length - 1) {
+          const kk = clamp(d / lens[i], 0, 1);
+          return { x: p.pts[i].x + (p.pts[i + 1].x - p.pts[i].x) * kk, y: p.pts[i].y + (p.pts[i + 1].y - p.pts[i].y) * kk };
+        }
+        d -= lens[i];
+      }
+    }
     return { x: p.x0 + (p.x1 - p.x0) * k, y: p.y0 + (p.y1 - p.y0) * k };
   };
 

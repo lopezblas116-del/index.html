@@ -392,22 +392,45 @@
 
   // ── rutas de viaje ────────────────────────────────────────────────────────
   function pintaRutas(sim, t, ctx, cam, D) {
-    const ptosCurva = (p, k) => {
-      let x1 = p.x1;
-      const dx = p.x1 - p.x0;
-      if (Math.abs(dx) > D.W / 2) x1 = p.x1 + (dx > 0 ? -D.W : D.W);
-      const mx = (p.x0 + x1) / 2, my = Math.min(p.y0, p.y1) - Math.abs(x1 - p.x0) * 0.05 - 10;
-      const a = 1 - k;
-      return { x: a * a * p.x0 + 2 * a * k * mx + k * k * x1, y: a * a * p.y0 + 2 * a * k * my + k * k * p.y1, mx, my, x1, y1: p.y1 };
+    // RUTAS CON PORTAL: un plan con pts se dibuja por tramos (cada uno su curva),
+    // así la ruta dorada se dobla por la montaña o por el buceo bajo el muro.
+    const tramosDe = (p) => {
+      const P = p.pts && p.pts.length > 1 ? p.pts : [{ x: p.x0, y: p.y0 }, { x: p.x1, y: p.y1 }];
+      const segs = [];
+      for (let i = 0; i < P.length - 1; i++) {
+        let ax = P[i].x, ay = P[i].y, bx = P[i + 1].x, by = P[i + 1].y;
+        const dx = bx - ax;
+        if (Math.abs(dx) > D.W / 2) bx += dx > 0 ? -D.W : D.W;
+        segs.push({ ax, ay, bx, by, len: Math.hypot(bx - ax, by - ay) || 0.001 });
+      }
+      return segs;
+    };
+    const puntoEnTramos = (segs, d) => {
+      let acc = 0;
+      for (const s of segs) {
+        if (d <= acc + s.len || s === segs[segs.length - 1]) {
+          const k = Math.min(1, Math.max(0, (d - acc) / s.len));
+          const mx = (s.ax + s.bx) / 2, my = Math.min(s.ay, s.by) - Math.abs(s.bx - s.ax) * 0.05 - 10;
+          return { x: s.ax + (s.bx - s.ax) * k, y: s.ay + (s.by - s.ay) * k, mx, my };
+        }
+        acc += s.len;
+      }
+      const u = segs[segs.length - 1];
+      return { x: u.bx, y: u.by, mx: (u.ax + u.bx) / 2, my: u.ay };
     };
     const traza = (p, k, color, dash) => {
-      const c = ptosCurva(p, k);
+      const segs = tramosDe(p);
+      const total = segs.reduce((n, s) => n + s.len, 0);
       ctx.strokeStyle = color; ctx.lineWidth = 1.6 / cam.z;
       if (dash) { ctx.setLineDash([6 / cam.z, 6 / cam.z]); ctx.lineDashOffset = -t / 40 / cam.z; } else ctx.setLineDash([]);
-      ctx.beginPath(); ctx.moveTo(p.x0, p.y0);
-      ctx.quadraticCurveTo(c.mx, c.my, c.x1, c.y1);
-      ctx.stroke(); ctx.setLineDash([]);
-      return c;
+      for (const s of segs) {
+        const mx = (s.ax + s.bx) / 2, my = Math.min(s.ay, s.by) - Math.abs(s.bx - s.ax) * 0.05 - 10;
+        ctx.beginPath(); ctx.moveTo(s.ax, s.ay);
+        ctx.quadraticCurveTo(mx, my, s.bx, s.by);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      return puntoEnTramos(segs, k * total);
     };
     // las naves del mundo: línea blanca tímida con punto de progreso
     for (const s of sim.ships) {
