@@ -23,7 +23,7 @@ function memoryStorage() {
 
 test("configuration and descriptive JSON keep world and mission data separate", () => {
   assert.deepEqual(PALETTE, { ocean: "#0b1329", panel: "#162238", gold: "#f4b41a" });
-  assert.equal(Object.keys(islandData).length, 28);
+  assert.equal(Object.keys(islandData).length, 29); // 28 del atlas antiguo + Impel Down
   assert.deepEqual(islandData.dawn.coordinates, { x: 190, y: 170, sea: "East Blue" });
   assert.equal(islandData.shells.name, "Shells Town");
   assert.deepEqual(missionData.routes["East Blue"].slice(0, 3), ["Isla Dawn", "Orange Town", "Villa Syrup"]);

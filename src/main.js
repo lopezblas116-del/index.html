@@ -29,7 +29,7 @@ import { getMapIslands } from "./map.js";
 import { claimLocalSovereignty, startNavalBlockade } from "./geopolitics.js";
 import { beginStarterIslandAdventure, resolveIslandCrisis } from "./narrative_engine.js";
 import { anunciarLlegada, initUIBinding } from "../js/ui.js";
-import { sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
+import { canReadAncient, examinePoneglyph, sellPoneglyphRubbing, translateRubbing } from "./archaeology_system.js";
 import { syncCodex } from "./codex_engine.js";
 import { emitVfx, initVfx, trackVisualChanges } from "./vfx_engine.js";
 import { celebrateAvatar } from "./island_renderer.js";
@@ -554,3 +554,6 @@ listen(document, "mil-encuentro", (event) => {
     document.dispatchEvent(new CustomEvent("onepiece:systems-toast", { detail: { message: result.message } }));
   }
 });
+
+// puente para el pop de isla del mundo vivo: el monolito se examina con la voz del juego
+window.__ARQUEOLOGIA__ = { examinePoneglyph, canReadAncient };

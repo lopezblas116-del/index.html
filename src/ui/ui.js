@@ -267,7 +267,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
   container.append(tabs, body);
   const loreHint = document.createElement("aside");
   loreHint.className = "news-lore-note";
-  loreHint.textContent = "La Gaceta consulta las cartas de la región…";
+  loreHint.textContent = "Bitácora del Mar consulta las cartas de la región…";
   container.append(loreHint);
   const loreQuery = character.location?.island || character.location?.region;
   getLoreByKey(loreQuery).then((lore) => {

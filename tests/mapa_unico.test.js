@@ -10,7 +10,7 @@ const juego = JSON.parse(readFileSync(new URL("../src/data/islands_data.json", i
 
 test("las 28 islas del juego están en el registro único, enlazadas o agregadas", () => {
   const ids = Object.keys(juego);
-  assert.equal(ids.length, 28);
+  assert.equal(ids.length, 29);
   for (const id of ids) {
     const isla = D.ISLAS.find((entry) => entry.juegoId === id);
     assert.ok(isla?.juego, `falta ${id}`);

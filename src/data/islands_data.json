@@ -1,30 +1,566 @@
 {
-  "dawn": { "name": "Isla Dawn", "coordinates": { "x": 190, "y": 170, "sea": "East Blue" }, "biome": "Colinas verdes y costa", "specialty": "wood", "mission": "Proteger la aldea", "control": "Marina", "boss": "Higuma", "landmark": "Villa Foosha", "architecture": "foosha", "districts": ["Villa Foosha", "Colinas del molino", "Costa de partida"], "pois": [{"id":"makino-tavern","name":"Taberna de Makino","type":"tavern","x":112,"y":129},{"id":"departure-dock","name":"Muelle de Partida","type":"dock","x":180,"y":300},{"id":"windmill","name":"Molino de Viento","type":"landmark","x":420,"y":120},{"id":"dadan-cabin","name":"Cabaña de Dadan","type":"cabin","x":510,"y":195}], "npcs": [{"name": "Makino", "hair": "Moreno"}, {"name": "Dadan", "hair": "Rojo"}] },
-  "shells": { "name": "Shells Town", "coordinates": { "x": 300, "y": 250, "sea": "East Blue" }, "biome": "Puerto fortificado", "specialty": "weapon", "mission": "Liberar la base", "control": "Marina", "boss": "Capitán Morgan", "affiliated": true, "architecture": "fortress", "districts": ["Base militar", "Plaza central", "Mercado urbano"], "pois": [{"id":"morgan-base","name":"Base Militar del Capitán Morgan","type":"base","x":320,"y":95},{"id":"execution-yard","name":"Patio de Ejecuciones","type":"plaza","x":320,"y":170},{"id":"shells-market","name":"Mercado Urbano","type":"market","x":515,"y":125}], "npcs": [{"name": "Capitán Morgan", "hair": "Rubio"}, {"name": "Helmeppo", "hair": "Rubio"}] },
-  "orange": { "name": "Orange Town", "coordinates": { "x": 270, "y": 300, "sea": "East Blue" }, "biome": "Archipiélago templado", "specialty": "water", "mission": "Recuperar el mapa de navegación", "control": "Tirano", "boss": "Buggy" },
-  "syrup": { "name": "Villa Syrup", "coordinates": { "x": 185, "y": 340, "sea": "East Blue" }, "biome": "Bosque y costa", "specialty": "wood", "mission": "Defender la aldea", "control": "Marina", "boss": "Kuro" },
-  "baratie": { "name": "Baratie", "coordinates": { "x": 350, "y": 420, "sea": "East Blue" }, "biome": "Restaurante flotante", "specialty": "rum", "mission": "Escoltar el barco restaurante", "control": "Marina", "boss": "Don Krieg", "architecture": "baratie", "districts": ["Cubierta principal", "Cocina", "Comedor flotante"], "pois": [{"id":"main-deck","name":"Cubierta Principal","type":"dock","x":330,"y":285},{"id":"zeff-kitchen","name":"Cocina de Zeff","type":"kitchen","x":270,"y":118},{"id":"floating-dining","name":"Comedor Flotante","type":"restaurant","x":380,"y":130}], "npcs": [{"name": "Zeff", "hair": "Rubio"}] },
-  "arlong": { "name": "Arlong Park", "coordinates": { "x": 260, "y": 500, "sea": "East Blue" }, "biome": "Arrecife tropical", "specialty": "water", "mission": "Liberar la isla", "control": "Tirano", "boss": "Arlong", "architecture": "arlong", "districts": ["Parque de Arlong", "Plaza Conomi", "Astillero Gyojin"], "pois": [{"id":"arlong-tower","name":"Torre de Arlong","type":"base","x":320,"y":90},{"id":"conomi-square","name":"Plaza Conomi","type":"plaza","x":255,"y":210},{"id":"fishman-shipyard","name":"Astillero de Gyojins","type":"shipyard","x":515,"y":285}], "npcs": [{"name": "Arlong", "hair": "Negro"}, {"name": "Gyojin", "hair": "Moreno", "skin": "Bronceada"}] },
-  "loguetown": { "name": "Loguetown", "coordinates": { "x": 495, "y": 370, "sea": "East Blue" }, "biome": "Ciudad portuaria", "specialty": "weapon", "mission": "El asalto de Loguetown", "control": "Marina", "boss": "Capitán Smoker", "affiliated": true, "architecture": "loguetown", "districts": ["Plaza central", "Distrito comercial", "Puerto oriental"], "pois": [{"id":"execution-platform","name":"Plaza de la Plataforma de Ejecución","type":"plaza","x":320,"y":165},{"id":"ipponmatsu-shop","name":"Tienda de Katanas de Ipponmatsu","type":"weapon_shop","x":120,"y":130},{"id":"gold-roger-bar","name":"Bar Gold Roger","type":"tavern","x":515,"y":130}], "npcs": [{"name": "Capitán Smoker", "hair": "Rubio"}, {"name": "Tashigi", "hair": "Negro", "glasses": true}] },
-  "ohara": { "name": "Isla Ohara", "coordinates": { "x": 200, "y": 80, "sea": "West Blue" }, "biome": "Bosque de eruditos", "specialty": "wood", "mission": "Proteger el legado de Ohara", "control": "Marina", "boss": "Vicealmirante Sakazuki" },
-  "kano": { "name": "Isla Kano", "coordinates": { "x": 200, "y": 680, "sea": "West Blue" }, "biome": "Montañas y jardines", "specialty": "weapon", "mission": "Escoltar una caravana", "control": "Tirano" },
-  "flevance": { "name": "Isla Flevance", "coordinates": { "x": 970, "y": 80, "sea": "North Blue" }, "biome": "Ciudad nevada", "specialty": "water", "mission": "Ayudar a los supervivientes", "control": "Marina" },
-  "minion": { "name": "Isla Minion", "coordinates": { "x": 1015, "y": 120, "sea": "North Blue" }, "biome": "Isla invernal", "specialty": "weapon", "mission": "Investigar el puerto helado", "control": "Tirano" },
-  "swallow": { "name": "Isla Swallow", "coordinates": { "x": 1035, "y": 155, "sea": "North Blue" }, "biome": "Costa rocosa", "specialty": "wood", "mission": "Recuperar suministros", "control": "Marina" },
-  "torino": { "name": "Isla Torino", "coordinates": { "x": 970, "y": 680, "sea": "South Blue" }, "biome": "Bosque medicinal", "specialty": "water", "mission": "Buscar plantas medicinales", "control": "Marina" },
-  "baterilla": { "name": "Baterilla", "coordinates": { "x": 1020, "y": 610, "sea": "South Blue" }, "biome": "Isla tropical", "specialty": "rum", "mission": "Proteger a los habitantes", "control": "Marina" },
-  "karate": { "name": "Isla Karate", "coordinates": { "x": 930, "y": 620, "sea": "South Blue" }, "biome": "Montañas de entrenamiento", "specialty": "weapon", "mission": "Superar el desafío del puerto", "control": "Tirano" },
-  "reverse": { "name": "Reverse Mountain", "coordinates": { "x": 600, "y": 370, "sea": "Grand Line" }, "biome": "Montaña oceánica", "specialty": "water", "mission": "Cruzar la Reverse Mountain", "control": "Marina" },
-  "whiskey": { "name": "Whiskey Peak", "coordinates": { "x": 700, "y": 370, "sea": "Paraíso" }, "biome": "Desierto", "specialty": "rum", "mission": "Descubrir la trampa de Whiskey Peak", "control": "Tirano" },
-  "water7": { "name": "Water 7", "coordinates": { "x": 815, "y": 310, "sea": "Paraíso" }, "biome": "Ciudad de canales", "specialty": "wood", "mission": "Defender el astillero", "control": "Marina" },
-  "ennies": { "name": "Enies Lobby", "coordinates": { "x": 875, "y": 420, "sea": "Paraíso" }, "biome": "Fortaleza judicial", "specialty": "weapon", "mission": "Investigar la fortaleza", "control": "Marina" },
-  "sabaody": { "name": "Archipiélago Sabaody", "coordinates": { "x": 965, "y": 370, "sea": "Paraíso" }, "biome": "Manglares y bajos fondos", "specialty": "water", "mission": "Explorar el archipiélago", "control": "Marina", "affiliated": true, "segregated": true, "auctionHouse": true },
-  "wano": { "name": "Wano", "coordinates": { "x": 1080, "y": 290, "sea": "Nuevo Mundo" }, "biome": "País montañoso", "specialty": "weapon", "mission": "Liberar Wano", "control": "Tirano" },
-  "onyigashima": { "name": "Onigashima", "coordinates": { "x": 1105, "y": 450, "sea": "Nuevo Mundo" }, "biome": "Isla volcánica", "specialty": "weapon", "mission": "Enfrentar a los invasores", "control": "Tirano" },
-  "paradise": { "name": "Paraíso", "coordinates": { "x": 720, "y": 365, "sea": "Paraíso" }, "biome": "Mar de islas cambiantes", "specialty": "water", "mission": "Entrar al Paraíso", "control": "Marina" },
-  "new-world": { "name": "Nuevo Mundo", "coordinates": { "x": 1020, "y": 370, "sea": "Nuevo Mundo" }, "biome": "Mar tempestuoso", "specialty": "rum", "mission": "Conquistar el Nuevo Mundo", "control": "Tirano" },
-  "weatheria": { "name": "Weatheria", "coordinates": { "x": 410, "y": 145, "sea": "East Blue" }, "biome": "Isla del cielo y nubes", "specialty": "water", "mission": "Observar las corrientes del cielo", "control": "Marina", "architecture": "sky" },
-  "karakuri": { "name": "Karakuri", "coordinates": { "x": 770, "y": 115, "sea": "North Blue" }, "biome": "Isla invernal mecánica", "specialty": "weapon", "mission": "Investigar los mecanismos", "control": "Marina" },
-  "namakura": { "name": "Namakura", "coordinates": { "x": 430, "y": 640, "sea": "South Blue" }, "biome": "Bosque de ruinas", "specialty": "wood", "mission": "Explorar las ruinas", "control": "Tirano" },
-  "rusty": { "name": "Isla del Naufragio", "coordinates": { "x": 1035, "y": 570, "sea": "Nuevo Mundo" }, "biome": "Costa de naufragios", "specialty": "wood", "mission": "Explorar los restos", "control": "Tirano" }
+  "dawn": {
+    "name": "Isla Dawn",
+    "coordinates": {
+      "x": 190,
+      "y": 170,
+      "sea": "East Blue"
+    },
+    "biome": "Colinas verdes y costa",
+    "specialty": "wood",
+    "mission": "Proteger la aldea",
+    "control": "Marina",
+    "boss": "Higuma",
+    "landmark": "Villa Foosha",
+    "architecture": "foosha",
+    "districts": [
+      "Villa Foosha",
+      "Colinas del molino",
+      "Costa de partida"
+    ],
+    "pois": [
+      {
+        "id": "makino-tavern",
+        "name": "Taberna de Makino",
+        "type": "tavern",
+        "x": 112,
+        "y": 129
+      },
+      {
+        "id": "departure-dock",
+        "name": "Muelle de Partida",
+        "type": "dock",
+        "x": 180,
+        "y": 300
+      },
+      {
+        "id": "windmill",
+        "name": "Molino de Viento",
+        "type": "landmark",
+        "x": 420,
+        "y": 120
+      },
+      {
+        "id": "dadan-cabin",
+        "name": "Cabaña de Dadan",
+        "type": "cabin",
+        "x": 510,
+        "y": 195
+      }
+    ],
+    "npcs": [
+      {
+        "name": "Makino",
+        "hair": "Moreno"
+      },
+      {
+        "name": "Dadan",
+        "hair": "Rojo"
+      }
+    ]
+  },
+  "shells": {
+    "name": "Shells Town",
+    "coordinates": {
+      "x": 300,
+      "y": 250,
+      "sea": "East Blue"
+    },
+    "biome": "Puerto fortificado",
+    "specialty": "weapon",
+    "mission": "Liberar la base",
+    "control": "Marina",
+    "boss": "Capitán Morgan",
+    "affiliated": true,
+    "architecture": "fortress",
+    "districts": [
+      "Base militar",
+      "Plaza central",
+      "Mercado urbano"
+    ],
+    "pois": [
+      {
+        "id": "morgan-base",
+        "name": "Base Militar del Capitán Morgan",
+        "type": "base",
+        "x": 320,
+        "y": 95
+      },
+      {
+        "id": "execution-yard",
+        "name": "Patio de Ejecuciones",
+        "type": "plaza",
+        "x": 320,
+        "y": 170
+      },
+      {
+        "id": "shells-market",
+        "name": "Mercado Urbano",
+        "type": "market",
+        "x": 515,
+        "y": 125
+      }
+    ],
+    "npcs": [
+      {
+        "name": "Capitán Morgan",
+        "hair": "Rubio"
+      },
+      {
+        "name": "Helmeppo",
+        "hair": "Rubio"
+      }
+    ]
+  },
+  "orange": {
+    "name": "Orange Town",
+    "coordinates": {
+      "x": 270,
+      "y": 300,
+      "sea": "East Blue"
+    },
+    "biome": "Archipiélago templado",
+    "specialty": "water",
+    "mission": "Recuperar el mapa de navegación",
+    "control": "Tirano",
+    "boss": "Buggy"
+  },
+  "syrup": {
+    "name": "Villa Syrup",
+    "coordinates": {
+      "x": 185,
+      "y": 340,
+      "sea": "East Blue"
+    },
+    "biome": "Bosque y costa",
+    "specialty": "wood",
+    "mission": "Defender la aldea",
+    "control": "Marina",
+    "boss": "Kuro"
+  },
+  "baratie": {
+    "name": "Baratie",
+    "coordinates": {
+      "x": 350,
+      "y": 420,
+      "sea": "East Blue"
+    },
+    "biome": "Restaurante flotante",
+    "specialty": "rum",
+    "mission": "Escoltar el barco restaurante",
+    "control": "Marina",
+    "boss": "Don Krieg",
+    "architecture": "baratie",
+    "districts": [
+      "Cubierta principal",
+      "Cocina",
+      "Comedor flotante"
+    ],
+    "pois": [
+      {
+        "id": "main-deck",
+        "name": "Cubierta Principal",
+        "type": "dock",
+        "x": 330,
+        "y": 285
+      },
+      {
+        "id": "zeff-kitchen",
+        "name": "Cocina de Zeff",
+        "type": "kitchen",
+        "x": 270,
+        "y": 118
+      },
+      {
+        "id": "floating-dining",
+        "name": "Comedor Flotante",
+        "type": "restaurant",
+        "x": 380,
+        "y": 130
+      }
+    ],
+    "npcs": [
+      {
+        "name": "Zeff",
+        "hair": "Rubio"
+      }
+    ]
+  },
+  "arlong": {
+    "name": "Arlong Park",
+    "coordinates": {
+      "x": 260,
+      "y": 500,
+      "sea": "East Blue"
+    },
+    "biome": "Arrecife tropical",
+    "specialty": "water",
+    "mission": "Liberar la isla",
+    "control": "Tirano",
+    "boss": "Arlong",
+    "architecture": "arlong",
+    "districts": [
+      "Parque de Arlong",
+      "Plaza Conomi",
+      "Astillero Gyojin"
+    ],
+    "pois": [
+      {
+        "id": "arlong-tower",
+        "name": "Torre de Arlong",
+        "type": "base",
+        "x": 320,
+        "y": 90
+      },
+      {
+        "id": "conomi-square",
+        "name": "Plaza Conomi",
+        "type": "plaza",
+        "x": 255,
+        "y": 210
+      },
+      {
+        "id": "fishman-shipyard",
+        "name": "Astillero de Gyojins",
+        "type": "shipyard",
+        "x": 515,
+        "y": 285
+      }
+    ],
+    "npcs": [
+      {
+        "name": "Arlong",
+        "hair": "Negro"
+      },
+      {
+        "name": "Gyojin",
+        "hair": "Moreno",
+        "skin": "Bronceada"
+      }
+    ]
+  },
+  "loguetown": {
+    "name": "Loguetown",
+    "coordinates": {
+      "x": 495,
+      "y": 370,
+      "sea": "East Blue"
+    },
+    "biome": "Ciudad portuaria",
+    "specialty": "weapon",
+    "mission": "El asalto de Loguetown",
+    "control": "Marina",
+    "boss": "Capitán Smoker",
+    "affiliated": true,
+    "architecture": "loguetown",
+    "districts": [
+      "Plaza central",
+      "Distrito comercial",
+      "Puerto oriental"
+    ],
+    "pois": [
+      {
+        "id": "execution-platform",
+        "name": "Plaza de la Plataforma de Ejecución",
+        "type": "plaza",
+        "x": 320,
+        "y": 165
+      },
+      {
+        "id": "ipponmatsu-shop",
+        "name": "Tienda de Katanas de Ipponmatsu",
+        "type": "weapon_shop",
+        "x": 120,
+        "y": 130
+      },
+      {
+        "id": "gold-roger-bar",
+        "name": "Bar Gold Roger",
+        "type": "tavern",
+        "x": 515,
+        "y": 130
+      }
+    ],
+    "npcs": [
+      {
+        "name": "Capitán Smoker",
+        "hair": "Rubio"
+      },
+      {
+        "name": "Tashigi",
+        "hair": "Negro",
+        "glasses": true
+      }
+    ]
+  },
+  "ohara": {
+    "name": "Isla Ohara",
+    "coordinates": {
+      "x": 200,
+      "y": 80,
+      "sea": "West Blue"
+    },
+    "biome": "Bosque de eruditos",
+    "specialty": "wood",
+    "mission": "Proteger el legado de Ohara",
+    "control": "Marina",
+    "boss": "Vicealmirante Sakazuki"
+  },
+  "kano": {
+    "name": "Isla Kano",
+    "coordinates": {
+      "x": 200,
+      "y": 680,
+      "sea": "West Blue"
+    },
+    "biome": "Montañas y jardines",
+    "specialty": "weapon",
+    "mission": "Escoltar una caravana",
+    "control": "Tirano"
+  },
+  "flevance": {
+    "name": "Isla Flevance",
+    "coordinates": {
+      "x": 970,
+      "y": 80,
+      "sea": "North Blue"
+    },
+    "biome": "Ciudad nevada",
+    "specialty": "water",
+    "mission": "Ayudar a los supervivientes",
+    "control": "Marina"
+  },
+  "minion": {
+    "name": "Isla Minion",
+    "coordinates": {
+      "x": 1015,
+      "y": 120,
+      "sea": "North Blue"
+    },
+    "biome": "Isla invernal",
+    "specialty": "weapon",
+    "mission": "Investigar el puerto helado",
+    "control": "Tirano"
+  },
+  "swallow": {
+    "name": "Isla Swallow",
+    "coordinates": {
+      "x": 1035,
+      "y": 155,
+      "sea": "North Blue"
+    },
+    "biome": "Costa rocosa",
+    "specialty": "wood",
+    "mission": "Recuperar suministros",
+    "control": "Marina"
+  },
+  "torino": {
+    "name": "Isla Torino",
+    "coordinates": {
+      "x": 970,
+      "y": 680,
+      "sea": "South Blue"
+    },
+    "biome": "Bosque medicinal",
+    "specialty": "water",
+    "mission": "Buscar plantas medicinales",
+    "control": "Marina"
+  },
+  "baterilla": {
+    "name": "Baterilla",
+    "coordinates": {
+      "x": 1020,
+      "y": 610,
+      "sea": "South Blue"
+    },
+    "biome": "Isla tropical",
+    "specialty": "rum",
+    "mission": "Proteger a los habitantes",
+    "control": "Marina"
+  },
+  "karate": {
+    "name": "Isla Karate",
+    "coordinates": {
+      "x": 930,
+      "y": 620,
+      "sea": "South Blue"
+    },
+    "biome": "Montañas de entrenamiento",
+    "specialty": "weapon",
+    "mission": "Superar el desafío del puerto",
+    "control": "Tirano"
+  },
+  "reverse": {
+    "name": "Reverse Mountain",
+    "coordinates": {
+      "x": 600,
+      "y": 370,
+      "sea": "Grand Line"
+    },
+    "biome": "Montaña oceánica",
+    "specialty": "water",
+    "mission": "Cruzar la Reverse Mountain",
+    "control": "Marina"
+  },
+  "impel": {
+    "name": "Impel Down",
+    "coordinates": {
+      "x": 585,
+      "y": 452,
+      "sea": "Calm Belt"
+    },
+    "biome": "Prisión submarina del Gobierno",
+    "specialty": "water",
+    "mission": "La gran fuga del Nivel 4",
+    "control": "Gobierno",
+    "boss": "Magellan"
+  },
+  "whiskey": {
+    "name": "Whiskey Peak",
+    "coordinates": {
+      "x": 700,
+      "y": 370,
+      "sea": "Paraíso"
+    },
+    "biome": "Desierto",
+    "specialty": "rum",
+    "mission": "Descubrir la trampa de Whiskey Peak",
+    "control": "Tirano"
+  },
+  "water7": {
+    "name": "Water 7",
+    "coordinates": {
+      "x": 815,
+      "y": 310,
+      "sea": "Paraíso"
+    },
+    "biome": "Ciudad de canales",
+    "specialty": "wood",
+    "mission": "Defender el astillero",
+    "control": "Marina"
+  },
+  "ennies": {
+    "name": "Enies Lobby",
+    "coordinates": {
+      "x": 875,
+      "y": 420,
+      "sea": "Paraíso"
+    },
+    "biome": "Fortaleza judicial",
+    "specialty": "weapon",
+    "mission": "Investigar la fortaleza",
+    "control": "Marina"
+  },
+  "sabaody": {
+    "name": "Archipiélago Sabaody",
+    "coordinates": {
+      "x": 965,
+      "y": 370,
+      "sea": "Paraíso"
+    },
+    "biome": "Manglares y bajos fondos",
+    "specialty": "water",
+    "mission": "Explorar el archipiélago",
+    "control": "Marina",
+    "affiliated": true,
+    "segregated": true,
+    "auctionHouse": true
+  },
+  "wano": {
+    "name": "Wano",
+    "coordinates": {
+      "x": 1080,
+      "y": 290,
+      "sea": "Nuevo Mundo"
+    },
+    "biome": "País montañoso",
+    "specialty": "weapon",
+    "mission": "Liberar Wano",
+    "control": "Tirano"
+  },
+  "onyigashima": {
+    "name": "Onigashima",
+    "coordinates": {
+      "x": 1105,
+      "y": 450,
+      "sea": "Nuevo Mundo"
+    },
+    "biome": "Isla volcánica",
+    "specialty": "weapon",
+    "mission": "Enfrentar a los invasores",
+    "control": "Tirano"
+  },
+  "paradise": {
+    "name": "Paraíso",
+    "coordinates": {
+      "x": 720,
+      "y": 365,
+      "sea": "Paraíso"
+    },
+    "biome": "Mar de islas cambiantes",
+    "specialty": "water",
+    "mission": "Entrar al Paraíso",
+    "control": "Marina"
+  },
+  "new-world": {
+    "name": "Nuevo Mundo",
+    "coordinates": {
+      "x": 1020,
+      "y": 370,
+      "sea": "Nuevo Mundo"
+    },
+    "biome": "Mar tempestuoso",
+    "specialty": "rum",
+    "mission": "Conquistar el Nuevo Mundo",
+    "control": "Tirano"
+  },
+  "weatheria": {
+    "name": "Weatheria",
+    "coordinates": {
+      "x": 410,
+      "y": 145,
+      "sea": "East Blue"
+    },
+    "biome": "Isla del cielo y nubes",
+    "specialty": "water",
+    "mission": "Observar las corrientes del cielo",
+    "control": "Marina",
+    "architecture": "sky"
+  },
+  "karakuri": {
+    "name": "Karakuri",
+    "coordinates": {
+      "x": 770,
+      "y": 115,
+      "sea": "North Blue"
+    },
+    "biome": "Isla invernal mecánica",
+    "specialty": "weapon",
+    "mission": "Investigar los mecanismos",
+    "control": "Marina"
+  },
+  "namakura": {
+    "name": "Namakura",
+    "coordinates": {
+      "x": 430,
+      "y": 640,
+      "sea": "South Blue"
+    },
+    "biome": "Bosque de ruinas",
+    "specialty": "wood",
+    "mission": "Explorar las ruinas",
+    "control": "Tirano"
+  },
+  "rusty": {
+    "name": "Isla del Naufragio",
+    "coordinates": {
+      "x": 1035,
+      "y": 570,
+      "sea": "Nuevo Mundo"
+    },
+    "biome": "Costa de naufragios",
+    "specialty": "wood",
+    "mission": "Explorar los restos",
+    "control": "Tirano"
+  }
 }

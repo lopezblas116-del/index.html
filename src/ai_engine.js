@@ -231,9 +231,9 @@ export function resolveLocalActivity(character, random = Math.random, { advanceN
     if (character.localSuggestion && poi.id === character.localSuggestion) return !((poi.guarded || poi.type === "base") && cautious && bounty > 0);
     if ((poi.guarded || poi.type === "base") && cautious && bounty > 0) return false;
     if (poi.type === "poneglyph") {
-      return canReadAncient(character) &&
-        (character.race === "threeeye" || psyche.mood === "Ambicioso" ||
-          character.soulCard?.dream === "Conocimiento");
+      // el monolito se examina siempre que el alma sepa leer glifos: la
+      // voluntad del carácter la lleva hasta él, no un candado de ánimo
+      return canReadAncient(character);
     }
     if (poi.type === "base" || poi.type === "weapon_shop") return psyche.mood === "Ambicioso" || character.soulCard?.dream === "Poder";
     return false;

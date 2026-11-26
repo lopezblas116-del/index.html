@@ -111,6 +111,46 @@ import { getMapIslands } from '../map.js';
       const jefe = D.JEFES && D.JEFES[i.id];
       const S = window.JUEGO && window.JUEGO.sim;
       const vive = jefe ? (S && S.agents || []).some(a => a.jefe && a.isl === i.id && a.state !== 'retirado') : false;
+      // EL MONOLITO: si la isla enlazada tiene Poneglyph, se ve y se toca
+      const pm = document.getElementById('pi-poneglyph');
+      if (pm) pm.remove();
+      const carM = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+      const islRaiz = carM && getMapIslands(carM).find(x => x.id === i.juegoId || x.name === i.n);
+      const mono = islRaiz && (islRaiz.pois || []).find(p => p.type === 'poneglyph');
+      if (mono) {
+        const tipo = { blue: 'Historia', red: 'Ruta', gold: 'Tesoro' }[mono.glyphType || 'blue'] || 'Historia';
+        const caja = document.createElement('div');
+        caja.id = 'pi-poneglyph';
+        caja.className = 'mil-encuentro';
+        caja.innerHTML = '<b>📜 Monolito Poneglyph · ' + tipo + '</b><p>Glifos antiguos tallados en piedra viva. Los que saben leer la historia oculta pueden tomar un calco.</p>';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'Examinar el monolito';
+        btn.addEventListener('click', () => {
+          const c = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+          if (!c) return;
+          if (c.location?.island !== islRaiz.name || c.location?.atSea) {
+            document.dispatchEvent(new CustomEvent('onepiece:systems-toast', { detail: { message: 'El monolito espera en ' + islRaiz.name + ': hay que pisar la isla.' } }));
+            return;
+          }
+          // ACONSEJAR, NO CONTROLAR: el monolito queda como sugerencia y el
+          // propio avatar camina hasta él en el próximo latido y lo examina
+          c.localSuggestion = mono.id;
+          c.location.localVenue = { id: mono.id, name: mono.name, type: 'poneglyph' };
+          const mod = window.__ARQUEOLOGIA__;
+          const res = mod && mod.examinePoneglyph ? mod.examinePoneglyph(c, islRaiz, mono) : null;
+          if (!res) {
+            document.dispatchEvent(new CustomEvent('onepiece:systems-toast', { detail: { message: 'El monolito ya dio lo que tenía.' } }));
+          } else if (res.inaccessible) {
+            document.dispatchEvent(new CustomEvent('onepiece:systems-toast', { detail: { message: 'Glifos indescifrables por ahora: se necesita la Tribu del Tres Ojos, oficio arqueólogo o un tomo de glifos. De todos modos, va camino a la piedra.' } }));
+          } else {
+            document.dispatchEvent(new CustomEvent('onepiece:systems-toast', { detail: { message: 'Calco tomado: «' + res.title + '». Va directo a tu Tarjeta del Alma.' } }));
+          }
+          UI.abrirIsla(i);
+        });
+        caja.appendChild(btn);
+        $('pi-region').insertAdjacentElement('afterend', caja);
+      }
       let pj = document.getElementById('pi-jefe');
       if (!pj) { pj = document.createElement('p'); pj.id = 'pi-jefe'; pj.className = 'one-hud-muted'; pj.style.margin = '4px 0'; $('pi-region').insertAdjacentElement('afterend', pj); }
       pj.textContent = !jefe ? '👑 Sin amo conocido: tierra libre.'
@@ -127,7 +167,7 @@ import { getMapIslands } from '../map.js';
         const islRaiz = car && getMapIslands(car).find(x => x.id === i.juegoId || x.name === i.n);
         const tarjetas = islRaiz ? islandEncountersFor(islRaiz, car) : [];
         if (car && !islRaiz) {
-          pe.innerHTML = '<div class="mil-encuentro vacio"><small>Isla fuera del mapa canónico: la política jugable ocurre en las 28 islas del atlas antiguo.</small></div>';
+          pe.innerHTML = '<div class="mil-encuentro vacio"><small>Isla fuera del mapa canónico: la política jugable ocurre en las 29 islas del atlas antiguo.</small></div>';
         }
         tarjetas.forEach(t => {
           const card = document.createElement('div');
@@ -234,7 +274,7 @@ import { getMapIslands } from '../map.js';
     $('ft-frase').textContent = S ? '«' + S.cita + '»' : '';
     $('ft-nivel').textContent = 'Nivel ' + a.level + ' · ' + a.xp + '/' + G.Sim.XP_NEED(a.level) + ' XP';
     $('ft-stats').innerHTML = D.STATS.map(k => '<span><b>' + D.STAT_N[k] + '</b> ' + a.stats[k] + '</span>').join('');
-    $('ft-belis').textContent = fmtBelis(a.berries) + ' Belis';
+    $('ft-belis').textContent = fmtBelis(a.berries) + ' Berries (฿)';
     $('ft-cartel').innerHTML = a.bounty > 0 ? 'Cartel: <b class="oro">' + fmtBelis(a.bounty) + '</b>' : 'Sin cartel. Todavía.';
     $('ft-animo').textContent = 'Ánimo: ' + (a.anim || 'Tranquilo') + ' · HP ' + a.hp + ' · ' + (a.state === 'libre' ? (a.act || 'Libre') : a.state);
     $('ft-fruta').innerHTML = a.fruta ? 'Fruta: <b>' + (D.FRUTAS.find(f => f.k === a.fruta) || {}).n + '</b> (maestría ' + a.maestria + ')' : 'Sin Fruta del Diablo';

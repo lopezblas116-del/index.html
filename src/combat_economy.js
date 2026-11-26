@@ -1,5 +1,5 @@
 import { ensureBlockOneData } from "./block1.js";
-import { getMapIslands } from "./map.js";
+import { createScenePosition, getMapIslands } from "./map.js";
 import { cargoCapacity, raceTreatmentAtPort } from "./race_system.js";
 import { politicalTradeAdjustment, pickWeightedEnemy } from "./lore_engine.js";
 import { awardBerries } from "./gm_engine.js";
@@ -109,6 +109,17 @@ export function seaEncounter(character, random = Math.random) {
     log(character, `[COMBATE] Turno ${turn}: ${enemy} recibe ${hit}; ${character.name} pierde ${damage} HP.`);
   }
   if (character.stats.health <= 0) {
+    // LA MARINA NO SIEMPRE MATA: con cartel sobre ฿100.000 hay un cuarto
+    // esperando en el Nivel 4 de la gran prisión submarina
+    if (enemy === "Marina" && (Number(character.bounty) || 0) >= 1e5 && random() < 0.6) {
+      character.stats.health = Math.max(3, Math.round(character.stats.maxHealth * 0.12));
+      const ransom = Math.max(5000, Math.round((Number(character.bounty) || 0) * 0.5));
+      character.captured = { island: "Impel Down", ransom, day: character.world.day, intentos: 0 };
+      character.location = { island: "Impel Down", atSea: false, region: "Calm Belt", scenePosition: createScenePosition("impel", character.id) };
+      character.avatarActivity = "prisoner";
+      log(character, `⛓️ ${character.name} cae ante la Marina y despierta encadenado en el Nivel 4 de Impel Down. Rescate: ฿${ransom}; la fuga, tarde o temprano, se intenta sola.`);
+      return { enemy, captured: true };
+    }
     log(character, `[COMBATE] ${character.name} cae ante ${enemy}.`);
     return { enemy, dead: true };
   }

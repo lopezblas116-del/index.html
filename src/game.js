@@ -459,6 +459,29 @@ function redLineGate(character) {
   }
   return null;
 }
+// ── LA SIGUIENTE PIERNLA LA DICTA EL SUEÑO ──
+// Conocimiento → islas con monolitos Poneglyph; poder → las fortalezas del
+// Nuevo Mundo; riqueza → puertos con subasta; libertad → lo más lejos posible;
+// lazos → puertos con taberna. El azar marino desempata.
+function chooseNextLeg(character, route) {
+  const islas = getMapIslands(character).filter((place) =>
+    place.name !== character.location.island && !route.includes(place.name) && place.name !== "Impel Down");
+  if (!islas.length) return null;
+  const dream = String(character.soulCard?.dream || "Libertad").toLocaleLowerCase("es");
+  const score = (place) => {
+    let s = 1 + Math.random() * 2;
+    const opciones = place.localScene?.options || [];
+    if ((place.pois || []).some((poi) => poi.type === "poneglyph") && dream.includes("conocimiento")) s += 4;
+    if (dream.includes("poder") && /wano|onyigashima|new-world|karate|reverse/i.test(place.id)) s += 3;
+    if (dream.includes("riqueza") && opciones.includes("blackmarket")) s += 2.5;
+    if (dream.includes("libertad")) s += Math.min(3, Math.hypot(place.x - (character.mapPosition?.x || 600), place.y - (character.mapPosition?.y || 400)) / 200);
+    if (dream.includes("lazos") && opciones.includes("tavern")) s += 1.5;
+    if (dream.includes("fama") || dream.includes("gloria")) s += opciones.includes("tavern") ? 1 : 0;
+    return s;
+  };
+  return islas.sort((a, b) => score(b) - score(a))[0];
+}
+
 function navigate(character, random = Math.random) {
   if (!character.ship?.acquired) return "No puedes zarpar sin conseguir primero un barco en el astillero.";
   const route = routeFor(character.originSea);
@@ -496,7 +519,19 @@ function navigate(character, random = Math.random) {
   }
   // la preparación náutica se exigió antes de soltar amarras (redLineGate):
   // aquí solo queda alinear el Log Pose y avanzar la ruta
-  if (character.location.routeIndex >= route.length - 1) return `Has llegado al final de la ruta: ${character.location.island}. El mar aguarda una nueva aventura.`;
+    if (character.location.routeIndex >= route.length - 1) {
+    // EL HORIZONTE NO SE ACABA: cerrada la ruta canónica, el carácter elige la
+    // siguiente pierna entre las islas que el mapa conoce — y zarpa solo.
+    if (!character.redirectTarget) {
+      const destino = chooseNextLeg(character, route);
+      if (destino) {
+        character.redirectTarget = { name: destino.name, x: destino.x, y: destino.y };
+        addLog(character, `🧭 La ruta canónica terminó en ${character.location.island}: el Log Pose apunta ahora a ${destino.name}. ${character.name} zarpa por voluntad propia.`);
+        return `El Log Pose apunta a ${destino.name}: nueva pierna elegida por el carácter del avatar.`;
+      }
+    }
+    return `Has llegado al final de la ruta: ${character.location.island}. El mar aguarda una nueva aventura.`;
+  }
   const next = character.location.routeIndex + 1;
   const mission = character.mission;
   if (mission?.status === "active") {
@@ -739,8 +774,35 @@ function resolverBandera(character) {
   character.faction = bandera;
   addLog(character, `🏴 La bandera por fin ondea sola: ${bandera.toUpperCase()}. La pintaron tus actos; nadie la eligió por vos.`);
 }
+// ── EL INFIERNO TIENE UN ALCAIDE: el latido del cautivo es intentar la fuga ──
+// La prisión no pausa la autonomía: cada latido el carácter pelea contra las
+// cadenas (fuerza + nivel + desesperación acumulada). El rescate pagado o la
+// infiltración de la tripulación siguen siendo la vía rápida del jugador.
+function prisonTick(character) {
+  const capture = character.captured;
+  capture.intentos = (Number(capture.intentos) || 0) + 1;
+  const fuerza = (character.stats.strength || 5) + (character.level || 1) * 2;
+  const prob = clamp(0.05 + fuerza * 0.006 + capture.intentos * 0.05, 0.05, 0.5);
+  if (Math.random() < prob) {
+    delete character.captured;
+    character.location = { island: "Loguetown", atSea: false, scenePosition: createScenePosition("loguetown", character.id) };
+    character.stats.health = Math.max(12, Math.round(character.stats.maxHealth * 0.2));
+    character.avatarActivity = "idle";
+    addReputation(character, 15000, "fuga del infierno de Impel Down");
+    addLog(character, `🌀 ¡FUGA! ${character.name} sale de ${capture.island} tras ${capture.intentos} intento(s). El alcaide contará una historia que nadie creerá entera.`);
+    return { action: "prision", message: `¡Fuga de ${capture.island} lograda!` };
+  }
+  if (Math.random() < 0.5) {
+    const costo = Math.max(1, Math.round(character.stats.maxHealth * 0.02));
+    character.stats.health = Math.max(1, character.stats.health - costo);
+    addLog(character, `⛓️ Intento ${capture.intentos} de fuga en ${capture.island}: el alcaide sonríe y las cadenas pesan (-${costo} HP). Rescate disponible: ฿${capture.ransom}.`);
+  }
+  return { action: "prision", message: `Cautivo en ${capture.island}: intento de fuga número ${capture.intentos}.` };
+}
+
 export function autonomousTick(character, { interactive = false, now = Date.now(), availableFruitIds } = {}) {
-  if (character.status === "dead" || character.autonomy.paused || character.captured) return null;
+  if (character.status === "dead" || character.autonomy.paused) return null;
+  if (character.captured) return prisonTick(character);
   character.autonomy.tickCount += 1;
   const newDay = advanceClock(character.world, ERAS);
   advanceIslandStory(character);
