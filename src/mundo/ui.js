@@ -99,8 +99,9 @@ import { getMapIslands } from '../map.js';
   let islaAbierta = null; // la isla cuyo popover está abierto
   UI.abrirIsla = function (i) {
     const pop = $('pop-isla');
-    if (!i) { pop.classList.add('oculto'); islaAbierta = null; return; }
+    if (!i) { pop.classList.add('oculto'); islaAbierta = null; document.body.classList.remove('mil-pop-open'); return; }
     pop.classList.remove('oculto');
+    document.body.classList.add('mil-pop-open'); // el chrome cede el paso a la carta (móvil)
     const cambio = !islaAbierta || islaAbierta.id !== i.id;
     islaAbierta = i;
     if (cambio) {

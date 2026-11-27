@@ -249,6 +249,7 @@ function syncLocation(character) {
   const sim = window.JUEGO?.sim;
   const user = sim?.user;
   if (!character || !user || user._oneLatamId !== character.id) return;
+  const estabaEnElMar = Boolean(sim._fusionAtSea);
   sim._fusionAtSea = Boolean(character.location?.atSea);
   if (!sim._fusionAtSea) {
     const destination = islandIdFor(character, sim);
@@ -256,6 +257,18 @@ function syncLocation(character) {
       user.plan = null;
       user.state = "libre";
       sim.mover(user, destination);
+      // EL PUERTO TE NOTA: al atracar tras un viaje, la isla se presenta — el
+      // instante MMORPG en que el mundo sabe que llegaste (y las almas también)
+      if (estabaEnElMar) {
+        const isla = window.D.ISLA[destination];
+        if (isla) {
+          const ctrl = sim.control && sim.control[isla.id];
+          const sabor = ctrl === "tirano" ? " Se nota el peso del tributo en las caras del muelle."
+            : ctrl === "ley" ? " Una patrulla de la Marina ya registró tu bandera."
+            : " Hay olor a ruta y a ron en el aire.";
+          window.UI?.toast?.("⚓ " + (user.name || "Tu avatar") + " atraca en " + isla.n + "." + sabor);
+        }
+      }
     }
   }
 }
