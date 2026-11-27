@@ -855,11 +855,6 @@ body.wizard-active .wizard-card{position:relative;z-index:2;box-shadow:0 18px 60
 .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(10px, env(safe-area-inset-top)) + 114px); }
 .one-hud-settings[data-hud-panel="more"]{ top: calc(max(10px, env(safe-area-inset-top)) + 168px); }
 @media (max-width:600px){
-  body.game-active .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(8px, env(safe-area-inset-top)) + 166px); }
-  body.game-active .one-hud-settings[data-hud-panel="more"]{ top: calc(max(8px, env(safe-area-inset-top)) + 216px); }
-  /* la marca se compacta a la derecha: el chip deja de quedar debajo */
-  body.game-active .one-hud-brand{ left: auto; right: 10px; width: auto; max-width: 47vw; }
-  body.game-active .one-hud-brand .one-hud-captain-name{ max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* labels fuera en pantallas angostas: iconos que respiran */
   body.game-active .one-hud-nav button > span:last-child{ display: none; }
   body.game-active .one-hud-nav button{ padding: 6px 4px; }
@@ -895,9 +890,11 @@ body.reduced-motion #hud-hint{ animation: none; }
 #one-hud .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(10px, env(safe-area-inset-top)) + 114px) !important; }
 #one-hud .one-hud-settings[data-hud-panel="more"]{ top: calc(max(10px, env(safe-area-inset-top)) + 168px) !important; }
 @media (max-width:600px){
-  #one-hud .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(8px, env(safe-area-inset-top)) + 166px) !important; }
-  #one-hud .one-hud-settings[data-hud-panel="more"]{ top: calc(max(8px, env(safe-area-inset-top)) + 216px) !important; }
-  body.game-active #one-hud .one-hud-brand{ left: auto; right: 10px; width: auto; max-width: 47vw; }
+  #one-hud .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(8px, env(safe-area-inset-top)) + 198px) !important; }
+  #one-hud .one-hud-settings[data-hud-panel="more"]{ top: calc(max(8px, env(safe-area-inset-top)) + 248px) !important; }
+  /* grilla de dos filas: fila 1 = chip (izq) + marca (der); fila 2 = botones columna.
+     La holgura de 52px de sao.css era para UN botón — con dos, la fila del chip es libre */
+  body.game-active #one-hud .one-hud-brand{ top: calc(max(8px, env(safe-area-inset-top)) + 134px); left: auto; right: max(10px, env(safe-area-inset-right)); width: max-content; }
   body.game-active #one-hud .one-hud-nav button > span:last-child{ display: none; }
 }
 #mil-almas-ui .mil-panel.mil-island-pop{ top: calc(max(10px, env(safe-area-inset-top)) + 206px); max-height: calc(100vh - 206px - 96px); }
@@ -916,5 +913,16 @@ body.reduced-motion #hud-hint{ animation: none; }
   body.mil-pop-open #one-hud .one-hud-settings[data-hud-panel="codex"]{ top: calc(max(8px, env(safe-area-inset-top)) + 10px) !important; }
   body.mil-pop-open #one-hud .one-hud-settings[data-hud-panel="more"]{ top: calc(max(8px, env(safe-area-inset-top)) + 60px) !important; }
   /* la ficha de alma también es hoja inferior en móvil */
+  #mil-almas-ui .mil-panel.mil-soul-card{ top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); max-height: calc(100vh - 220px); }
+}
+
+/* ── LA FICHA DE ALMA MERECCE LO MISMO QUE EL POP: el mismo yerro de origen +104 ── */
+#mil-almas-ui .mil-panel.mil-soul-card{ top: calc(max(10px, env(safe-area-inset-top)) + 206px); max-height: calc(100vh - 206px - 96px); overflow-y: auto; }
+#mil-almas-ui .mil-soul-card .mil-close{ position: sticky; top: 2px; float: right; z-index: 6; }
+#mil-almas-ui .mil-soul-card:not(.oculto){ animation: milPopEntra .26s ease-out; }
+body.reduced-motion #mil-almas-ui .mil-soul-card:not(.oculto){ animation: none; }
+
+@media (max-width:600px){
+  /* la ficha vuelve a ser hoja inferior en móvil (esta regla corre después de la desktop) */
   #mil-almas-ui .mil-panel.mil-soul-card{ top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); max-height: calc(100vh - 220px); }
 }
