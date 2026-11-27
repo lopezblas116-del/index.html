@@ -173,8 +173,10 @@
     // botones del extinto menú globo: sus puertas viven ahora en el dock SAO
     on('ficha-cerrar', 'click', UI.cerrarFicha);
     on('pop-cerrar', 'click', () => UI.abrirIsla(null));
-    // EL ABISMO EN EL POP: mercado (comprar/vender), frente y evento — un solo dispatcher
-    ['pi-mercado', 'pi-frente', 'pi-evento'].forEach((id) => {
+    on('pi-volver', 'click', () => UI.volverCarta());
+    // EL ABISMO EN EL POP: mercado (comprar/vender), frente y evento — un solo
+    // dispatcher que ahora cubre también el cuerpo del subpanel de lugar (capas)
+    ['pi-mercado', 'pi-frente', 'pi-evento', 'pi-lugar-cuerpo'].forEach((id) => {
       const caja = $(id);
       if (caja && !caja._ab) {
         caja._ab = true;

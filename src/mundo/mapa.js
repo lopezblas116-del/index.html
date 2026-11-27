@@ -10,7 +10,9 @@
   const Z_MIN = 0.42, Z_MAX = 9.5, UMBRAL_GLOBO = 0.48; // el globo solo entra en la franja 0.42-0.48: alejar desde una isla vuelve al MAR, nunca te expulsa a la esfera
   MAPA.LOD_ZOOM = 1.5;          // entrar al diorama
   MAPA.LOD_SALIDA = 1.12;       // salir del diorama (histéresis: alejarse un poco no te expulsa)
-  let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: Z_MIN }, ancho = 0, alto = 0;
+  // EL PRIMER MIRADOR ES EL MAR: abrir el mapa en el globo (puntos) hacía el mundo
+  // parecer chato; abrirlo a la altura de las islas muestra el universo real de una.
+  let cv = null, ctx = null, cam = { x: D.W / 2, y: D.H / 2, z: 1.8 }, ancho = 0, alto = 0;
   let zT = cam.z;               // objetivo de zoom (la lupa persigue esto)
   let ultT = 0;                 // timestamp del último frame, para el easing del zoom
   let vuelo = null;
@@ -63,7 +65,7 @@
     if (cv.parentElement && !cv.parentElement.querySelector('.pista-globo')) {
       const p = document.createElement('div');
       p.className = 'pista-globo';
-      p.textContent = 'Girá el globo · acercate con el zoom para bajar al mar · tocá una isla';
+      p.textContent = 'El mar es real: tocá una isla para ver su carta · acercate con el zoom al diorama · alejá para el globo de almas';
       p.style.cssText = 'position:absolute;left:50%;bottom:106px;transform:translateX(-50%);max-width:92%;padding:8px 14px;background:rgba(10,18,34,0.82);border:1px solid rgba(244,193,26,0.5);border-radius:999px;color:#f4d97a;font:600 13px/1.3 system-ui,sans-serif;text-align:center;pointer-events:none;transition:opacity .8s;z-index:5;opacity:.95';
       if (getComputedStyle(cv.parentElement).position === 'static') cv.parentElement.style.position = 'relative';
       cv.parentElement.appendChild(p);

@@ -214,10 +214,18 @@ export function tablonDelPuerto(character) {
   const ENCARGOS = [
     { id: "muelle", nombre: "Descargar carga en el muelle", riesgo: 1, pago: 45, texto: "Braza y cajas: el trabajo que nadie quiere. Sin gloria y sin heridas." },
     { id: "vigia", nombre: "Turno de vigía nocturno", riesgo: 1, pago: 55, texto: "Mirar el horizonte por otros: los ojos del puerto pagan por hacerlo." },
+    { id: "pesca", nombre: "Faena de pesca de altura", riesgo: 1, pago: 60, texto: "Un día en el bote del gremio: escamas, sal y cuentos de Reyes del Mar." },
+    { id: "cartas", nombre: "Repartir la correspondencia del puerto", riesgo: 1, pago: 50, texto: "Cartas que no deben abrirse. El porteador que abre, no repite." },
+    { id: "filo", nombre: "Afilar el arsenal del gremio", riesgo: 1, pago: 58, texto: "La piedra de amolar gira toda la tarde; los cortadores pagan por el filo." },
     { id: "escolta", nombre: "Escoltar la carreta mercante", riesgo: 2, pago: 110, texto: "Ladrones barateros rondan el camino viejo: puede terminar a golpes." },
     { id: "deuda", nombre: "Cobrar una deuda impaga", riesgo: 2, pago: 95, texto: "El deudor no quiere pagar. Los puños convencen; los huesos recuerdan." },
+    { id: "rescate", nombre: "Bajar por un pescador atrapado", riesgo: 2, pago: 120, texto: "La marea subió y la red se enredó: quien baja tiene una cuerda y minutos." },
+    { id: "contrabando", nombre: "Interceptar un lote de contrabando", riesgo: 2, pago: 135, texto: "La Marina avisó tarde: el lote pasa al alba por la playa este." },
+    { id: "veterinario", nombre: "Curar los caballos de la caravana", riesgo: 2, pago: 105, texto: "Un caballo mordido por algo del mar. Nadie pregunta qué fue." },
     { id: "caceria", nombre: "Cazar al ladrón del mercado", riesgo: 3, pago: 220, texto: "Un cuchillo y laberintos de callejones: puede acabar mal, y paga por eso." },
-    { id: "guarida", nombre: "Entrar a la guarida del contrabandista", riesgo: 3, pago: 340, texto: "Dado, ron y mosquetes: la peor combinación de cualquier puerto." }
+    { id: "guarida", nombre: "Entrar a la guarida del contrabandista", riesgo: 3, pago: 340, texto: "Dado, ron y mosquetes: la peor combinación de cualquier puerto." },
+    { id: "rey", nombre: "Aullido en el arrecife: cazar la bestia", riesgo: 3, pago: 380, texto: "Los pescadores juran ver un Rey del Mar joven. Nadie quiere comprobarlo solo." },
+    { id: "tesoro", nombre: "Sondear el naufragio del banco de arena", riesgo: 3, pago: 300, texto: "Un galeón viejo con caja fuerte sin abrir. La marea da dos horas." }
   ];
   const offset = semilla % ENCARGOS.length;
   return [0, 1, 2, 3].map((i) => ENCARGOS[(offset + i) % ENCARGOS.length]);

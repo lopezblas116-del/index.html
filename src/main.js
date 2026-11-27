@@ -557,3 +557,6 @@ listen(document, "mil-encuentro", (event) => {
 
 // puente para el pop de isla del mundo vivo: el monolito se examina con la voz del juego
 window.__ARQUEOLOGIA__ = { examinePoneglyph, canReadAncient };
+// puente para el lugar "Tablón de encargos" del pop de isla: los encargos del día
+// los calcula el motor raíz (semilla por isla+día) y el pop los muestra por capas
+window.__TABLON__ = { encargos: tablonDelPuerto };

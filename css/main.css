@@ -795,3 +795,55 @@ body.wizard-active #wizard-container>.wizard-card {animation:panel-in .34s ease-
 .one-hud-codex-mundo .one-hud-codex-item strong{display:block;color:#f0c75e}
 .one-hud-codex-mundo .one-hud-codex-item{padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.1)}
 .one-hud-codex-mundo .one-hud-encargo{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12)}
+
+/* ═══ SEMÁNTICA DE COLOR: un sentido por color, en toda la interfaz ═══
+   oro=riqueza/CTA · mar=navegación/puerto · vida=social/taberna · peligro=guerra/arena
+   tierra=trabajo/tabón · arcano=sabiduría/almas · ley=la Marina ═══ */
+:root{
+  --mar-300:#5fa8d3;--mar-500:#31729b;--mar-700:#1d4a68;
+  --oro-300:#f4d97a;--oro-500:#d4a93c;--oro-700:#8a6a1f;
+  --vida-400:#6faf6f;--vida-700:#2e5e38;
+  --peligro-400:#d16055;--peligro-700:#7a2e28;
+  --tierra-400:#b98146;--tierra-700:#6d4a24;
+  --arcano-400:#9d7ad1;--arcano-700:#4a3268;
+  --ley-300:#7fa8c9;--tinta-900:rgba(8,14,22,.88);--tinta-700:rgba(10,18,30,.72);
+}
+/* ═══ LA ISLA POR CAPAS: portada → lugares → un panel por lugar ═══ */
+#pi-lugar{margin-top:8px}
+.mil-volver{background:none;border:none;color:var(--oro-300);font:600 13px/1.2 system-ui,sans-serif;cursor:pointer;padding:4px 0;letter-spacing:.02em}
+.mil-volver:hover{text-decoration:underline}
+#pi-lugar-titulo{margin:6px 0 10px;color:var(--oro-300);font-size:1.15em}
+.mil-lugares{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0 12px}
+.mil-lugar{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border-radius:10px;background:var(--tinta-700);border:1px solid rgba(255,255,255,.14);border-left:3px solid var(--oro-500);color:#efe6d2;cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
+.mil-lugar:hover:not(:disabled){background:rgba(255,255,255,.09);border-color:var(--oro-300)}
+.mil-lugar:disabled{opacity:.55;cursor:default}
+.mil-lugar .mil-lugar-icono{font-size:1.25em;line-height:1}
+.mil-lugar .mil-lugar-nombre{font-weight:700;font-size:.92em}
+.mil-lugar small{opacity:.72;font-size:.72em}
+.mil-lugar.tono-mar{border-left-color:var(--mar-400,var(--mar-500))}
+.mil-lugar.tono-vida{border-left-color:var(--vida-400)}
+.mil-lugar.tono-peligro{border-left-color:var(--peligro-400)}
+.mil-lugar.tono-tierra{border-left-color:var(--tierra-400)}
+.mil-lugar.tono-arcano{border-left-color:var(--arcano-400)}
+.mil-lugar.tono-oro{border-left-color:var(--oro-500)}
+.mil-estoy{color:var(--vida-400);font-weight:600;font-size:.9em;margin:6px 0}
+.mil-lejos{opacity:.85;font-size:.9em;margin:6px 0}
+.mil-pase{display:inline-block;margin:2px 6px 2px 0;padding:3px 9px;border-radius:999px;background:var(--tinta-700);border:1px solid rgba(255,255,255,.16);font-size:.78em;color:var(--oro-300)}
+.mil-rumor{margin:5px 0;padding:7px 10px;border-radius:8px;background:var(--tinta-700);border-left:3px solid var(--vida-400);font-size:.9em}
+.mil-encargo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.12)}
+.mil-encargo small{display:block;opacity:.75;font-size:.78em}
+.mil-riesgo{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72em;font-weight:700}
+.mil-riesgo.r-bajo{background:rgba(111,175,111,.2);color:var(--vida-400)}
+.mil-riesgo.r-medio{background:rgba(212,169,60,.2);color:var(--oro-300)}
+.mil-riesgo.r-alto{background:rgba(209,96,85,.2);color:var(--peligro-400)}
+
+/* ═══ CREACIÓN CINEMATOGRÁFICA: el primer minuto vende el universo ═══ */
+.wizard-intro{border-bottom:1px solid rgba(212,169,60,.28);margin-bottom:14px;padding-bottom:14px}
+.wizard-intro .eyebrow{color:var(--oro-300);letter-spacing:.14em;text-transform:uppercase;font-size:.72em;margin-bottom:6px}
+.wizard-intro h2{font-family:Anton,system-ui,sans-serif;letter-spacing:.03em;text-shadow:0 2px 14px rgba(0,0,0,.55);margin:0 0 10px;font-size:clamp(1.6em,4.2vw,2.4em)}
+.cine-lead{color:#e8ddc4;font-size:.95em;margin:0 0 8px;line-height:1.5}
+.cine-autonomia{color:#f4d97a;background:rgba(212,169,60,.09);border-left:3px solid var(--oro-500);padding:8px 12px;border-radius:6px;font-size:.88em;margin:0 0 10px;line-height:1.45}
+.cine-autonomia strong{color:#ffd97e}
+.cine-narrativa{color:#c9b98f;font-style:italic;font-size:.86em;margin:2px 0 4px;line-height:1.4}
+body.wizard-active::after{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 38%,transparent 42%,rgba(4,8,16,.55) 100%);z-index:1}
+body.wizard-active .wizard-card{position:relative;z-index:2;box-shadow:0 18px 60px rgba(0,0,0,.55),0 0 0 1px rgba(212,169,60,.25)}

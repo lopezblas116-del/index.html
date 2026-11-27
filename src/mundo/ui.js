@@ -194,73 +194,70 @@ import { getMapIslands } from '../map.js';
       }
       const viajar = $('pi-viajar');
       if (viajar) {
-        viajar.classList.toggle('oculto', !i.juego);
-        viajar.disabled = false;
-        viajar.title = 'Zarpar hacia ' + i.n;
-        // EL CAMINO CÓMODO: tocás la isla en el mapa → popover → ⛵ Viajar aquí.
-        // El zarpe corre en el motor y la cámara te lleva volando con la ruta dorada.
+        const u = sim.user;
+        const aqui = u && !sim._fusionAtSea && u.isl === i.id;
+        viajar.classList.toggle('oculto', !i.juego || aqui);
+        viajar.disabled = Boolean(sim._fusionAtSea);
+        viajar.textContent = sim._fusionAtSea ? '⛵ En alta mar: primero hay que llegar a puerto' : '⛵ Pedir a tu avatar zarpar aquí';
+        viajar.title = 'El avatar evalúa el rumbo con su carácter; si acepta, el viaje toma tiempo y el mar cobra';
+        // EL ZARPE ES DEL AVATAR: pedís, él evalúa (suggestSail), el mar decide.
+        // El viaje corre en el motor y la cámara sigue la ruta dorada.
         viajar.onclick = () => {
           document.dispatchEvent(new CustomEvent('onepiece:hud-sail-suggest', { detail: { location: { name: i.n, x: i.x, y: i.y } } }));
           MAPA.volar(i.x, i.y, 1.5, 800);
         };
       }
     }
+    // LA CARTA POR CAPAS: la isla se VE primero (lugares, gente, ambiente); cada
+    // lugar se abre recién al pedirlo — un panel por lugar, nada apilado.
+    UI.renderLugares(i);
+    const lugarCaja = $('pi-lugar');
+    if (lugarCaja) lugarCaja.classList.add('oculto');
+    const cartaCaja = $('pi-carta');
+    if (cartaCaja) cartaCaja.classList.remove('oculto');
     UI.pintaPopDinamico(i);
   };
 
-  // Parte VIVA (presentes, noticias, control, charlas): barata de refrescar cada tick,
-  // sin reconstruir tarjetas ni listeners (antes se re-creaba TODO el popover ~1,2 s).
+  // Parte VIVA del pop: portada (control, qué se cuenta de la isla, ambiente) y
+  // el subpanel abierto respira con el tick. Barata: nada se reconstruye entero.
+  const belis = (n) => '฿' + Math.round(n).toLocaleString('es');
   UI.pintaPopDinamico = function (i) {
-    const presentes = sim.popOf(i.id).filter(a => a.state === 'libre');
-    const news = sim.feed.filter(e => e.txt.includes(i.n)).slice(-6).reverse();
     const disc = sim.descubiertas[i.id];
-    $('pi-presentes').innerHTML = presentes.length
-      ? presentes.slice(0, 10).map(a => {
-        const ch = sim.charlaDe(a.id);
-        const act = ch ? '<i>charlando</i>' : esc(a.act || a.state);
-        return '<div class="pre" data-id="' + a.id + '" style="cursor:pointer" title="Ver su carta">' + esc(sim.nm(a)) + ' <small>' + act + '</small></div>';
-      }).join('') : '<div class="pre vacio">No hay nadie ahora mismo.</div>';
-    // un alma, una carta: tocar cualquier alma presente abre su tarjeta viva
-    $('pi-presentes').querySelectorAll('.pre').forEach((fila) => {
-      fila.addEventListener('click', () => {
-        const al = presentes.find(x => x.id === fila.dataset.id);
-        if (al) UI.abrirFicha(al);
-      });
-    });
-    // retratos pixel (capa GFX si cargó)
-    if (G.GFX && G.GFX.cargado && G.GFX.imgs.personajes) {
-      const filas = $('pi-presentes').querySelectorAll('.pre');
-      presentes.slice(0, 10).forEach((a, k) => {
-        const retr = G.GFX.retrato(a, 3);
-        if (retr && filas[k]) { filas[k].prepend(retr); filas[k].classList.add('con-retrato'); }
-      });
-    }
-    $('pi-news').innerHTML = news.length ? news.map(e => '<div class="pn">' + esc(e.txt) + '</div>').join('') : '<div class="pn vacio">Tranquilidad absoluta.</div>';
-    $('pi-disc').textContent = disc ? 'Descubierta por ' + esc(sim.nm(sim.byId(disc))) : 'Nadie ha pisado esta isla todavía';
+    const discEl = $('pi-disc');
+    if (discEl) discEl.textContent = disc ? 'Descubierta por ' + esc(sim.nm(sim.byId(disc))) : 'Nadie ha pisado esta isla todavía';
     // control político: ley / tirano / libre (la cadena raza→opresión→revuelta vive aquí)
     const ctrl = sim.control && sim.control[i.id];
-    $('pi-control').innerHTML = ctrl ? '<span class="mil-ctrl c-' + ctrl + '">' + (ctrl === 'ley' ? '⚖ Bajo la ley de la Marina' : ctrl === 'tirano' ? '⛓ Gobernador tirano · el tributo sangra' : '🕊 Libre') + '</span>' : '';
+    const ctrlEl = $('pi-control');
+    if (ctrlEl) ctrlEl.innerHTML = ctrl ? '<span class="mil-ctrl c-' + ctrl + '">' + (ctrl === 'ley' ? '⚖ Bajo la ley de la Marina' : ctrl === 'tirano' ? '⛓ Gobernador tirano · el tributo sangra' : '🕊 Libre') + '</span>' : '';
+    // LA VISTA DE LEJOS: papeles públicos de la isla mientras tu avatar no esté en ella
+    const u = sim.user;
+    const aqui = u && !sim._fusionAtSea && u.isl === i.id;
+    const dis = $('pi-distante');
+    if (dis) {
+      if (aqui) {
+        dis.innerHTML = '<p class="mil-estoy">⚓ Tu avatar está en este puerto: entrá a los lugares de la isla.</p>';
+      } else {
+        const AB = globalThis.AB;
+        const filas = AB ? AB.precioFila(sim, i.id).slice(0, 3) : [];
+        const nAlmas = sim.popOf(i.id).filter(a => a.state === 'libre').length;
+        const lejos = sim._fusionAtSea ? 'Están en alta mar. ' : 'Tu avatar está en otro puerto. ';
+        dis.innerHTML = '<p class="mil-lejos">' + lejos + 'Lo que cuentan de ' + esc(i.n) + ':</p>' +
+          (filas.length ? filas.map(f => '<span class="mil-pase">' + esc(f.n) + ' <b>' + belis(f.p) + '</b>' + (f.dir > 0 ? ' ▲' : f.dir < 0 ? ' ▼' : '') + '</span>').join('') : '<span class="mil-pase">sin mercado conocido</span>') +
+          '<span class="mil-pase">' + nAlmas + ' alma' + (nAlmas === 1 ? '' : 's') + ' presente' + (nAlmas === 1 ? '' : 's') + '</span>';
+      }
+    }
+    UI.renderLugares(i); // los chips reflejan dónde estás: activos en el puerto, de lejos solo se miran
     UI.pintaAbismo(i);
     UI.renderBurbujas(i);
+    UI.pintaLugar(i); // el subpanel abierto sigue los precios y la gente en vivo
   };
 
-  // ═══ EL ABISMO EN EL POP: mercado vivo con precios que respiran, frente de
-  // guerra con su moral, y el evento de mundo al que te puedes unir ═══
+  // ═══ EL ABISMO EN EL POP: frente de guerra con su moral y el evento de mundo
+  // al que te puedes unir — en la PORTADA; el mercado vive en su lugar (capas) ═══
   UI.pintaAbismo = function (i) {
     const AB = globalThis.AB;
-    const cajaM = $('pi-mercado'), cajaF = $('pi-frente'), cajaE = $('pi-evento');
-    if (!cajaM || !AB || !sim) return;
-    const belis = (n) => '฿' + Math.round(n).toLocaleString('es');
-    // mercado: cada bien con su precio, su tendencia y sus dos botones
-    const filas = AB.precioFila(sim, i.id);
-    cajaM.innerHTML = filas.length
-      ? filas.map((f) =>
-          '<div class="ab-fila"><span class="ab-bien">' + esc(f.n) + '</span>' +
-          '<span class="ab-p ' + (f.dir > 0 ? 'sube' : f.dir < 0 ? 'baja' : '') + '">' + belis(f.p) + (f.dir > 0 ? ' ▲' : f.dir < 0 ? ' ▼' : '') + '</span>' +
-          '<button type="button" class="ab-btn" data-ab="comprar:' + f.k + '" aria-label="Comprar ' + esc(f.n) + '" title="Comprar 1">＋</button>' +
-          '<button type="button" class="ab-btn" data-ab="vender:' + f.k + '" aria-label="Vender ' + esc(f.n) + '" title="Vender 1">－</button></div>').join('') +
-        '<p class="mil-muted ab-carga">Carga del barco: ' + AB.cargaDe(sim) + '/' + AB.cargaCap(sim) + ' unidades</p>'
-      : '<p class="mil-muted">Sin mercado abierto en esta isla.</p>';
+    const cajaF = $('pi-frente'), cajaE = $('pi-evento');
+    if (!cajaF || !AB || !sim) return;
     // frente de guerra: barra de moral y el botón de lanzarse
     const fr = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === i.id);
     cajaF.innerHTML = fr
@@ -276,6 +273,244 @@ import { getMapIslands } from '../map.js';
       ? '<div class="ab-evento"><b>✦ ' + esc(ev.nom) + '</b><small>El mundo lo narra. Los héroes cobran al cerrar.</small>' +
         '<button type="button" class="ab-btn ab-btn-grande" data-ab="evento">✦ Unirme al evento</button></div>'
       : '';
+  };
+
+  // ═══ LA ISLA POR CAPAS: portada → lugares → un panel por lugar ═══
+  // Simple para el jugador (tocá lo que querés ver), prolijo para el código:
+  // cada lugar es un builder que llena #pi-lugar-cuerpo y delega en los sistemas
+  // que ya existían (mercado del abismo, coliseo, astillero, tablón del raíz).
+  const LUGARES = [
+    ['mercado', '🏪', 'Mercado del puerto', 'Los precios que respiran con el mar', 'oro'],
+    ['taberna', '🍺', 'Taberna del puerto', 'Rumores que se cuentan hoy', 'vida'],
+    ['tablón', '📋', 'Tablón de encargos', 'El puerto paga por hacer', 'tierra'],
+    ['coliseo', '⚔️', 'Coliseo', 'La arena paga al que aguantó', 'peligro'],
+    ['astillero', '⚓', 'Astillero', 'El casco que te salva el viaje', 'mar'],
+    ['almas', '👻', 'Almas presentes', 'Quien anda por el puerto ahora', 'arcano']
+  ];
+  UI.renderLugares = function (i) {
+    const caja = $('pi-lugares');
+    if (!caja) return;
+    const u = sim.user;
+    const aqui = u && !sim._fusionAtSea && u.isl === i.id;
+    caja.innerHTML = '';
+    const h = document.createElement('h3');
+    h.textContent = aqui ? 'Lugares de ' + i.n : 'Lugares de la isla (se abren al pisar el puerto)';
+    caja.append(h);
+    const grid = document.createElement('div');
+    grid.className = 'mil-lugares';
+    for (const [key, icono, nom, desc, tono] of LUGARES) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'mil-lugar tono-' + tono + (aqui ? ' abierto' : ' a-distancia');
+      chip.innerHTML = '<span class="mil-lugar-icono">' + icono + '</span><span class="mil-lugar-nombre">' + nom + '</span><small>' + (aqui ? desc : 'de lejos solo se mira') + '</small>';
+      if (aqui) {
+        chip.addEventListener('click', () => UI.abrirLugar(i, key));
+      } else {
+        chip.disabled = true;
+        chip.title = 'Entrá al puerto para abrir ' + nom;
+      }
+      grid.append(chip);
+    }
+    caja.append(grid);
+  };
+
+  // el cuerpo de cada lugar, vivo con el tick (precios, gente, charlas)
+  UI.pintaLugar = function (i) {
+    const caja = $('pi-lugar');
+    if (!caja || caja.classList.contains('oculto') || caja.dataset.key !== i.id) return;
+    const clave = caja.dataset.lugar;
+    const cuerpo = $('pi-lugar-cuerpo');
+    if (!cuerpo) return;
+    const build = {
+      mercado: UI.lugarMercado,
+      taberna: UI.lugarTaberna,
+      tablon: UI.lugarTablon,
+      coliseo: UI.lugarColiseo,
+      astillero: UI.lugarAstillero,
+      almas: UI.lugarAlmas
+    }[clave];
+    if (build) build(cuerpo, i);
+  };
+
+  UI.abrirLugar = function (i, clave) {
+    const caja = $('pi-lugar'), carta = $('pi-carta'), cuerpo = $('pi-lugar-cuerpo');
+    if (!caja || !carta || !cuerpo) return;
+    caja.dataset.key = i.id;
+    caja.dataset.lugar = clave;
+    const lugar = LUGARES.find((l) => l[0] === clave);
+    $('pi-lugar-titulo').textContent = (lugar ? lugar[1] + ' ' : '') + (lugar ? lugar[2] : clave);
+    caja.classList.remove('oculto');
+    carta.classList.add('oculto');
+    UI.pintaLugar(i);
+  };
+
+  UI.volverCarta = function () {
+    const caja = $('pi-lugar'), carta = $('pi-carta');
+    if (!caja) return;
+    caja.classList.add('oculto');
+    caja.dataset.lugar = '';
+    if (carta) carta.classList.remove('oculto');
+    if (islaAbierta) UI.pintaPopDinamico(islaAbierta);
+  };
+
+  // ── MERCADO: las mismas filas vivas del abismo, ahora con techo propio ──
+  UI.lugarMercado = function (cuerpo, i) {
+    const AB = globalThis.AB;
+    const filas = AB ? AB.precioFila(sim, i.id) : [];
+    cuerpo.innerHTML = filas.length
+      ? filas.map((f) =>
+          '<div class="ab-fila"><span class="ab-bien">' + esc(f.n) + '</span>' +
+          '<span class="ab-p ' + (f.dir > 0 ? 'sube' : f.dir < 0 ? 'baja' : '') + '">' + belis(f.p) + (f.dir > 0 ? ' ▲' : f.dir < 0 ? ' ▼' : '') + '</span>' +
+          '<button type="button" class="ab-btn" data-ab="comprar:' + f.k + '" aria-label="Comprar ' + esc(f.n) + '" title="Comprar 1">＋</button>' +
+          '<button type="button" class="ab-btn" data-ab="vender:' + f.k + '" aria-label="Vender ' + esc(f.n) + '" title="Vender 1">－</button></div>').join('') +
+        '<p class="mil-muted ab-carga">Carga del barco: ' + AB.cargaDe(sim) + '/' + AB.cargaCap(sim) + ' unidades · el precio respira con el stock y la demanda</p>' +
+        '<p class="mil-muted">Comprá barato en la isla que sobra, vendé caro en la que falta: la ganancia es tu mapa.</p>'
+      : '<p class="mil-muted">Sin mercado abierto en esta isla.</p>';
+  };
+
+  // ── TABERNA: rumores que SE GENERAN de los datos reales del mundo (nada inventado:
+  //    precios, control, frentes, cartel de buscados, jefes vistos) con giro de dudas ──
+  UI.rumoresDe = function (i) {
+    const AB = globalThis.AB;
+    const h = (i.id || '') + ':' + Math.floor((sim.t || 0) / 60); // rotación por hora de mundo
+    let s = 7;
+    for (const ch of h) s = (s * 31 + ch.charCodeAt(0)) >>> 0;
+    const ale = () => { s = (s * 1103515245 + 12345) >>> 0; return (s >>> 16) % 100; };
+    const lineas = [];
+    const filas = AB ? AB.precioFila(sim, i.id) : [];
+    if (filas.length) {
+      const f = filas[(ale() % filas.length + filas.length) % filas.length];
+      lineas.push('Dicen que ' + f.n + ' se paga a ' + belis(f.p) + ' en este muelle' + (f.dir > 0 ? ' — y no deja de subir' : f.dir < 0 ? ' — dicen que cayó de golpe' : ''));
+    }
+    const ctrl = sim.control && sim.control[i.id];
+    if (ctrl === 'tirano') lineas.push('El gobernador subió el tributo otra vez: las mesas hablan de poco más.');
+    if (ctrl === 'libre') lineas.push('Sin amo que cobre, el puerto respira — por ahora.');
+    if (ctrl === 'ley') lineas.push('La patrulla de la Marina pasa cada hora; hasta los gaviotas obedecen.');
+    const fr = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === i.id);
+    if (fr) lineas.push('Se escuchan cañones desde el frente. Nadie apuesta ya a una banda.');
+    if (sim.evento) lineas.push('En tres mesas distintas contaron lo mismo: ' + sim.evento.nom + '. Nadie se anima a ignorarlo.');
+    const ABt = AB && sim && globalThis.AB.top ? globalThis.AB.top(sim) : null;
+    if (ABt && ABt.buscados.length) {
+      const b = ABt.buscados[ale() % Math.min(3, ABt.buscados.length)];
+      lineas.push('Cartel nuevo en la comisaría: ' + b.n + ' — la cabeza vale ' + belis(b.b || 0) + '.');
+    }
+    const jefe = sim.agents && sim.agents.find((a) => a.jefe && a.isl === i.id && a.state !== 'retirado');
+    if (jefe) lineas.push('Un pescador jura que vio a ' + sim.nm(jefe) + ' desembarcar al alba. Mejor no mirarle la cara.');
+    const carga = sim.cargas && sim.cargas.length ? sim.cargas[0] : null;
+    if (carga && carga.bien) lineas.push('Zarpó un convoy cargado de ' + carga.bien + ' esta mañana. Hay ojos que lo siguen.');
+    if (lineas.length && ale() < 30) lineas.push('…pero la boca que lo contó ya había corrido tres rones.');
+    return lineas.length ? lineas : ['En la taberna solo se habla del viento: nada digno de copla.'];
+  };
+  UI.lugarTaberna = function (cuerpo, i) {
+    cuerpo.innerHTML = '<h4>Lo que se cuenta hoy</h4>' + UI.rumoresDe(i).map((r) => '<p class="mil-rumor">🗨 ' + esc(r) + '</p>').join('') +
+      '<h4>Quien anda por el puerto</h4><div id="pi-taberna-gente"></div>';
+    const gente = $('pi-taberna-gente');
+    UI.htmlPresentes(gente, i);
+  };
+
+  // ── TABLÓN: los encargos del día del puerto (motor raíz, sugerir no es controlar) ──
+  UI.lugarTablon = function (cuerpo, i) {
+    const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+    const TAB = window.__TABLON__;
+    const encargos = TAB && car ? TAB.encargos(car) : [];
+    if (!encargos.length) {
+      cuerpo.innerHTML = '<p class="mil-muted">El tablón queda en silencio hoy (o tu avatar está en mar abierto).</p>';
+      return;
+    }
+    const nivelRiesgo = { 1: 'bajo', 2: 'medio', 3: 'alto' };
+    cuerpo.innerHTML = '<p class="mil-muted">Le señalás el encargo a tu avatar: él decide ir y el mundo responde a su carácter.</p>';
+    for (const encargo of encargos) {
+      const fila = document.createElement('div');
+      fila.className = 'mil-encargo';
+      fila.innerHTML = '<div><span class="mil-riesgo r-' + nivelRiesgo[encargo.riesgo] + '">riesgo ' + nivelRiesgo[encargo.riesgo] + '</span> <b>' + esc(encargo.nombre) + '</b><small>' + esc(encargo.texto) + ' · Pago ฿' + encargo.pago + '</small></div>';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ab-btn';
+      btn.textContent = 'Sugerir';
+      btn.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('onepiece:hud-tablon-suggest', { detail: { encargoId: encargo.id } }));
+      });
+      fila.append(btn);
+      cuerpo.append(fila);
+    }
+  };
+
+  // ── COLISEO: la arena del puerto; el avatar baja con su temple de rasgos ──
+  UI.lugarColiseo = function (cuerpo, i) {
+    const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+    const hoy = Number(car?.world?.day) || 0;
+    const peleoHoy = car?.coliseo?.fightDay === hoy;
+    cuerpo.innerHTML = '<p class="mil-rumor">⚔ El coliseo abre al alba: ฿15 la entrada. Los rasgos de tu avatar deciden el temple en la arena — la multitud lo recuerda si gana con estilo.</p>' +
+      '<p class="mil-muted">Récord de hoy: ' + (peleoHoy ? 'ya peleó hoy — la arena da una función por día.' : 'aún no bajó hoy.') + '</p>';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ab-btn ab-btn-grande';
+    btn.textContent = peleoHoy ? 'Ya bajó hoy' : '⚔ Bajar a la arena (฿15)';
+    btn.disabled = peleoHoy;
+    btn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('onepiece:hud-coliseo-fight'));
+    });
+    cuerpo.append(btn);
+  };
+
+  // ── ASTILLERO: el muelle paga, el casco se cuida — acciones reales del raíz ──
+  UI.lugarAstillero = function (cuerpo, i) {
+    const car = window.ONE_LATAM && window.ONE_LATAM.getCharacter && window.ONE_LATAM.getCharacter();
+    const casco = car?.ship?.acquired ? '🚢 Casco de tu carabela: ' + Math.round(car.ship.health) + '%' : 'Sin barco propio: la faena del muelle financia el primero (฿90).';
+    cuerpo.innerHTML = '<p class="mil-rumor">' + casco + '</p>';
+    const acciones = document.createElement('div');
+    acciones.className = 'mil-lugares';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mil-lugar tono-mar abierto';
+    btn.innerHTML = '<span class="mil-lugar-icono">⚒</span><span class="mil-lugar-nombre">Jornada portuaria</span><small>braza y cajas · +฿45</small>';
+    btn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('onepiece:hud-shipyard-action', { detail: { action: 'work' } }));
+    });
+    acciones.append(btn);
+    if (car && !car.ship?.acquired) {
+      const b2 = document.createElement('button');
+      b2.type = 'button';
+      b2.className = 'mil-lugar tono-mar abierto';
+      b2.innerHTML = '<span class="mil-lugar-icono">💰</span><span class="mil-lugar-nombre">Comprar la carabela</span><small>฿90 · tu primer zarpe</small>';
+      b2.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('onepiece:hud-shipyard-action', { detail: { action: 'purchase' } }));
+      });
+      acciones.append(b2);
+    }
+    cuerpo.append(acciones);
+  };
+
+  // ── ALMAS: quien anda por el puerto; un toque abre su carta viva ──
+  UI.lugarAlmas = function (cuerpo, i) {
+    cuerpo.innerHTML = '';
+    UI.htmlPresentes(cuerpo, i);
+  };
+
+  // la lista de presentes, compartida por taberna y almas (retratos si cargó GFX)
+  UI.htmlPresentes = function (caja, i) {
+    if (!caja) return;
+    const presentes = sim.popOf(i.id).filter(a => a.state === 'libre');
+    caja.innerHTML = presentes.length
+      ? presentes.slice(0, 12).map(a => {
+        const ch = sim.charlaDe(a.id);
+        const act = ch ? '<i>charlando</i>' : esc(a.act || a.state);
+        return '<div class="pre" data-id="' + a.id + '" style="cursor:pointer" title="Ver su carta">' + esc(sim.nm(a)) + ' <small>' + act + '</small></div>';
+      }).join('') : '<div class="pre vacio">No hay nadie ahora mismo.</div>';
+    caja.querySelectorAll('.pre').forEach((fila) => {
+      fila.addEventListener('click', () => {
+        const al = presentes.find(x => x.id === fila.dataset.id);
+        if (al) UI.abrirFicha(al);
+      });
+    });
+    // retratos pixel (capa GFX si cargó)
+    if (G.GFX && G.GFX.cargado && G.GFX.imgs.personajes) {
+      const filas = caja.querySelectorAll('.pre');
+      presentes.slice(0, 12).forEach((a, k) => {
+        const retr = G.GFX.retrato(a, 3);
+        if (retr && filas[k]) { retr.classList.add('con-retrato'); filas[k].prepend(retr); }
+      });
+    }
   };
 
   // ═══ LA BRÚJULA DEL JUGADOR: una línea que le dice qué puede hacer AHORA ═══
