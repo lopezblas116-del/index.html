@@ -164,6 +164,7 @@
       const pop = $('pop-isla');
       if (!pop.classList.contains('oculto') && UI.tickIsla) UI.tickIsla(); // refresco barato, sin reconstruir el popover
       if (sim.user && !$('ficha').classList.contains('oculto')) UI.renderSusurros();
+      if (UI.pintaHint) UI.pintaHint(); // la brújula del jugador: qué puedo hacer AHORA
       window.dispatchEvent(new CustomEvent('mil-almas:tick'));
     }, Math.max(60, J.msPorMin));
   }

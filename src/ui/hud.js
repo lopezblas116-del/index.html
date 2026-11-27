@@ -204,6 +204,8 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
     lpText.innerHTML=`<h4>Log Pose del destino</h4><p>${lpFrase}</p><small>Isla registrada: ${c.location?.atSea?"mar abierto":c.location?.island||"—"} · Alineamientos completados: ${Math.floor(lp.alignment||0)}/${lp.required||3}</small>`;
     lpCard.append(ring,lpText);
     content.append(lpCard);
+    // el puerto se recorre entero: desde Navegar también se abre la taberna
+    const tavernaBtn=document.createElement("button");tavernaBtn.type="button";tavernaBtn.className="one-hud-action";tavernaBtn.textContent="Taverna y mercado del puerto";tavernaBtn.addEventListener("click",()=>openPanel("tavern"));content.append(tavernaBtn);
     // preparación del zarpe visible: lo que el mar va a cobrar si se improvisa
     if(!c.location?.atSea&&c.status!=="dead"){
       const conNavegante=hasNauticalCrew(c);
@@ -358,6 +360,7 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
       if(!visitors.length){const empty=document.createElement("p");empty.className="one-hud-muted";empty.textContent="No quedan mercenarios disponibles en este puerto.";roster.append(empty)}panelContent.append(roster);
       // la lista de tripulación vive SOLO en Barco (única, con despedir)
       const mercado=document.createElement("button");mercado.type="button";mercado.className="one-hud-action";mercado.textContent="Mercado del puerto";mercado.addEventListener("click",()=>openPanel("market"));panelContent.append(mercado);
+      const tablonBtn=document.createElement("button");tablonBtn.type="button";tablonBtn.className="one-hud-action";tablonBtn.textContent="📋 Tablón de encargos";tablonBtn.addEventListener("click",()=>openPanel("navigation"));panelContent.append(tablonBtn);
     };
     renderTabs(content,[
       {key:"reclutar",label:"Reclutar",render:renderReclutar},
@@ -402,7 +405,8 @@ async function openPanel(panel){const overlay=root?.querySelector(".one-hud-back
     ];
     renderTabs(content,secciones,selectedMundoTab||"atlas",key=>{selectedMundoTab=key});
   }
-  else if(panel==="codex"){renderCodex(content,c)}
+  else if(panel==="codex"){renderCodex(content,c,(p)=>openPanel(p))}
+  else if(panel==="boards"){renderContratos(content,c,traits)}
   else if(panel==="more"){
     title.textContent="Ajustes del Sistema";
     const wrap=document.createElement("div");wrap.className="one-hud-settings-groups";
@@ -493,11 +497,14 @@ export function initHud(){
   const style=document.createElement("style");style.textContent=STYLE;document.head.append(style);
   root=document.createElement("div");root.id="one-hud";
   root.style.setProperty("--color-ocean",PALETTE.ocean);root.style.setProperty("--color-panel",PALETTE.panel);root.style.setProperty("--color-gold",PALETTE.gold);
-  root.innerHTML=`<header id="hud-header" class="one-hud-brand"><div class="one-hud-brand-copy"><span class="one-hud-count" data-hud-berries>฿ 0</span><span class="one-hud-captain" data-hud-faction aria-label="Tu capitán"><canvas class="one-hud-flag" width="34" height="21" aria-hidden="true"></canvas><span class="one-hud-captain-name">—</span><span class="one-hud-captain-fac">Pirata</span></span></div></header><button class="one-hud-settings" type="button" data-hud-panel="more" aria-label="Ajustes del Sistema" title="Ajustes del Sistema">⚙️</button><div class="one-hud-toast" data-hud-toast role="status" hidden></div><nav id="bottom-nav" class="one-hud-nav" aria-label="Navegación del juego">${[["news","Bitácora"],["navigation","Navegar"],["tavern","Taberna"],["chest","Barco"],["profile","Alma"],["mundo","Mundo"],["codex","Enciclopedia"]].map(([key,label,oculta])=>`<button type="button"${oculta?" hidden":""} data-hud-panel="${key}" aria-expanded="false" title="${(ACTIONS[key]||["globe",label])[1]}"><span class="one-hud-nav-icon">${svgIcon((ACTIONS[key]||["globe"])[0])}</span><span>${label}</span></button>`).join("")}</nav><div class="one-hud-backdrop" aria-hidden="true"><section class="one-hud-dialog" role="dialog" aria-modal="true" aria-labelledby="hud-dialog-title"><div class="one-hud-heading"><span id="hud-dialog-title" class="one-hud-heading-title"></span><button class="one-hud-close" type="button" aria-label="Cerrar">✕</button></div><div class="one-hud-content"></div></section></div>`;
+  root.innerHTML=`<header id="hud-header" class="one-hud-brand"><div class="one-hud-brand-copy"><span class="one-hud-count" data-hud-berries>฿ 0</span><span class="one-hud-captain" data-hud-faction aria-label="Tu capitán"><canvas class="one-hud-flag" width="34" height="21" aria-hidden="true"></canvas><span class="one-hud-captain-name">—</span><span class="one-hud-captain-fac">Pirata</span></span></div></header><button class="one-hud-settings" type="button" data-hud-panel="codex" data-codex-tab="guia" aria-label="Cómo se juega" title="Cómo se juega">?</button><button class="one-hud-settings" type="button" data-hud-panel="more" aria-label="Ajustes del Sistema" title="Ajustes del Sistema">⚙️</button><div class="one-hud-toast" data-hud-toast role="status" hidden></div><div id="hud-hint" class="one-hud-hint" role="button" tabindex="0" aria-label="Sugerencia del mundo" hidden></div><nav id="bottom-nav" class="one-hud-nav" aria-label="Navegación del juego">${[["news","Bitácora"],["navigation","Navegar"],["tavern","Taberna"],["chest","Barco"],["profile","Alma"],["mundo","Mundo"],["codex","Enciclopedia"]].map(([key,label,oculta])=>`<button type="button"${oculta?" hidden":""} data-hud-panel="${key}" aria-expanded="false" title="${(ACTIONS[key]||["globe",label])[1]}"><span class="one-hud-nav-icon">${svgIcon((ACTIONS[key]||["globe"])[0])}</span><span>${label}</span></button>`).join("")}</nav><div class="one-hud-backdrop" aria-hidden="true"><section class="one-hud-dialog" role="dialog" aria-modal="true" aria-labelledby="hud-dialog-title"><div class="one-hud-heading"><span id="hud-dialog-title" class="one-hud-heading-title"></span><button class="one-hud-close" type="button" aria-label="Cerrar">✕</button></div><div class="one-hud-content"></div></section></div>`;
   document.body.append(root);
   // Navegación/zoom los maneja el puente del mundo vivo (fusion) en captura:
   // aquí solo abrimos paneles — sin emitir CustomEvents que nadie escucha.
-  root.querySelectorAll("[data-hud-panel]").forEach(button=>button.addEventListener("click",()=>{const key=button.dataset.hudPanel;openPanel(button.dataset.hudPanel)}));
+  root.querySelectorAll("[data-hud-panel]").forEach(button=>button.addEventListener("click",()=>{const key=button.dataset.hudPanel;if(button.dataset.codexTab)globalThis.__codexTab=button.dataset.codexTab;openPanel(key)}));
+  // el hint del mundo: un click te lleva a donde está pasando la cosa
+  const hint=root.querySelector("#hud-hint");
+  if(hint)hint.addEventListener("click",()=>{globalThis.__codexTab=null;openPanel("mundo")});
   root.hidden=true;
   window.addEventListener("onepiece:block1-render",event=>{if(event.detail?.toast)showToast(event.detail.toast)});
   // el cartel WANTED se estampa solo cuando la recompensa da un salto que el mundo tiene que ver
@@ -525,6 +532,10 @@ export function renderHud(character){
   root.querySelector("#bottom-nav").hidden=!character;
   if(character){
     animateHudPortraits();
+    // PRIMERA VEZ EN EL UNIVERSO: el códice abre su pestaña "Cómo se juega" —
+    // la guía con puertas reales a cada panel. El botón ? la reabre siempre.
+    // (la bandera vive en localStorage ANTES de abrir: el paint corre cada segundo)
+    try{if(!localStorage.getItem("one_guia_v1")){localStorage.setItem("one_guia_v1","1");globalThis.__codexTab="guia";openPanel("codex")}}catch(e){/*sin localStorage: la ? sigue ahí*/}
   }
   const hour=Math.floor(minute/60);root.dataset.atmosphere=character?.travel?.climate==="calm-belt"?"mist":hour>=19||hour<6?"night":"day";
   // la luz del body la gobierna el mundo vivo (mundo/ui.js); el HUD solo aporta el mist de la Franja de Calma

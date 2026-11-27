@@ -786,3 +786,12 @@ body.wizard-active #wizard-container>.wizard-card {animation:panel-in .34s ease-
 .ab-barra{display:block;height:8px;border-radius:6px;background:rgba(255,255,255,.12);margin:4px 0;overflow:hidden}
 .ab-barra i{display:block;height:100%;background:linear-gradient(90deg,#e0574b,#f0c75e)}
 .ab-pulso p{margin:4px 0;font-size:.95em}
+
+/* ═══ CÓDICE DEL UNIVERSO + brújula del jugador ═══ */
+.one-hud-hint{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);max-width:min(92vw,560px);padding:7px 14px;border-radius:999px;background:rgba(10,14,22,.82);border:1px solid rgba(240,199,94,.4);color:#f0d9a0;font-size:.82em;cursor:pointer;z-index:60;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
+.one-hud-hint:hover{border-color:rgba(240,199,94,.8)}
+.one-hud-codex-mundo .one-hud-codex-category{margin:10px 0 14px;padding:10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
+.one-hud-codex-mundo .one-hud-codex-lore{display:block;opacity:.85;font-size:.9em;margin:4px 0}
+.one-hud-codex-mundo .one-hud-codex-item strong{display:block;color:#f0c75e}
+.one-hud-codex-mundo .one-hud-codex-item{padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.1)}
+.one-hud-codex-mundo .one-hud-encargo{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12)}

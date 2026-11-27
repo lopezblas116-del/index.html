@@ -277,6 +277,36 @@ import { getMapIslands } from '../map.js';
         '<button type="button" class="ab-btn ab-btn-grande" data-ab="evento">✦ Unirme al evento</button></div>'
       : '';
   };
+
+  // ═══ LA BRÚJULA DEL JUGADOR: una línea que le dice qué puede hacer AHORA ═══
+  // Prioridad real: evento de mundo > frente en tu isla > carga con ganancia >
+  // primer mercado > el pulso del mundo. Un click abre el Mundo (donde vive todo).
+  UI.pintaHint = function () {
+    const el = $('hud-hint');
+    if (!el || !sim) return;
+    try {
+      const u = sim.user;
+      const ev = sim.evento;
+      const frente = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === u?.isl);
+      const AB = globalThis.AB;
+      let txt = 'El mundo late sin vos: el pulso está en el mapa (botón Mundo)';
+      if (ev) {
+        txt = '✦ ' + ev.nom + (ev.isl && D.ISLA[ev.isl] ? ' · ' + D.ISLA[ev.isl].n : '') + ': está pasando — los héroes cobran al cerrar';
+      } else if (frente) {
+        txt = '⚔ Frente abierto en tu isla (' + (D.ISLA[frente.isl] ? D.ISLA[frente.isl].n : '') + '): lánzate desde el pop del puerto';
+      } else if (u && u.cargo && Object.keys(u.cargo).length && AB) {
+        const k = Object.keys(u.cargo)[0];
+        const p = AB.precio(sim, u.isl, k);
+        if (p && p > u.cargo[k].costo) txt = '💰 Tu ' + k + ' vale ฿' + p.toLocaleString('es') + ' en este puerto (pagaste ฿' + Math.round(u.cargo[k].costo).toLocaleString('es') + '): vendé en el pop de la isla';
+        else txt = '📦 Llevás carga en tu barco: mirá los precios del puerto en el pop de cada isla';
+      } else if (u) {
+        txt = 'El mercado del puerto compra y vende: comprá barato en una isla y vendé caro en la vecina';
+      }
+      el.textContent = txt;
+      el.hidden = false;
+    } catch (e) { el.hidden = true; /* la brújula no tumba nada */ }
+  };
+
   // El reloj de la simulación llama esto cada tick: solo refresca si el popover está abierto.
   UI.tickIsla = function () {
     if (islaAbierta && !$('pop-isla').classList.contains('oculto')) UI.pintaPopDinamico(islaAbierta);
