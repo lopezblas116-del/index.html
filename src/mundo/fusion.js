@@ -123,6 +123,7 @@ function installWorldUi() {
     <section id="pop-isla" class="mil-panel mil-island-pop oculto" aria-label="Detalles de isla">
       <button id="pop-cerrar" type="button" class="mil-close" aria-label="Cerrar isla">×</button>
       <h2 id="pi-titulo"></h2><p id="pi-region"></p><div id="pi-control"></div>
+      <div id="pi-frente"></div><h3>Mercado del puerto</h3><div id="pi-mercado"></div><div id="pi-evento"></div>
       <h3>Almas presentes</h3><div id="pi-presentes"></div>
       <div id="pi-charlas"></div><h3>Rumores</h3><div id="pi-news"></div><p id="pi-disc"></p>
       <h3>Encuentros</h3><div id="pi-encuentros"></div>

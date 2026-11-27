@@ -240,7 +240,42 @@ import { getMapIslands } from '../map.js';
     // control político: ley / tirano / libre (la cadena raza→opresión→revuelta vive aquí)
     const ctrl = sim.control && sim.control[i.id];
     $('pi-control').innerHTML = ctrl ? '<span class="mil-ctrl c-' + ctrl + '">' + (ctrl === 'ley' ? '⚖ Bajo la ley de la Marina' : ctrl === 'tirano' ? '⛓ Gobernador tirano · el tributo sangra' : '🕊 Libre') + '</span>' : '';
+    UI.pintaAbismo(i);
     UI.renderBurbujas(i);
+  };
+
+  // ═══ EL ABISMO EN EL POP: mercado vivo con precios que respiran, frente de
+  // guerra con su moral, y el evento de mundo al que te puedes unir ═══
+  UI.pintaAbismo = function (i) {
+    const AB = globalThis.AB;
+    const cajaM = $('pi-mercado'), cajaF = $('pi-frente'), cajaE = $('pi-evento');
+    if (!cajaM || !AB || !sim) return;
+    const belis = (n) => '฿' + Math.round(n).toLocaleString('es');
+    // mercado: cada bien con su precio, su tendencia y sus dos botones
+    const filas = AB.precioFila(sim, i.id);
+    cajaM.innerHTML = filas.length
+      ? filas.map((f) =>
+          '<div class="ab-fila"><span class="ab-bien">' + esc(f.n) + '</span>' +
+          '<span class="ab-p ' + (f.dir > 0 ? 'sube' : f.dir < 0 ? 'baja' : '') + '">' + belis(f.p) + (f.dir > 0 ? ' ▲' : f.dir < 0 ? ' ▼' : '') + '</span>' +
+          '<button type="button" class="ab-btn" data-ab="comprar:' + f.k + '" aria-label="Comprar ' + esc(f.n) + '" title="Comprar 1">＋</button>' +
+          '<button type="button" class="ab-btn" data-ab="vender:' + f.k + '" aria-label="Vender ' + esc(f.n) + '" title="Vender 1">－</button></div>').join('') +
+        '<p class="mil-muted ab-carga">Carga del barco: ' + AB.cargaDe(sim) + '/' + AB.cargaCap(sim) + ' unidades</p>'
+      : '<p class="mil-muted">Sin mercado abierto en esta isla.</p>';
+    // frente de guerra: barra de moral y el botón de lanzarse
+    const fr = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === i.id);
+    cajaF.innerHTML = fr
+      ? '<div class="ab-frente"><b>⚔ ' + esc(fr.nom || 'Frente abierto') + '</b>' +
+        '<span class="ab-barra" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, fr.moral)) + '%"></i></span>' +
+        '<small>' + esc(fr.desc || '') + '</small>' +
+        '<button type="button" class="ab-btn ab-btn-grande" data-ab="frente">⚔ Lanzarse al frente</button></div>'
+      : '';
+    // evento de mundo: se puede unir si tu isla (o tu mar) es el escenario
+    const ev = sim.evento;
+    const enEscenario = ev && ((ev.isl && ev.isl === i.id) || (ev.reg && ev.reg === i.reg));
+    cajaE.innerHTML = enEscenario
+      ? '<div class="ab-evento"><b>✦ ' + esc(ev.nom) + '</b><small>El mundo lo narra. Los héroes cobran al cerrar.</small>' +
+        '<button type="button" class="ab-btn ab-btn-grande" data-ab="evento">✦ Unirme al evento</button></div>'
+      : '';
   };
   // El reloj de la simulación llama esto cada tick: solo refresca si el popover está abierto.
   UI.tickIsla = function () {

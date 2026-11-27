@@ -5,6 +5,7 @@ import './util.js';
 import './datos_mundo.js';
 import './datos_textos.js';
 import './simulacion.js';
+import './abismo.js';
 import './mapa.js';
 import './ui.js';
 import './main.js';

@@ -84,6 +84,7 @@
       sim.byId = function (id) { return this.agents.find(a => a.id === id); };
       sim.user = d.user ? sim.byId(d.user) : null;
       sim.onMuerte = onMuerteHandler; // sin esto, morir en una partida cargada pasaba en silencio
+      if (window.AB) AB.ensure(sim); // el abismo migra con el mundo: mercados, guerra, eventos
       J.sim = sim;
       return sim;
     } catch (e) { console.warn('Guardado corrupto', e); return null; }
@@ -97,6 +98,7 @@
     J.borrar();
     J.sim = new Sim(Math.floor(Math.random() * 90000) + 1000);
     J.sim.ensureJefes && J.sim.ensureJefes(); // cada isla canónica nace con su jefe
+    if (window.AB) AB.ensure(J.sim); // y nace con su abismo: mercados, guerra y eventos
     J.sim.onMuerte = onMuerteHandler;
   };
 
@@ -152,7 +154,10 @@
     J.timer = setInterval(() => {
       const sim = J.sim;
       try {
-        for (let i = 0; i < J.ritmo; i++) sim.step();
+        for (let i = 0; i < J.ritmo; i++) {
+          sim.step();
+          if (window.AB) AB.minuto(sim); // el abismo late con cada minuto del mundo
+        }
       } catch (e) { console.error('Error en la simulación', e); }
       UI.renderHeader();
       if (sim.t % 2 === 0) UI.renderFeed(true);
@@ -167,6 +172,20 @@
     // botones del extinto menú globo: sus puertas viven ahora en el dock SAO
     on('ficha-cerrar', 'click', UI.cerrarFicha);
     on('pop-cerrar', 'click', () => UI.abrirIsla(null));
+    // EL ABISMO EN EL POP: mercado (comprar/vender), frente y evento — un solo dispatcher
+    ['pi-mercado', 'pi-frente', 'pi-evento'].forEach((id) => {
+      const caja = $(id);
+      if (caja && !caja._ab) {
+        caja._ab = true;
+        caja.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-ab]');
+          if (!btn) return;
+          const parts = btn.dataset.ab.split(':');
+          const r = AB.accion(sim, parts[0], parts[1]);
+          if (r && r.msg) UI.toast(r.msg);
+        });
+      }
+    });
     
     
     
