@@ -24,8 +24,6 @@ import { getMapIslands } from '../map.js';
   // ── Cabecera ──
   UI.renderHeader = function () {
     const almas = sim.agents.filter(a => a.state !== 'muerto' && a.state !== 'retirado').length;
-    $('cab-almas').textContent = almas.toLocaleString('es');
-    $('cab-reloj').textContent = 'Día ' + sim.dia() + ' · ' + hhmm(sim.minOfDay()) + (esNoche(sim.minOfDay()) ? ' 🌙' : '');
     // UN SOLO RELOJ en pantalla: el de la barra del mundo vivo (con su luna).
     // La marca del HUD RPG ya no repite día/hora — no hay dos motores de tiempo visibles.
     // Una sola luz: la atmósfera (noche/día) sigue al MISMO reloj que se pinta.
@@ -220,8 +218,15 @@ import { getMapIslands } from '../map.js';
       ? presentes.slice(0, 10).map(a => {
         const ch = sim.charlaDe(a.id);
         const act = ch ? '<i>charlando</i>' : esc(a.act || a.state);
-        return '<div class="pre">' + esc(sim.nm(a)) + ' <small>' + act + '</small></div>';
+        return '<div class="pre" data-id="' + a.id + '" style="cursor:pointer" title="Ver su carta">' + esc(sim.nm(a)) + ' <small>' + act + '</small></div>';
       }).join('') : '<div class="pre vacio">No hay nadie ahora mismo.</div>';
+    // un alma, una carta: tocar cualquier alma presente abre su tarjeta viva
+    $('pi-presentes').querySelectorAll('.pre').forEach((fila) => {
+      fila.addEventListener('click', () => {
+        const al = presentes.find(x => x.id === fila.dataset.id);
+        if (al) UI.abrirFicha(al);
+      });
+    });
     // retratos pixel (capa GFX si cargó)
     if (G.GFX && G.GFX.cargado && G.GFX.imgs.personajes) {
       const filas = $('pi-presentes').querySelectorAll('.pre');
@@ -260,10 +265,11 @@ import { getMapIslands } from '../map.js';
   };
 
   // ── Ficha del jugador (Tarjeta del Alma + susurros) ──
-  UI.abrirFicha = function () {
-    const a = sim.user;
+  UI.abrirFicha = function (agente) {
+    const a = agente || sim.user;
     if (!a) { UI.toast('Tu alma aún no existe: creala desde la portada.'); return; }
     $('ficha').classList.remove('oculto');
+    $('ficha')._a = a;
     const S = D.SUEÑOS.find(s => s.k === a.sueno);
     $('ft-nombre').textContent = a.name;
     $('ft-epi').textContent = a.epi ? '«' + a.epi + '»' : 'sin apodo todavía';
@@ -292,58 +298,10 @@ import { getMapIslands } from '../map.js';
   UI.cerrarFicha = function () { $('ficha').classList.add('oculto'); };
 
   // ── Atlas del Alma: islas pisadas, momentos y los Cuatro Cubos Rojos ──
-  UI.abrirAtlas = function () {
-    const a = sim.user;
-    if (!a) { UI.toast('Tu alma aún no existe: creala desde la portada.'); return; }
-    $('atlas').classList.remove('oculto');
-    const total = D.ISLAS.filter(i => !i.oculta && !i.noNav && i.reg !== 'RL' && i.reg !== 'BM').length;
-    const pisadas = Object.keys(a.atlas || {});
-    const pct = Math.min(100, Math.round(pisadas.length * 100 / Math.max(1, total)));
-    $('at-progreso').innerHTML = '<b>' + pisadas.length + '</b> de ' + total + ' islas cartografiadas (' + pct + '%)';
-    $('at-barra').style.width = pct + '%';
-    // momentos: los grandes sucesos de TU alma (hemeroteca filtrada por id)
-    const mos = (sim.archive || []).filter(r => r.ids && r.ids.includes(a.id)).slice(-12).reverse();
-    $('at-momentos').innerHTML = mos.length
-      ? mos.map(r => '<div class="obj"><small>Día ' + Math.ceil(r.t / 1440) + '</small> ' + esc(r.txt) + '</div>').join('')
-      : '<div class="obj vacio">Tu historia apenas empieza: zarpa, explora, pelea.</div>';
-    // islas visitadas
-    $('at-islas').innerHTML = pisadas.length
-      ? pisadas.map(id => {
-          const isl = D.ISLA[id]; if (!isl) return '';
-          const d = a.atlas[id];
-          const mar = D.REGIONS[isl.reg] ? D.REGIONS[isl.reg].name : isl.reg;
-          return '<div class="at-isla"><b>' + esc(isl.n) + '</b><small>' + esc(mar) + ' · ' + d.n + (d.n === 1 ? ' visita' : ' visitas') + '</small></div>';
-        }).join('')
-      : '<div class="obj vacio">Sin islas aún. El mar espera.</div>';
-    // los Cuatro Cubos Rojos
-    const cubos = sim.cubos || {};
-    $('at-cubos').innerHTML = Object.keys(cubos).map(id => {
-      const c = cubos[id], isl = D.ISLA[id]; if (!isl) return '';
-      const estado = c.hallado ? (c.esMio ? 'hallado por ti' : 'hallado por ' + esc(c.por || 'otros'))
-                               : (c.pistas ? c.pistas + (c.pistas === 1 ? ' pista' : ' pistas') : 'sin pistas');
-      return '<div class="at-cubo' + (c.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>' + esc(isl.n) + '</b><small>' + estado + '</small>' +
-        (c.pista && !c.hallado ? '<em>«' + esc(c.pista) + '»</em>' : '') + '</div></div>';
-    }).join('');
-    $('at-cubos-nota').textContent = sim.cubosFin
-      ? 'Los cuatro Cubos Rojos fueron hallados. La isla final abre sus puertas: una era nueva corre el mar.'
-      : 'Cuatro Cubos Rojos duermen en el Nuevo Mundo. Las tabernas susurran pistas; quien reúna los cuatro escribe la próxima era.';
-    // Cubos Azules: cada uno leído convierte las pistas poéticas en coordenadas exactas
-    const azules = sim.cubosAzules || {};
-    const nAzules = Object.keys(azules).filter(k => azules[k].hallado).length;
-    $('at-azules').innerHTML = Object.keys(azules).map(id => {
-      const c = azules[id], isl = D.ISLA[id]; if (!isl) return '';
-      const estado = c.hallado ? (c.esMio ? 'revelado por ti' : 'revelado por ' + esc(c.por || 'otros')) : 'sin revelar';
-      return '<div class="at-cubo azul' + (c.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>' + esc(isl.n) + '</b><small>' + estado + '</small></div></div>';
-    }).join('') + '<p class="mil-muted">' + (nAzules >= 1 ? nAzules + '/3 leídos: tus pistas de Cubos Rojos señalan islas exactas.' : 'Revela uno y las tabernas dejarán de hablar en acertijos.') + '</p>';
-    // Cubo Dorado: solo existe tras los cuatro rojos; corona al que lo levanta
-    const dor = sim.cuboDorado || { hallado: false, esMio: false, por: null };
-    $('at-dorado').innerHTML = '<div class="at-cubo dorado' + (dor.hallado ? ' hallado' : '') + '"><span class="cubo-g"></span><div><b>Isla JAJAJA</b><small>' +
-      (dor.hallado ? (dor.esMio ? 'el Cubo Dorado es TUYO: Rey de los Piratas' : 'levantado por ' + esc(dor.por || 'otro')) : (sim.cubosFin ? 'la ruta final está abierta. Nadie ha coronado aún.' : 'sellado: los cuatro Cubos Rojos guardan su ruta')) + '</small></div></div>';
-  };
-  UI.cerrarAtlas = function () { $('atlas').classList.add('oculto'); };
+  
 
   UI.renderSusurros = function () {
-    const a = sim.user; if (!a) return;
+    const a = $('ficha')._a || sim.user; if (!a) return;
     $('ft-susurros').innerHTML = D.SUSURROS.map(s => {
       const p = sim.probObediencia(a, s.k);
       return '<button class="sus" data-k="' + s.k + '">' + esc(s.n) + ' <small>' + Math.round(p * 100) + '%</small></button>';
@@ -353,7 +311,7 @@ import { getMapIslands } from '../map.js';
         const r = sim.doWhisper(a, b.dataset.k);
         UI.toast(r.reinterpret ? 'Reinterpreta tu consejo a su manera…' : r.obe ? 'Te ha hecho caso.' : 'No te ha hecho caso.');
         UI.renderSusurros();
-        UI.abrirFicha();
+        UI.abrirFicha(a);
       });
     });
   };
@@ -365,19 +323,9 @@ import { getMapIslands } from '../map.js';
   };
 
 
-  // ── Periódico (hemeroteca) ──
-  UI.abrirPeriodico = function () {
-    $('periodico').classList.remove('oculto');
-    const lista = sim.archive.slice(-60).reverse();
-    $('per-cuerpo').innerHTML = lista.map(e => '<div class="fe imp-media"><span class="fh">D' + Math.floor(e.t / 1440) + '</span> ' + esc(e.txt) + '</div>').join('') || '<p>Nada importante aún.</p>';
-  };
-  UI.cerrarPeriodico = function () { $('periodico').classList.add('oculto'); };
+  
 
-  // ── Ajustes ──
-  UI.abrirAjustes = function () {
-    $('ajustes').classList.remove('oculto');
-  };
-  UI.cerrarAjustes = function () { $('ajustes').classList.add('oculto'); };
+  
   // ═══ CONTENIDO DEL MUNDO DENTRO DEL PANEL DEL HUD ═══
   // El mundo deja de tener paneles flotantes propios: estos renderizadores
   // escriben en una <section> que el HUD le pasa. Una puerta, un destino,

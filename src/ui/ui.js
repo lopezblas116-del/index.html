@@ -317,6 +317,11 @@ export function showGame() {
   if (wizard) { wizard.hidden = true; wizard.style.display = "none"; }
   if (game) { game.hidden = false; game.style.display = "block"; }
   if (reset) reset.hidden = false;
+  // zarpar despierta el mundo: lo que la creación ocultó por inline (orbe,
+  // chip del mar, sonido) vuelve a la vista — un solo juego, siempre vivo.
+  ["mil-chip", "mil-almas-ui", "mar-sonido-btn"].forEach((id) => {
+    document.getElementById(id)?.style.removeProperty("display");
+  });
 }
 
 function closeDialog(id) {
@@ -431,8 +436,6 @@ export function renderGame(character) {
   if (experienceBar) { experienceBar.max = Math.max(100, (character.level ?? 1) * 100); experienceBar.value = character.experience ?? 0; }
 
   const minute = Number(world.minuteOfDay) || 0;
-  const clock = byId("game-clock");
-  if (clock) clock.textContent = `Día ${(Number(world.day) || 0) + 1} · ${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
   const headerStatus = byId("header-avatar-status");
   if (headerStatus) {
     headerStatus.textContent = dead ? "● Avatar caído" : paused ? "● Avatar en pausa" : "● Avatar activo";
@@ -446,16 +449,9 @@ export function renderGame(character) {
   const whisperSubmit = byId("whisper-form")?.querySelector("button[type=submit]");
   if (whisperSubmit) whisperSubmit.disabled = dead;
 
-  renderTerminalLog(byId("event-log"), character.log ?? [], character.name, character.location?.island || "");
-  if (byId("world-era")) byId("world-era").textContent = world.era ?? "Era de los Grandes Descubrimientos";
-  if (byId("world-clock")) byId("world-clock").textContent = `Día ${world.day ?? 0} · Año ${world.year ?? 1} de 20 · ${world.era ?? "Era de los Grandes Descubrimientos"} · Linaje ${lineage.family ?? character.name}, generación ${lineage.generation ?? 1} · Cofre: ${(lineage.legacyChest ?? []).length} reliquia(s).`;
   const pantheon = world.pantheon ?? [];
-  renderList(byId("pantheon-list"), pantheon.slice(0, 8), "Aún no hay leyendas en esta era.", (legend) => `${legend.name} · ${legend.family} · ${legend.faction} · Nivel ${legend.level} · ${number(legend.reputation)} renombre`);
   const sharedFallen = character.world?.shared?.world?.fallen_captains ?? [];
   renderList(byId("pantheon-modal-list"), [...sharedFallen, ...pantheon], "Aún no hay leyendas registradas.", (legend) => `${legend.name} · ${legend.cause || "Legado del mar"} · ${legend.island || legend.location || "mar abierto"}${(legend.maps || []).map((map) => ` · Tesoro X:${map.x} Y:${map.y}`).join("")}${(legend.notes || []).map((note) => ` · ${note.clue}`).join("")}`);
-  renderList(byId("news-list"), world.news ?? [], "El mar aguarda sus primeras noticias.", (entry) => entry.text ?? String(entry));
-  if (byId("treasure-count")) byId("treasure-count").textContent = String((lineage.legacyChest ?? []).length);
-  renderList(byId("treasure-list"), lineage.legacyChest ?? [], "El cofre espera su primera reliquia.", (item) => String(item));
 
   const mission = character.mission ?? { title: "Explorar el mar", island: character.location?.island ?? "Mar abierto", enemy: "piratas rivales", status: "active", completed: 0 };
   if (byId("mission-title")) byId("mission-title").textContent = mission.status === "complete" ? `${mission.title} · completada` : mission.title;
@@ -483,16 +479,6 @@ export function renderGame(character) {
   if (character.haki?.haoshoku) powers.push("Haki del Conquistador: posibilidad de dominar rivales");
   if (character.fruit) powers.push(`${character.fruit.technique || "Técnica de Akuma no Mi"}: ${character.fruit.name}`);
   if (byId("technique-text")) byId("technique-text").textContent = powers.length ? `Técnicas de combate · ${powers.join(" · ")}` : "Técnicas de combate · Entrena para despertar Haki o busca una Akuma no Mi.";
-  const wanted = ["Pirata", "Revolucionario"].includes(character.faction) && Number(character.bounty) > 0;
-  if (byId("wanted-poster")) byId("wanted-poster").classList.toggle("not-wanted", !wanted);
-  if (byId("wanted-name")) byId("wanted-name").textContent = character.name ?? "Aventurero";
-  if (byId("wanted-handle")) byId("wanted-handle").textContent = character.username ?? "Pirata desconocido";
-  if (byId("wanted-bounty")) {
-    const bounty = byId("wanted-bounty");
-    if (wanted) animateCount(bounty, character.bounty, (value) => `฿ ${number(value)} BERRIES`);
-    else { bounty.dataset.countTarget = "0"; bounty.textContent = "SIN RECOMPENSA"; }
-  }
-  if (byId("wanted-note")) byId("wanted-note").textContent = wanted ? `Vivo o muerto · ${character.location?.island ?? "Mar abierto"}` : character.faction === "Marine" ? "Marine en servicio · recompensa de captura" : "Las hazañas notorias generan un cartel de búsqueda.";
 
   const legacyPanel = byId("legacy-panel");
   if (legacyPanel) legacyPanel.hidden = !dead;

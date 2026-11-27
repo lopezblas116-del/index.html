@@ -112,27 +112,14 @@ function installWorldUi() {
   ui.id = "mil-almas-ui";
   ui.innerHTML = `
     <div id="mil-globo-wrap">
-      <button id="mil-globo" type="button" aria-expanded="false" aria-controls="mil-globo-menu" aria-label="Menú del mundo vivo">
+      <button id="mil-globo" type="button" aria-label="Abrir el mundo vivo: tu Atlas, tus almas, tu mar">
         <span class="mil-globo-ring" aria-hidden="true"></span>
         <span class="mil-globo-icon" aria-hidden="true">🌍</span>
       </button>
-      <nav id="mil-globo-menu" class="mil-globo-menu oculto" aria-label="Paneles del mundo">
-        <p class="mil-menu-seccion">Tu historia</p>
-        <button type="button" data-mil-accion="bitacora"><span aria-hidden="true">📜</span><span class="mil-menu-txt">Bitácora del Mar<small>Misiones, crónicas y tu cartel SE BUSCA</small></span></button>
-        <button type="button" data-mil-accion="alma"><span aria-hidden="true">👤</span><span class="mil-menu-txt">Mi alma<small>Tu tarjeta viva en el mundo</small></span></button>
-        <button type="button" data-mil-accion="atlas"><span aria-hidden="true">🗺️</span><span class="mil-menu-txt">Atlas del Alma<small>Tu viaje, islas pisadas y ruta dorada</small></span></button>
-        <p class="mil-menu-seccion">El mundo</p>
-        <button type="button" data-mil-accion="enciclopedia"><span aria-hidden="true">📖</span><span class="mil-menu-txt">Enciclopedia del Mar<small>Frutas, razas, islas y reliquias</small></span></button>
-        <p class="mil-menu-seccion">Sistema</p>
-        <button type="button" data-mil-accion="sistema"><span aria-hidden="true">⚙️</span><span class="mil-menu-txt">Sistema, GM y datos<small>Sonido, guardado, exportar y panel GM</small></span></button>
-      </nav>
+      
             </div>
     </div>
-    <section id="mil-feed-drawer" class="mil-feed-drawer oculto" aria-label="Bitácora del mundo">
-      <div class="mil-feed-heading"><h2><span aria-hidden="true">🐌</span> Última hora</h2><button type="button" data-close-feed aria-label="Cerrar bitácora">×</button></div>
-      <p class="mil-feed-kacha">¡Purupurupu! <em>kacha</em> — el caracol transpondedor te trae tu mar al minuto.</p>
-      <div id="feed" aria-live="polite"></div>
-    </section>
+    
     <section id="pop-isla" class="mil-panel mil-island-pop oculto" aria-label="Detalles de isla">
       <button id="pop-cerrar" type="button" class="mil-close" aria-label="Cerrar isla">×</button>
       <h2 id="pi-titulo"></h2><p id="pi-region"></p><div id="pi-control"></div>
@@ -151,82 +138,25 @@ function installWorldUi() {
       <div id="ft-cofre"></div><div id="ft-insignias"></div>
       <h3>Susurros</h3><div id="ft-susurros"></div>
     </section>
-    <section id="periodico" class="mil-panel mil-newspaper oculto" aria-label="Hemeroteca">
-      <button id="per-cerrar" type="button" class="mil-close" aria-label="Cerrar hemeroteca">×</button>
-      <h2>Hemeroteca del mar</h2><div id="per-cuerpo"></div>
-    </section>
-    <section id="atlas" class="mil-panel mil-atlas oculto" aria-label="Atlas del Alma">
-      <button id="atlas-cerrar" type="button" class="mil-close" aria-label="Cerrar atlas">×</button>
-      <p class="mil-eyebrow">Tu viaje · Mundo vivo</p>
-      <h2>Atlas del Alma</h2><div class="mil-globo-head"><strong>MUNDO VIVO</strong><span><b id="cab-almas">—</b> almas · <span id="cab-reloj">—</span></span></div>
-      <p id="at-progreso"></p>
-      <div class="mil-atlas-barra"><i id="at-barra"></i></div>
-      <h3>Los Cuatro Cubos Rojos</h3>
-      <div id="at-cubos" class="mil-atlas-cubos"></div>
-      <p id="at-cubos-nota" class="mil-muted"></p>
-      <h3>Los Cubos Azules</h3>
-      <div id="at-azules" class="mil-atlas-cubos"></div>
-      <h3>El Cubo Dorado</h3>
-      <div id="at-dorado" class="mil-atlas-cubos"></div>
-      <h3>Islas de tu historia</h3>
-      <div id="at-islas" class="mil-atlas-islas"></div>
-      <h3>Momentos</h3>
-      <div id="at-momentos"></div>
-    </section>
-    <section id="ajustes" class="mil-panel mil-settings oculto" aria-label="Ajustes del mundo">
-      <button id="aj-cerrar" type="button" class="mil-close" aria-label="Cerrar ajustes">×</button>
-      <h2>Ajustes del mundo vivo</h2>
-      <div class="mil-settings-actions">
-        <button id="aj-guardar" type="button">Guardar</button>
-        <button id="aj-exportar" type="button">Exportar</button>
-        <button id="aj-importar" type="button">Importar</button>
-        <input id="aj-fichero" type="file" accept="application/json" hidden>
-        <button id="aj-borrar" type="button">Nuevo mundo</button>
-      </div>
-      <div><button class="filtro sel" data-f="mimar" type="button">Mi mar</button><button class="filtro" data-f="todo" type="button">Todo</button><button class="filtro" data-f="importante" type="button">Importante</button><button class="filtro" data-f="mio" type="button">Mi alma</button></div>
-      <div><button class="ritmo sel" data-r="1" type="button">×1</button><button class="ritmo" data-r="4" type="button">×4</button><button class="ritmo" data-r="12" type="button">×12</button></div>
-    </section>
+    
+    
+    
     <div id="toast" class="mil-toast oculto" role="status" aria-live="polite"></div>`;
   document.body.append(ui);
-  // el globo del mundo: tocar el orbe despliega la LISTA del mundo —
-  // Atlas del Alma, Mi alma, Hemeroteca, Última hora y Ajustes. Fuera del
-  // orbe (o de la lista), se cierra: el mapa queda limpio.
+  // EL ORBE ES UNA PUERTA, NO UN MENÚ: un toque abre "El Mundo Vivo" del dock.
+  // Cero menús intermedios, cero destinos que repitan otras puertas.
   const globo = ui.querySelector("#mil-globo");
-  const menuMundo = ui.querySelector("#mil-globo-menu");
-  if (globo && menuMundo) {
-    const cerrarMenu = () => { menuMundo.classList.add("oculto"); globo.setAttribute("aria-expanded", "false"); };
+  if (globo) {
     globo.addEventListener("click", (event) => {
       event.stopPropagation();
-      const abierto = !menuMundo.classList.contains("oculto");
-      menuMundo.classList.toggle("oculto", abierto);
-      globo.setAttribute("aria-expanded", String(!abierto));
-    });
-    menuMundo.addEventListener("click", (event) => {
-      const item = event.target.closest("[data-mil-accion]");
-      if (!item) return;
-      cerrarMenu();
-      const accion = item.dataset.milAccion;
-      // teleportador: las puertas del HUD existen (ocultas en el dock) y el menú las pisa a distancia
-      // UNA PUERTA, UN DESTINO: cinco ítems, cinco destinos distintos — cero
-      // repeticiones, cero puertas muertas (la Enciclopedia vuelve vía su puerta oculta).
-      if (accion === "bitacora") document.querySelector('#bottom-nav [data-hud-panel="news"]')?.click();
-      else if (accion === "alma") document.querySelector('#bottom-nav [data-hud-panel="profile"]')?.click();
-      else if (accion === "atlas") document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
-      else if (accion === "enciclopedia") document.querySelector('#bottom-nav [data-hud-panel="codex"]')?.click();
-      else if (accion === "sistema") (window.ONE_HUD?.abrirMundo ? window.ONE_HUD.abrirMundo("sistema") : document.querySelector('.one-hud-settings')?.click());
-    });
-    document.addEventListener("click", (event) => {
-      if (!menuMundo.classList.contains("oculto") && !event.target.closest("#mil-globo-wrap")) cerrarMenu();
+      document.querySelector('#bottom-nav [data-hud-panel="mundo"]')?.click();
     });
   }
   // La Bitácora del nav inferior también cuenta como lectura
   document.addEventListener("click", (event) => {
     if (event.target.closest('[data-hud-panel="news"]')) window.UI?.marcarLeidas?.();
   });
-  ui.querySelector("#atlas-cerrar").addEventListener("click", () => {
-    byId("atlas").classList.add("oculto");
-  });
-  document.addEventListener("click", (event) => {
+    document.addEventListener("click", (event) => {
     // NOTA: el botón "Navegación / Isla" del nav YA NO se secuestra aquí (stopPropagation
     // en captura lo mataba y, si la isla no mapeaba, el botón quedaba muerto sin panel).
     // Ahora abre el panel de navegación del HUD; el vuelo a tu isla vive dentro del panel

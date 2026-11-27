@@ -28,7 +28,6 @@
   </div>
   <header class="masthead">
     <div class="brand-lockup"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-7 5 3 5-3M5 13a7 7 0 0 0 14 0m-16 5q9 6 18 0"/></svg></span><div class="brand-copy"><p class="eyebrow">Bitácora del Mar</p><h1>One-Latam <span>RPG</span></h1></div></div>
-    <div class="header-right"><span id="game-clock" class="game-clock">Día 1 · 00:00</span><span id="header-avatar-status" class="header-status" role="status">● Avatar activo</span><button id="reset-button" class="button button-secondary" type="button" hidden>Nueva partida</button></div>
   </header>
   <section id="wizard-container" aria-label="Creación de personaje">
     <div class="wizard-card panel setup-panel">
@@ -45,15 +44,9 @@
     </div>
   </section>
   <section id="game-container" hidden><div class="game-grid">
-    <aside class="panel character-panel"><div class="section-heading"><div><p class="eyebrow">Tarjeta del Alma</p><h2 id="character-name-display">—</h2></div><span id="level-badge" class="badge">Nivel 1</span></div><dl class="character-details"><div><dt>Bando / rango</dt><dd id="faction-display">—</dd></div><div><dt>Mar de origen</dt><dd id="origin-display">—</dd></div><div><dt>Ubicación</dt><dd id="location-display">—</dd></div><div><dt>Log Pose</dt><dd id="log-pose-display">—</dd></div><div><dt>Sueño</dt><dd id="dream-display">—</dd></div><div><dt>Rasgos</dt><dd id="traits-display">—</dd></div><div><dt>Akuma no Mi</dt><dd id="fruit-display">Ninguna</dd></div><div><dt>Recompensa</dt><dd id="bounty-display">฿ 0</dd></div><div><dt>Berries</dt><dd id="berries-display">฿ 0</dd></div><div><dt>Haki</dt><dd id="haki-display">—</dd></div></dl><div class="stats"><div class="stat-row"><div><span>Salud</span><strong id="health-value">—</strong></div><progress id="health-bar" max="100" value="100" aria-label="Salud"></progress></div><div>Fuerza <strong id="strength-value">—</strong></div><div>Agilidad <strong id="agility-value">—</strong></div><div>Ingenio <strong id="ingenuity-value">—</strong></div><div class="stat-row"><p id="xp-display">—</p><progress id="xp-bar" max="100" value="0" aria-label="Experiencia para el siguiente nivel"></progress></div></div></aside>
     <div class="main-column">
       <section id="map-panel" class="panel map-panel" aria-labelledby="map-heading"><h2 id="map-heading" class="visually-hidden">Mapa mundial vivo</h2><div id="canvas-container"></div></section>
       
-      <section class="panel mission-panel"><p class="eyebrow">Bitácora de misiones</p><h2>Expedición</h2><h3 id="mission-title" class="mission-title">Misión</h3><p id="mission-text" class="muted">Aventura en curso.</p><ol id="expedition-route" class="expedition-route"></ol><p id="technique-text" class="technique-text">Técnicas</p></section>
-      <section id="wanted-poster" class="panel wanted-panel"><p class="eyebrow">Oficina de Prensa · Cartel de recompensa</p><h2>SE BUSCA</h2><p id="wanted-name" class="wanted-name">—</p><p id="wanted-handle" class="wanted-handle">—</p><p id="wanted-bounty" class="wanted-bounty">SIN RECOMPENSA</p><p id="wanted-note" class="wanted-note">—</p></section>
-      <section id="boards-panel" class="panel log-panel"><div class="section-heading"><div><p class="eyebrow">En directo</p><h2>Bitácora del Mar</h2></div><span class="badge badge-live">● Activa</span></div><ol id="event-log" class="event-log"></ol></section>
-      <section class="panel world-panel"><div class="section-heading"><div><p class="eyebrow">Diario del Mar</p><h2>Reloj de Eras</h2></div><span id="world-era" class="badge">—</span></div><p id="world-clock"></p><h3 class="subheading">Noticias</h3><ul id="news-list"></ul><h3 class="subheading">Leyendas</h3><ul id="pantheon-list"></ul></section>
-      <section id="treasure-panel" class="panel treasure-panel"><div class="section-heading"><div><p class="eyebrow">Cofre del linaje</p><h2>Reliquias</h2></div><span id="treasure-count" class="badge">0</span></div><ul id="treasure-list"><li>El cofre espera su primera reliquia.</li></ul></section>
       <section id="legacy-panel" class="panel legacy-panel dead-state" hidden><p class="eyebrow">Permadeath · El linaje continúa</p><h2>El avatar ha caído</h2><p id="death-summary"></p><button class="button button-primary" type="button" data-open-heir>Crear heredero</button></section>
     </div>
   </div></section>
