@@ -926,3 +926,14 @@ body.reduced-motion #mil-almas-ui .mil-soul-card:not(.oculto){ animation: none; 
   /* la ficha vuelve a ser hoja inferior en móvil (esta regla corre después de la desktop) */
   #mil-almas-ui .mil-panel.mil-soul-card{ top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); max-height: calc(100vh - 220px); }
 }
+
+/* ── CARTEL DE LLEGADA: el chip era texto pelado pegado al nombre ("Isla Torinoisla") ── */
+#arrival-banner .arrival-name{ display: block; margin-top: 2px; font: 800 clamp(1.1rem, 4.6vw, 1.5rem)/1.25 'Manrope', system-ui, sans-serif; color: #f4c41a; letter-spacing: .02em; }
+#arrival-banner .arrival-chip{ display: inline-block; margin-top: 8px; padding: 3px 11px; border: 1px solid rgba(244,180,26,.4); border-radius: 999px; background: rgba(244,180,26,.12); color: #f4c41a; font: 600 .72rem/1.3 'Manrope', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+#arrival-banner .arrival-chip[hidden]{ display: none; }
+/* ── WIZARD: el pie sticky (46px + 70px de vuelo) tapaba el botón final del paso ── */
+#wizard-container .wizard-step.active{ padding-bottom: 132px; }
+/* ── MÓVIL: el chip del mar se alinea a la fila de la marca (grilla de dos filas) ── */
+@media (max-width:600px){
+  body.game-active #map-panel.mil-vivo #canvas-container .mil-chip{ top: calc(max(8px, env(safe-area-inset-top)) + 142px); }
+}

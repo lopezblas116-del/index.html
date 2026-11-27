@@ -67,7 +67,9 @@ export function anunciarLlegada(isla) {
     contenedor.append(banner);
   }
   banner.querySelector(".arrival-name").textContent = isla.name;
-  banner.querySelector(".arrival-chip").textContent = ETIQUETA_TEMA[isla.tema] || "Isla";
+  const chip = banner.querySelector(".arrival-chip");
+  chip.textContent = ETIQUETA_TEMA[isla.tema] || isla.region || "";
+  chip.hidden = !chip.textContent; // sin dato real no hay chip: jamás un "Isla" que duplica el nombre
   banner.hidden = false;
   requestAnimationFrame(() => banner.classList.add("visible"));
   clearTimeout(temporizadorBanner);

@@ -184,7 +184,10 @@
           const btn = e.target.closest('[data-ab]');
           if (!btn) return;
           const parts = btn.dataset.ab.split(':');
-          const r = AB.accion(sim, parts[0], parts[1]);
+          // sim era un fantasma aquí (ReferenceError silencioso desde el refactor
+          // de capas): comprar, vender, frente y evento estaban MUERTOS
+          if (!J.sim) return;
+          const r = AB.accion(J.sim, parts[0], parts[1]);
           if (r && r.msg) UI.toast(r.msg);
         });
       }

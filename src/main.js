@@ -65,7 +65,13 @@ function paint() {
   if (islaActual && islaActual !== (window.__islaAnunciada || null)) {
     window.__islaAnunciada = islaActual;
     const datos = getMapIslands(character).find((island) => island.name === islaActual);
-    anunciarLlegada(datos || { name: islaActual });
+    if (datos) anunciarLlegada(datos);
+    else {
+      // el mapa del sim puede no conocer este nombre (isla del mundo fusion): buscarla
+      // allí para dar el TEMA real al chip — y nunca un "Isla" pegado al nombre
+      const fi = window.D?.ISLA && Object.values(window.D.ISLA).find((x) => x.n === islaActual || "Isla " + x.n === islaActual || (islaActual || "").endsWith(x.n));
+      anunciarLlegada(fi ? { name: islaActual, tema: fi.tema, region: fi.reg } : { name: islaActual });
+    }
   }
   trackVisualChanges(character);
   if (syncCharacter(character) || starterAdventureStarted) saveGame(character);
