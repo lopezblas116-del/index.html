@@ -1328,7 +1328,7 @@ import { rollLineageRace } from '../races.js';
       }
       if (mejor) return { k: 'comercio', txt: 'Comprá ' + mejor.bk + ' acá (฿' + Math.round(mejor.aca).toLocaleString('es') + ') y vendé en ' + mejor.v.n + ' (฿' + Math.round(mejor.alla).toLocaleString('es') + '): ' + Math.round(mejor.g).toLocaleString('es') + ' de margen.' };
     }
-    return { k: 'explorar', txt: 'Explorá una isla que tu Atlas no conoce: la Bitácora se escribe pisando tierra.' };
+    return { k: 'explorar', txt: 'Pisá tierra nueva: así se escribe tu Bitácora.' };
   };
 
   // ── Susurros del jugador ──

@@ -618,6 +618,14 @@ import { getMapIslands } from '../map.js';
         const p = AB.precio(sim, u.isl, k);
         if (p && p > u.cargo[k].costo) txt = '💰 Tu ' + k + ' vale ฿' + p.toLocaleString('es') + ' en este puerto (pagaste ฿' + Math.round(u.cargo[k].costo).toLocaleString('es') + '): vendé en el pop de la isla';
       }
+      // LOS PRIMEROS MINUTOS: el cerebro-TikTok se va si la pantalla no le dice
+      // qué hacer YA. Mientras la partida es recién nacida (pocos latidos del
+      // jugador), el rumbo del día SIEMPRE entra — después, silencio salvo
+      // lo accionable (retención: no molestar sin motivo).
+      if (!txt && sim.user?.user && (globalThis.JUEGO?.character?.autonomy?.tickCount ?? 99) < 6) {
+        const r = sim.rumboDelDia ? sim.rumboDelDia() : null;
+        if (r && r.txt) txt = '✦ ' + r.txt;
+      }
       if (txt) { el.textContent = txt; el.hidden = false; }
       else el.hidden = true;
     } catch (e) { el.hidden = true; /* la brújula no tumba nada */ }

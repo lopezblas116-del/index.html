@@ -99,6 +99,7 @@ body.wizard-active #wizard-container::after {
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 #wizard-container .wizard-intro .cine-lead { margin: 0 auto; max-width: 62ch; color: #d5dfef; }
+#wizard-container .wz-regla { margin: 6px auto 0; max-width: 62ch; color: #f0b84a; font-weight: 600; font-size: 0.95em; letter-spacing: 0.02em; }
 #wizard-container .wz-hero-details { margin: 12px auto 0; max-width: 640px; text-align: left; }
 #wizard-container .wz-hero-details summary {
   cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px;

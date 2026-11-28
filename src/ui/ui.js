@@ -424,6 +424,7 @@ export function renderGame(character) {
   if (!character) return;
   const recienZarpado = document.body.classList.contains("wizard-active"); // solo el PRIMER zarpe, no reanudar
   instalarEspejo(character); // EL ESPEJO DEL CAPITÁN: el mundo y tu partida se espejan
+  if (globalThis.JUEGO) globalThis.JUEGO.character = character; // manija global: el mundo puede leer tu partida
   ensureAdvancedSystems(character);
   showGame();
   // EL ZARPE TIENE LLEGADA: recién al crear (no al reanudar), la cámara entrega a TU
@@ -990,7 +991,7 @@ function configureWizardLayout(form) {
     const ta = storyField.querySelector("textarea");
     if (ta) ta.required = false; // el dado puede contarlo; no es un formulario obligatorio
     const bloque = document.createElement("div"); bloque.className = "fase-historia";
-    const p = document.createElement("p"); p.className = "muted"; p.textContent = "Tu pasado moldea conductas ocultas. Escribilo o dejá que el dado lo cuente.";
+    const p = document.createElement("p"); p.className = "muted"; p.textContent = "Tu pasado decide cosas. Escribilo o tirá el dado.";
     const contador = document.createElement("p"); contador.id = "story-character-count"; contador.className = "muted small-text"; contador.textContent = "0 / 280";
     bloque.append(p, storyField, contador);
     cara.append(bloque);
@@ -1066,8 +1067,8 @@ function configureWizardLayout(form) {
     return `<tr><td><b>${nombre}</b></td><td>${ficha.prob}</td><td class="pos-fuerte">${ficha.fuerte}</td><td class="pos-debil">${ficha.debil}</td></tr>`;
   };
   const posibilidades = document.createElement("details"); posibilidades.className = "gacha-posibilidades";
-  posibilidades.innerHTML = `<summary>🎲 Ver las posibilidades del destino</summary><p class="muted small-text">Ocho linajes, cuatro mares: el humano es el 87% del mundo porque es el que más lejos llega; lo demás se reparte según lo que cada sangre guarda. Lo que el destino elija, se sentirá en el juego: fuertes y débiles de verdad.</p><table class="posibilidades-tabla"><thead><tr><th>Raza</th><th>Probabilidad</th><th>Fortaleza</th><th>Precio</th></tr></thead><tbody>${RAZAS_GACHA.map(([id, nombre, texto]) => fichaRow(id, nombre, texto)).join("")}</tbody></table>`;
-  const notaGacha = document.createElement("p"); notaGacha.className = "muted"; notaGacha.textContent = "Ni tu raza ni tu mar se eligen: se sortean. Tenés tres monedas del destino para observar tu suerte.";
+  posibilidades.innerHTML = `<summary>🎲 Ver las posibilidades del destino</summary><p class="muted small-text">8 linajes, 4 mares. El humano llega lejos; las demás sangres traen dones. Lo que salga, se siente en el juego.</p><table class="posibilidades-tabla"><thead><tr><th>Raza</th><th>Probabilidad</th><th>Fortaleza</th><th>Precio</th></tr></thead><tbody>${RAZAS_GACHA.map(([id, nombre, texto]) => fichaRow(id, nombre, texto)).join("")}</tbody></table>`;
+  const notaGacha = document.createElement("p"); notaGacha.className = "muted"; notaGacha.textContent = "Raza y mar se sortean: tenés 3 monedas.";
   gacha.append(notaGacha, monedas, rueda, invocar, resultado, posibilidades);
   destino.append(gacha);
 
@@ -1104,7 +1105,11 @@ function configureWizardLayout(form) {
   const secTela = document.createElement("section"); secTela.className = "wizard-choice-section bandera-seccion";
   const hTela = document.createElement("h4"); hTela.textContent = "Bordá tu bandera";
   const notaTela = document.createElement("p"); notaTela.className = "muted";
-  notaTela.textContent = "Cuatro capas y un nombre: esta tela ondeará en tu barco, en tu chip y en tu historia. El mar ya te la bordó con lo que elegiste — tocá lo que quieras cambiarla.";
+  notaTela.textContent = "Cuatro capas y un nombre: esa tela cuenta tu historia. Tocá para cambiarla.";
+  // LA REGLA DEL MUNDO, sembrada en el último paso: la deuda del espejo no
+  // sorprende a nadie — se anuncia desde la creación y se cobra en el mar.
+  const reglaZarpe = document.createElement("p"); reglaZarpe.className = "wz-regla";
+  reglaZarpe.textContent = "⚔️ El mundo no perdona: si te agarran, tu fuga será historia. Zarpa igual.";
   const lienzoBandera = document.createElement("canvas");
   lienzoBandera.id = "bandera-lienzo"; lienzoBandera.width = 336; lienzoBandera.height = 210;
   lienzoBandera.setAttribute("aria-label", "Vista previa de tu bandera ondeando");
@@ -1116,7 +1121,7 @@ function configureWizardLayout(form) {
   const dadoBordar = document.createElement("button"); dadoBordar.type = "button"; dadoBordar.className = "button button-secondary";
   dadoBordar.textContent = "🎲 El mar te bordó una";
   filaCrew.append(inputCrew, dadoBordar);
-  secTela.append(hTela, notaTela, lienzoBandera, filaCrew);
+  secTela.append(hTela, notaTela, reglaZarpe, lienzoBandera, filaCrew);
   // filas de capas: campo, patrón, emblema y las dos firmas — píldoras con muestra de color
   const capaFila = (nombre, capa, opciones, conChip) => {
     const fila = document.createElement("div"); fila.className = "bandera-capa";
@@ -1282,7 +1287,7 @@ function updateWizardSummary() {
       const mar2 = resultado?.dataset.seaNombre;
       const sueno2 = form.querySelector('[name="dream"]:checked')?.value || "Libertad";
       profecia.textContent = hit2 && hit2[0]
-        ? `«${hit2[0]}»: ${selectedTraits[0]} por barba y ${selectedTraits[1]} por hueso — el mar${mar2 ? ` de ${mar2}` : ""} ya prepara tu ${sueno2.toLowerCase()}.`
+        ? `«${hit2[0]}»: ${selectedTraits[0]} y ${selectedTraits[1]}. Tu mar ya te espera.`
         : `Dos formas de caminar (${selectedTraits.join(" y ")}): el mar lo notará desde tu primer puerto.`;
       profecia.hidden = false;
     } else {
