@@ -291,16 +291,16 @@ export function renderCodex(container, character, abrirPanel) {
     // RETENCIÓN PRIMERO: lista colapsada — el título promete, el cuerpo entrega
     // SOLO cuando se toca. Antes era un muro de texto que nadie leía.
     const filas = [
-      ["🧠", "Tu capitán decide solo — y a veces desobedece", "Tiene rasgos, sueño y carácter propios: evalúa cada sugerencia tuya y actúa por su cuenta. Si desobedece, no es un error: es su personalidad.", null],
-      ["🎯", "¿Perdiste a tu capitán en el mapa?", "Un toque en el 🎯 de la brújula (o tecla L): la cámara vuela hasta él y el mar lo señala con un ping dorado.", null],
+      ["🧠", "Tu capitán decide solo — y a veces desobedece", "Tiene rasgos y sueño propios. Evalúa cada sugerencia tuya. Si desobedece, no es error: es personalidad.", null],
+      ["🎯", "¿Perdiste a tu capitán en el mapa?", "Toqué el 🎯 (o tecla L): la cámara vuela hasta él.", null],
       ["📰", "Bitácora del Mar", "La última hora del mundo: lo que pasó mientras no mirabas, y el chat de tripulaciones.", "news"],
       ["🧭", "Navegar: el Log Pose manda", "Tu rumbo, la carga del Log Pose y el tablón de encargos del puerto. Sin carga no zarpa.", "navigation"],
       ["🥂", "La Taverna: contratos y rumores", "El corazón del puerto: conversaciones, contratos y el mercado donde especular.", "tavern"],
       ["⚓", "Tu Barco: la bodega decide si llegás vivo", "Provisiones, agua, equipo y reliquias para el viaje.", "chest"],
       ["👻", "Tu Alma: haki, fruta y linaje", "Tu tarjeta: nivel, haki, fruta del diablo, linaje y panteón de tu sangre.", "profile"],
       ["📋", "Tablón: contratos del puerto", "Comercio, caza de recompensas y arqueología: cada contrato cambia el mundo.", "boards"],
-      ["🌍", "~300 almas viven este mapa sin pedirte permiso", "El Mundo Vivo: el pop de cada isla (mercado, frente, evento, presentes) y el pulso del mundo.", "mundo"],
-      ["🔁", "El ciclo en 6 latidos", "1) Mirá la Bitácora: el mundo ya estaba vivo. 2) En Navegar, sugerí un encargo: tu avatar lo resuelve según su carácter. 3) Zarpá cuando el Log Pose cargue. 4) En cada puerto: comprá barato, vendé caro. 5) Con frente abierto, entrá: fama, berries e insignias. 6) El Catálogo y la Enciclopedia se escriben con tus descubrimientos.", null]
+      ["🌍", "~300 almas viven este mapa sin pedirte permiso", "El Mundo Vivo: el pop de cada isla. El pulso del mundo.", "mundo"],
+      ["🔁", "El ciclo en 6 latidos", "1) Mirá la Bitácora: el mundo ya pasó cosas.\n2) Sugerí un encargo en Navegar: tu avatar decide.\n3) Zarpá cuando el Log Pose cargue.\n4) Puerto: comprá barato, vendé caro.\n5) Frente abierto: entrá y cobrá fama.\n6) Tus descubrimientos escriben la Enciclopedia.", null]
     ];
     const lista = document.createElement("div");
     lista.className = "mil-guia";

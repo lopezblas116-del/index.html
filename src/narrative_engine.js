@@ -93,11 +93,13 @@ export function beginIslandCrisis(character, island, random = Math.random) {
     status: "active"
   };
   story.activeCrisis = crisis;
+  // CEREBRO-TIKTOK: el feed da el título-pleito, no la apertura entera —
+  // la apertura completa se lee cuando tocás la crisis y decidís.
   recordStoryEvent(character, {
     id: `${id}:started`,
     type: "crisis-started",
     title: crisis.title,
-    text: `${character.name} llegó cuando ${crisis.opening}`,
+    text: `${character.name} llegó en medio del pleito: ${crisis.title}`,
     actor: first,
     participants: [...crisis.participants],
     location: island.name,

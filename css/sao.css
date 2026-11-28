@@ -499,7 +499,7 @@ body.wizard-active #mil-chip { display: none !important; }
 .mil-guia-item summary:hover{ background:rgba(246,196,69,.08); }
 .mil-guia-ico{ font-size:17px; flex:0 0 auto; }
 .mil-guia-tit{ flex:1 1 auto; }
-.mil-guia-cuerpo{ padding:0 14px 12px 39px; color:#c9d6e8; font:600 13px/1.55 Manrope,system-ui,sans-serif; }
+.mil-guia-cuerpo{ padding:0 14px 12px 39px; color:#c9d6e8; font:600 13px/1.55 Manrope,system-ui,sans-serif; white-space:pre-line; }
 
 
 /* ── MUNDO VIVO: tu próximo paso + la escena del heredero ── */

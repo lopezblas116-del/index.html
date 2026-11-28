@@ -28,7 +28,9 @@ test("island crises persist a cause-linked event chain and change relationships"
 
   assert.equal(crisis.title, "Los suministros del puerto");
   assert.equal(activeIslandCrisis(captain, island.id).id, crisis.id);
-  assert.match(captain.world.story.events[0].text, /Lina reúne a los vecinos/);
+  // el registro del feed da el gancho (título-pleito); la apertura completa vive en la crisis
+  assert.match(captain.world.story.events[0].text, /llegó en medio del pleito: Los suministros del puerto/);
+  assert.match(crisis.opening, /Lina reúne a los vecinos/);
 
   const result = resolveIslandCrisis(captain, "help");
   assert.equal(result.ok, true);
