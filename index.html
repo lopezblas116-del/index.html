@@ -14,6 +14,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // EL MUNDO NUNCA SE QUEDA VIEJO: GitHub Pages cachea los assets por un año —
+    // sin este guardián, el jugador navega builds viejas mezcladas con HTML nuevo.
+    if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  </script>
   <script type="module" src="./src/systems.js"></script>
   <script type="module" src="./src/main.js"></script>
 </head>

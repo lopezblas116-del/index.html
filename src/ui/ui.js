@@ -394,8 +394,23 @@ function renderTerminalLog(list, entries, characterName, location = "") {
 
 export function renderGame(character) {
   if (!character) return;
+  const recienZarpado = document.body.classList.contains("wizard-active"); // solo el PRIMER zarpe, no reanudar
   ensureAdvancedSystems(character);
   showGame();
+  // EL ZARPE TIENE LLEGADA: recién al crear (no al reanudar), la cámara entrega a TU
+  // isla de origen. La fuente de verdad es el MOTOR (sim.user.isl → D.ISLA): el nombre
+  // del mapa raíz no siempre coincide con la isla fusion. Con reintentos cortos por si
+  // el motor despierta después del render.
+  if (recienZarpado && window.MAPA?.enfocarIsla) {
+    let intentos = 0;
+    const llegada = () => {
+      const u = window.JUEGO?.sim?.user;
+      const isla = (u && window.D?.ISLA?.[u.isl]) || (window.D?.ISLAS && window.D.ISLAS.find((x) => x.n === character.location?.island));
+      if (isla) window.MAPA.enfocarIsla(isla);
+      else if (++intentos < 10) setTimeout(llegada, 400);
+    };
+    setTimeout(llegada, 500);
+  }
   const world = character.world ?? { day: 0, year: 1, era: "Era de los Grandes Descubrimientos", news: [], pantheon: [] };
   const lineage = character.lineage ?? { family: character.name, generation: 1, legacyChest: [] };
   const soulCard = character.soulCard ?? { dream: "Libertad", traits: { pros: [], cons: [] } };
@@ -1221,6 +1236,31 @@ function updateWizardSummary() {
     "summary-alignment": form.querySelector('[name="alignment"]:checked')?.value || "Libertad"
   };
   for (const [id, value] of Object.entries(values)) if (byId(id)) byId(id).textContent = value;
+  // LA PROFECÍA DEL CAPITÁN: el gancho del zarpe, armado SOLO con lo que elegiste
+  // (constelación de tus dos rasgos + tu sueño + tu mar). Nada inventado.
+  const pasoResumen = byId("summary-traits")?.closest(".wizard-step");
+  let profecia = byId("mil-profecia");
+  if (!profecia && pasoResumen) {
+    profecia = document.createElement("p");
+    profecia.id = "mil-profecia";
+    profecia.className = "mil-profecia";
+    pasoResumen.append(profecia);
+  }
+  if (profecia) {
+    if (selectedTraits.length === 2) {
+      const buscar2 = (a, b) => CONSTELACIONES[`${a}|${b}`] || CONSTELACIONES[`${b}|${a}`];
+      const hit2 = buscar2(selectedTraits[0], selectedTraits[1]);
+      const mar2 = resultado?.dataset.seaNombre;
+      const sueno2 = form.querySelector('[name="dream"]:checked')?.value || "Libertad";
+      profecia.textContent = hit2 && hit2[0]
+        ? `«${hit2[0]}»: ${selectedTraits[0]} por barba y ${selectedTraits[1]} por hueso — el mar${mar2 ? ` de ${mar2}` : ""} ya prepara tu ${sueno2.toLowerCase()}.`
+        : `Dos formas de caminar (${selectedTraits.join(" y ")}): el mar lo notará desde tu primer puerto.`;
+      profecia.hidden = false;
+    } else {
+      profecia.hidden = true;
+      profecia.textContent = "";
+    }
+  }
   const avatarConfig = Object.fromEntries(["skin", "eyes", "hair", "outfit", "outfitColor", "coat", "accessory", "detail"].map((key) => [key, form.elements.namedItem(key)?.value]));
   avatarConfig.race = form.elements.namedItem("race")?.value || "human";
   for (const id of ["wizard-avatar-preview", "wizard-portrait"]) {
