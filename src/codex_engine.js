@@ -286,50 +286,53 @@ export function renderCodex(container, character, abrirPanel) {
     caja.className = "one-hud-codex-mundo";
     const intro = document.createElement("p");
     intro.className = "one-hud-codex-lore";
-    intro.textContent = "El universo está sentado. Este es tu mapa de juego: cada puerta abre una parte real del mundo — nada de acá es decoración.";
+    intro.textContent = "Tocá para leer. Cada puerta es una parte real del mundo — nada de acá es decoración.";
     caja.append(intro);
-    const puertas = document.createElement("div");
-    puertas.className = "one-hud-codex-items";
-    [
-      ["news", "📰 Bitácora del Mar", "La última hora del mundo: lo que pasó mientras no mirabas, y el chat de tripulaciones."],
-      ["navigation", "🧭 Navegar", "Tu rumbo: carga del Log Pose, preparación del zarpe y el tablón de encargos del puerto."],
-      ["tavern", " Taverna de Puerto", "El corazón del puerto: conversaciones, contratos y el mercado donde especular."],
-      ["chest", "⚓ Barco", "Tu bodega: provisiones, agua, equipo y reliquias que guardas para el viaje."],
-      ["profile", "👻 Tu Alma", "Tu tarjeta: nivel, haki, fruta del diablo, linaje y panteón de tu sangre."],
-      ["boards", "📋 Tablón de Puerto", "Contratos por categoría: comercio, caza de recompensas y arqueología."],
-      ["mundo", "🌍 El Mundo Vivo", "El mapa con las ~300 almas: pop de cada isla (mercado, frente, evento, presentes) y el pulso del mundo."]
-    ].forEach(([key, nom, texto]) => {
-      const fila = document.createElement("div");
-      fila.className = "one-hud-encargo";
-      const info = document.createElement("div");
-      info.className = "one-hud-encargo-info";
-      info.innerHTML = `<strong>${nom}</strong><small>${texto}</small>`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "one-hud-action";
-      btn.textContent = "Abrir →";
-      btn.addEventListener("click", () => abrir(key));
-      fila.append(info, btn);
-      puertas.append(fila);
-    });
-    caja.append(puertas);
-    const pasos = document.createElement("ol");
-    pasos.className = "one-hud-codex-lore";
-    pasos.style.paddingLeft = "1.2em";
-    [
-      "Mirá la Bitácora: el mundo ya estaba vivo antes de que llegaras.",
-      "En Navegar, sugerí un encargo del tablón: tu avatar lo resuelve según su carácter.",
-      "Zarpá cuando el Log Pose cargue: revisá provisiones y casco en el Barco.",
-      "En cada puerto: el pop de la isla tiene el mercado (comprá barato), la taberna (encargos) y el pulso.",
-      "Si hay evento de mundo o frente en tu isla, entrá: los héroes cobran fama, berries e insignias.",
-      "Cuando el códice quede chico, el Catálogo y la Enciclopedia se escriben con tus descubrimientos."
-    ].forEach((t) => pasos.append(Object.assign(document.createElement("li"), { textContent: t })));
-    const secPasos = document.createElement("section");
-    secPasos.className = "one-hud-codex-category";
-    const hPasos = document.createElement("h3");
-    hPasos.textContent = "El ciclo del juego";
-    secPasos.append(hPasos, pasos);
-    caja.append(secPasos);
+    // RETENCIÓN PRIMERO: lista colapsada — el título promete, el cuerpo entrega
+    // SOLO cuando se toca. Antes era un muro de texto que nadie leía.
+    const filas = [
+      ["🧠", "Tu capitán decide solo — y a veces desobedece", "Tiene rasgos, sueño y carácter propios: evalúa cada sugerencia tuya y actúa por su cuenta. Si desobedece, no es un error: es su personalidad.", null],
+      ["🎯", "¿Perdiste a tu capitán en el mapa?", "Un toque en el 🎯 de la brújula (o tecla L): la cámara vuela hasta él y el mar lo señala con un ping dorado.", null],
+      ["📰", "Bitácora del Mar", "La última hora del mundo: lo que pasó mientras no mirabas, y el chat de tripulaciones.", "news"],
+      ["🧭", "Navegar: el Log Pose manda", "Tu rumbo, la carga del Log Pose y el tablón de encargos del puerto. Sin carga no zarpa.", "navigation"],
+      ["🥂", "La Taverna: contratos y rumores", "El corazón del puerto: conversaciones, contratos y el mercado donde especular.", "tavern"],
+      ["⚓", "Tu Barco: la bodega decide si llegás vivo", "Provisiones, agua, equipo y reliquias para el viaje.", "chest"],
+      ["👻", "Tu Alma: haki, fruta y linaje", "Tu tarjeta: nivel, haki, fruta del diablo, linaje y panteón de tu sangre.", "profile"],
+      ["📋", "Tablón: contratos del puerto", "Comercio, caza de recompensas y arqueología: cada contrato cambia el mundo.", "boards"],
+      ["🌍", "~300 almas viven este mapa sin pedirte permiso", "El Mundo Vivo: el pop de cada isla (mercado, frente, evento, presentes) y el pulso del mundo.", "mundo"],
+      ["🔁", "El ciclo en 6 latidos", "1) Mirá la Bitácora: el mundo ya estaba vivo. 2) En Navegar, sugerí un encargo: tu avatar lo resuelve según su carácter. 3) Zarpá cuando el Log Pose cargue. 4) En cada puerto: comprá barato, vendé caro. 5) Con frente abierto, entrá: fama, berries e insignias. 6) El Catálogo y la Enciclopedia se escriben con tus descubrimientos.", null]
+    ];
+    const lista = document.createElement("div");
+    lista.className = "mil-guia";
+    for (const [ico, titulo, cuerpo, abrirA] of filas) {
+      const det = document.createElement("details");
+      det.className = "mil-guia-item";
+      const sum = document.createElement("summary");
+      const icoEl = document.createElement("span");
+      icoEl.className = "mil-guia-ico";
+      icoEl.textContent = ico;
+      const titEl = document.createElement("span");
+      titEl.className = "mil-guia-tit";
+      titEl.textContent = titulo;
+      sum.append(icoEl, titEl);
+      const cuerpoDiv = document.createElement("div");
+      cuerpoDiv.className = "mil-guia-cuerpo";
+      cuerpoDiv.textContent = cuerpo;
+      det.append(sum, cuerpoDiv);
+      if (abrirA) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "one-hud-action";
+        btn.textContent = "Abrir →";
+        btn.addEventListener("click", () => abrir(abrirA));
+        const pie = document.createElement("div");
+        pie.style.marginTop = "8px";
+        pie.append(btn);
+        cuerpoDiv.append(pie);
+      }
+      lista.append(det);
+    }
+    caja.append(lista);
     body.replaceChildren(caja);
   };
 

@@ -49,3 +49,43 @@ test("dxEnvuelto: la ruta más corta cruza la Muralla por el costurero", () => {
   assert.equal(ATM.dxEnvuelto(-2500, 2600), 100);
   assert.equal(ATM.dxEnvuelto(-100, 2600), -100);
 });
+
+// ── UBICAR A TU CAPITÁN: la brújula sabe dónde estás (tierra y mar) ──
+test("posicionCapitan: en tierra cae DENTRO de la isla con la matemática exacta del dibujo", () => {
+  globalThis.D = { ISLA: { foosha: { id: 'foosha', n: 'Villa Foosha', x: 400, y: 300, r: 26 } } };
+  const sim = { user: { isl: 'foosha', pos: { x: -1, y: 1 } } };
+  const pc = ATM.posicionCapitan(sim);
+  assert.ok(pc && pc.mar === false, "debe reportar tierra");
+  assert.equal(pc.x, 400 + (-1) * 26 * 0.7); // isl.x + pos.x * r * 0.7
+  assert.equal(pc.y, 300 + 1 * 26 * 0.5);    // isl.y + pos.y * r * 0.5
+});
+
+test("posicionCapitan: en el mar interpola el barco sobre el plan con el progreso real", () => {
+  const sim = { t: 500, user: { plan: { t0: 0, dur: 1000, x1: 900, y1: 200, pts: [{ x: 0, y: 0 }, { x: 1000, y: 0 }] } } };
+  const pc = ATM.posicionCapitan(sim);
+  assert.ok(pc && pc.mar === true, "debe reportar mar");
+  assert.equal(pc.x, 500); // mitad de la ruta al 50% del tiempo
+  assert.equal(pc.y, 0);
+  const fin = ATM.posicionCapitan({ t: 9999, user: { plan: { t0: 0, dur: 1000, x1: 900, y1: 200, pts: [{ x: 0, y: 0 }, { x: 1000, y: 0 }] } } });
+  assert.equal(fin.x, 1000); // clamp: llegada
+});
+
+test("posicionCapitan: sin capitán ni plan responde null sin tirar", () => {
+  assert.equal(ATM.posicionCapitan(null), null);
+  assert.equal(ATM.posicionCapitan({ user: null }), null);
+  assert.equal(ATM.posicionCapitan({ user: { isl: 'nadie' } }), null); // isla que no existe
+});
+
+test("ubicarCapitan: sin motor o sin cámara responde false (no tumba nada)", () => {
+  globalThis.JUEGO = { sim: null };
+  assert.equal(ATM.ubicarCapitan(), false);
+  globalThis.JUEGO = { sim: { user: { isl: 'foosha', pos: { x: 0, y: 0 } } } };
+  globalThis.MAPA = { cam: { z: 1 }, volar: (x, y, z, ms) => { globalThis.__vuelo = { x, y, z, ms }; } };
+  const ok = ATM.ubicarCapitan();
+  assert.equal(ok, true);
+  assert.equal(globalThis.__vuelo.x, 400); // centro de foosha con pos 0,0
+  assert.equal(globalThis.__vuelo.z, 2.3); // zoom de diorama: el avatar se VE
+  assert.equal(globalThis.JUEGO.sim._pings.length, 1);
+  assert.equal(globalThis.JUEGO.sim._pings[0].key, 'capitan');
+  delete globalThis.D; delete globalThis.JUEGO; delete globalThis.MAPA; delete globalThis.__vuelo;
+});

@@ -116,14 +116,14 @@
     const pings = sim._pings || [];
     const ICONOS = {
       tesoro: ['💰', '255,214,120'], combate: ['⚔️', '255,130,100'],
-      social: ['✨', '195,155,255'], fama: ['🏴', '255,214,120'], aviso: ['📰', '225,238,250']
+      social: ['✨', '195,155,255'], fama: ['🏴', '255,214,120'], aviso: ['📰', '225,238,250'], capitan: ['🎯', '246,224,94']
     };
     const tipoDe = { monedas: 'tesoro', reliquia: 'tesoro', hallazgo: 'tesoro', secreto: 'tesoro', cava: 'tesoro', cuboHallado: 'tesoro', cuboAzul: 'tesoro', cuboDorado: 'tesoro', cubosFin: 'tesoro', rutaFinal: 'tesoro', hito: 'tesoro', pozoFin: 'tesoro', derrota: 'combate', robo: 'combate', robo_pilla: 'combate', arresto: 'combate', arresto_gran: 'combate', naufragio: 'combate', fuga: 'combate', rescate: 'combate', funda: 'social', recluta: 'social', abandona: 'social', nuevoCap: 'social', amistad: 'social', rivalidad: 'social', heredero: 'social', despierta: 'social', nivel: 'social', habilidad: 'social', festival: 'social', cartel: 'fama', sube: 'fama', supernova: 'fama', emperador: 'fama', reymar: 'fama', flota: 'fama', primera: 'fama', fruta: 'social' };
     for (const p of pings) {
       const edad = ahora - p.t0;
       if (edad > 6500) continue;
       if (!vis(p.x, p.y, 40)) continue;
-      const par = ICONOS[tipoDe[p.key] || 'aviso'];
+      const par = ICONOS[p.key] || ICONOS[tipoDe[p.key]] || ICONOS.aviso;
       const k = edad / 6500;
       const alfa = (k < 0.12 ? k / 0.12 : 1 - Math.max(0, (k - 0.72) / 0.28));
       ctx.save();
@@ -597,6 +597,57 @@
     if (cv) cv.style.cursor = 'pointer';
   }
 
+  // ── pure: la posición real de tu capitán en coordenadas de mundo ──
+  // EXACTA a lo que dibuja el mapa: en tierra, isl.x + pos.x * r * 0.7 (y con *0.5);
+  // en el mar, el barco interpolado sobre los pts del plan con el progreso real.
+  ATM.posicionCapitan = function (sim) {
+    const u = sim && sim.user;
+    if (!u) return null;
+    if (u.plan && u.plan.x1 != null) {
+      const prog = clamp(((Number(sim.t) || 0) - (Number(u.plan.t0) || 0)) / Math.max(1, Number(u.plan.dur) || 1), 0, 1);
+      const P = u.plan.pts && u.plan.pts.length > 1 ? u.plan.pts : [{ x: u.plan.x0 != null ? u.plan.x0 : u.plan.x1, y: u.plan.y0 != null ? u.plan.y0 : u.plan.y1 }, { x: u.plan.x1, y: u.plan.y1 }];
+      if (!P[0] || P[0].x == null || !P[1] || P[1].x == null) return null;
+      const lens = []; let total = 0;
+      for (let i = 0; i < P.length - 1; i++) { const L = Math.hypot(P[i + 1].x - P[i].x, P[i + 1].y - P[i].y) || 0.001; lens.push(L); total += L; }
+      let dd = prog * total;
+      let wx = P[0].x, wy = P[0].y;
+      for (let i = 0; i < lens.length; i++) {
+        if (dd <= lens[i] || i === lens.length - 1) {
+          const kk = clamp(dd / lens[i], 0, 1);
+          wx = P[i].x + (P[i + 1].x - P[i].x) * kk;
+          wy = P[i].y + (P[i + 1].y - P[i].y) * kk;
+          break;
+        }
+        dd -= lens[i];
+      }
+      return { x: wx, y: wy, mar: true };
+    }
+    if (!u.isl || !G.D || !G.D.ISLA) return null;
+    const isl = G.D.ISLA[u.isl];
+    if (!isl) return null;
+    return {
+      x: isl.x + (Number(u.pos && u.pos.x) || 0) * isl.r * 0.7,
+      y: isl.y + (Number(u.pos && u.pos.y) || 0) * isl.r * 0.5,
+      mar: false
+    };
+  };
+
+  // ── UBICAR A TU CAPITÁN: un tap en la brújula y el mar te lo señala ──
+  // El amigo del capitán probó y no encontraba su avatar: la brújula mostraba el
+  // mundo, pero no a VOS. Vuela a tu posición real (tierra o mar) y suelta un
+  // ping 🎯 dorado sobre el sistema de testigos que ya existía.
+  ATM.ubicarCapitan = function () {
+    const sim = G.JUEGO && G.JUEGO.sim, MAPA = G.MAPA;
+    if (!sim || !sim.user || !MAPA || !MAPA.volar || !MAPA.cam) return false;
+    const pc = ATM.posicionCapitan(sim);
+    if (!pc || !Number.isFinite(pc.x) || !Number.isFinite(pc.y)) return false;
+    MAPA.volar(pc.x, pc.y, Math.max(MAPA.cam.z, pc.mar ? 1.6 : 2.3), 900);
+    const ahora = performance.now();
+    sim._pings = (sim._pings || []).filter((q) => ahora - q.t0 < 6500);
+    sim._pings.push({ x: pc.x, y: pc.y, t0: ahora, key: 'capitan' });
+    return true;
+  };
+
   // ── minimapa-brújula: el mundo entero, tu posición, la tormenta, el rumbo ─
   function creaMini() {
     if (mini || !cvDe() || !cvDe().parentElement) return;
@@ -623,6 +674,21 @@
     });
     cvDe().parentElement.appendChild(mini);
     miniCtx = mini.getContext('2d');
+    // EL TAP QUE SALVA: el botón vive sobre la brújula, siempre al alcance del pulgar
+    const padreMini = cvDe().parentElement;
+    if (!padreMini.querySelector('#mil-ubicar')) {
+      const ubicar = document.createElement('button');
+      ubicar.type = 'button';
+      ubicar.id = 'mil-ubicar';
+      ubicar.textContent = '🎯';
+      // anclado a la GEOMETRÍA de la brújula (la misma esquina del minimapa):
+      // position:absolute resuelve contra el contenedor del lienzo, no contra el mini
+      ubicar.style.cssText = 'position:absolute;left:' + (12 + MINI_W - 18) + 'px;bottom:' + (12 + MINI_H - 18) + 'px;';
+      ubicar.setAttribute('aria-label', 'Encontrar a tu capitán: vuela hasta él y lo señala con un ping dorado');
+      ubicar.title = 'Encontrar a tu capitán (tecla L)';
+      ubicar.addEventListener('click', (e) => { e.stopPropagation(); ATM.ubicarCapitan(); });
+      padreMini.appendChild(ubicar);
+    }
   }
 
   function pintaMini(sim, t, cam, D) {
@@ -679,6 +745,16 @@
       mctx.strokeStyle = 'rgba(246,224,94,0.9)'; mctx.lineWidth = 1.2;
       mctx.strokeRect(px - 3.5, py - 3.5, 7, 7);
     }
+    // TU CAPITÁN sobre la brújula: un punto vivo donde pisa (tierra o mar), no solo su isla
+    const pc = ATM.posicionCapitan(sim);
+    if (pc) {
+      const qx = ex + pc.x * sx, qy = ex + pc.y * sy;
+      const latido = 1.5 + Math.sin(t / 240) * 0.45;
+      mctx.fillStyle = '#ffe97a';
+      mctx.beginPath(); mctx.arc(qx, qy, latido, 0, 7); mctx.fill();
+      mctx.strokeStyle = 'rgba(255,224,94,0.7)'; mctx.lineWidth = 1;
+      mctx.beginPath(); mctx.arc(qx, qy, latido + 2.4 + Math.sin(t / 240 + 1.2) * 0.7, 0, 7); mctx.stroke();
+    }
     // lo que ves ahora mismo: rectángulo de la cámara (con envoltura)
     const vw = (cvDe().clientWidth / cam.z) * sx, vh = (cvDe().clientHeight / cam.z) * sy;
     mctx.strokeStyle = 'rgba(255,255,255,0.95)'; mctx.lineWidth = 1.1;
@@ -728,6 +804,7 @@
           if (isla) MAPA.volar(isla.x, isla.y, 1.3, 750);
           e.preventDefault(); break;
         }
+        case 'l': case 'L': ATM.ubicarCapitan(); e.preventDefault(); break;
         case 'Escape':
           if (MAPA.enCine && MAPA.enCine()) { MAPA.volar(MAPA.cam.x, MAPA.cam.y, 1.25, 700); e.preventDefault(); }
           break;

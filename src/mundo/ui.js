@@ -605,7 +605,10 @@ import { getMapIslands } from '../map.js';
       const ev = sim.evento;
       const frente = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === u?.isl);
       const AB = globalThis.AB;
-      let txt = 'El mundo late sin vos: el pulso está en el mapa (botón Mundo)';
+      // RETENCIÓN: la pantalla se calla si no tiene algo ACCIONABLE que decir.
+      // Los textos genéricos ("el mundo late…") nadie los leía: solo hablan el
+      // evento vivo, el frente abierto en tu isla o la carga que ya vale más.
+      let txt = null;
       if (ev) {
         txt = '✦ ' + ev.nom + (ev.isl && D.ISLA[ev.isl] ? ' · ' + D.ISLA[ev.isl].n : '') + ': está pasando — los héroes cobran al cerrar';
       } else if (frente) {
@@ -614,12 +617,9 @@ import { getMapIslands } from '../map.js';
         const k = Object.keys(u.cargo)[0];
         const p = AB.precio(sim, u.isl, k);
         if (p && p > u.cargo[k].costo) txt = '💰 Tu ' + k + ' vale ฿' + p.toLocaleString('es') + ' en este puerto (pagaste ฿' + Math.round(u.cargo[k].costo).toLocaleString('es') + '): vendé en el pop de la isla';
-        else txt = '📦 Llevás carga en tu barco: mirá los precios del puerto en el pop de cada isla';
-      } else if (u) {
-        txt = 'El mercado del puerto compra y vende: comprá barato en una isla y vendé caro en la vecina';
       }
-      el.textContent = txt;
-      el.hidden = false;
+      if (txt) { el.textContent = txt; el.hidden = false; }
+      else el.hidden = true;
     } catch (e) { el.hidden = true; /* la brújula no tumba nada */ }
   };
 

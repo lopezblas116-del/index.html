@@ -478,3 +478,25 @@ body.wizard-active .wizard-card {
 }
 body.wizard-active #mar-sonido-btn,
 body.wizard-active #mil-chip { display: none !important; }
+
+
+/* ── LA BRÚJULA QUE ENCUENTRA A TU CAPITÁN + guía colapsada ── */
+#mil-ubicar{ width:40px; height:40px;
+  border-radius:50%; border:2px solid rgba(246,224,94,.9); background:radial-gradient(circle at 32% 30%, #2a3d63, #101a30 72%);
+  color:#ffe97a; font-size:17px; line-height:1; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.55), 0 0 0 3px rgba(0,0,0,.35);
+  display:flex; align-items:center; justify-content:center; padding:0;
+  transition:transform .18s ease, box-shadow .18s ease; }
+#mil-ubicar:hover, #mil-ubicar:focus-visible{ transform:scale(1.12); box-shadow:0 6px 18px rgba(0,0,0,.6), 0 0 14px rgba(246,224,94,.5); }
+#mil-ubicar:active{ transform:scale(.94); }
+.mil-guia{ display:flex; flex-direction:column; gap:7px; margin-top:10px; }
+.mil-guia-item{ background:rgba(10,18,38,.72); border:1px solid rgba(246,196,69,.28); border-radius:11px; overflow:hidden; }
+.mil-guia-item[open]{ border-color:rgba(246,196,69,.65); background:rgba(14,24,50,.9); }
+.mil-guia-item summary{ list-style:none; display:flex; align-items:center; gap:10px; min-height:46px; padding:8px 12px;
+  cursor:pointer; color:#f4e9c8; font:700 14px/1.25 Manrope,system-ui,sans-serif; }
+.mil-guia-item summary::-webkit-details-marker{ display:none; }
+.mil-guia-item summary::after{ content:"▸"; margin-left:auto; color:rgba(246,196,69,.85); transition:transform .2s ease; font-size:13px; }
+.mil-guia-item[open] summary::after{ transform:rotate(90deg); }
+.mil-guia-item summary:hover{ background:rgba(246,196,69,.08); }
+.mil-guia-ico{ font-size:17px; flex:0 0 auto; }
+.mil-guia-tit{ flex:1 1 auto; }
+.mil-guia-cuerpo{ padding:0 14px 12px 39px; color:#c9d6e8; font:600 13px/1.55 Manrope,system-ui,sans-serif; }
