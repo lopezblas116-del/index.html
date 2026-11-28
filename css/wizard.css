@@ -1,0 +1,339 @@
+/* ═════════════════════════════════════════════════════════════════════
+   WIZARD · CAPA FUTURISTA — vidrio, aurora y rail de fases (v10)
+   Carga DESPUÉS de main/sao/ui: gana el cascade sin pelear con lo viejo.
+   Todo scoped en #wizard-container: nada gotea al juego.
+   Paleta: la identidad del juego (oro #f4b41a + azul profundo) con un
+   acento cian de instrumento naval — el futuro se siente, no se grita.
+   ═════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --wz-oro: #f4b41a;
+  --wz-oro-claro: #f7c331;
+  --wz-cian: #4fd2ff;
+  --wz-vidrio: rgba(9, 16, 34, 0.66);
+  --wz-vidrio-alto: rgba(14, 24, 48, 0.85);
+  --wz-linea: rgba(255, 255, 255, 0.12);
+}
+
+/* ── EL FONDO VIVO: aurora y estrellas detrás de la creación ── */
+body.wizard-active #wizard-container { position: fixed; inset: 0; z-index: 60; }
+body.wizard-active #wizard-container::before {
+  content: ""; position: absolute; inset: -20%;
+  background:
+    radial-gradient(42% 34% at 18% 22%, rgba(79, 210, 255, 0.13), transparent 70%),
+    radial-gradient(50% 40% at 82% 18%, rgba(244, 180, 26, 0.12), transparent 72%),
+    radial-gradient(46% 42% at 72% 82%, rgba(120, 90, 255, 0.10), transparent 70%),
+    radial-gradient(38% 34% at 24% 84%, rgba(46, 120, 220, 0.11), transparent 70%);
+  filter: blur(42px);
+  animation: wz-aurora 46s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+body.wizard-active #wizard-container::after {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, rgba(255,255,255,.55) 45%, transparent 55%),
+    radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.42) 45%, transparent 55%),
+    radial-gradient(1.2px 1.2px at 32% 64%, rgba(255,255,255,.38) 45%, transparent 55%),
+    radial-gradient(1px 1px at 88% 58%, rgba(255,255,255,.34) 45%, transparent 55%),
+    radial-gradient(1.5px 1.5px at 55% 32%, rgba(244,180,26,.35) 45%, transparent 55%),
+    radial-gradient(1px 1px at 8% 82%, rgba(255,255,255,.30) 45%, transparent 55%),
+    radial-gradient(1.2px 1.2px at 66% 88%, rgba(79,210,255,.35) 45%, transparent 55%);
+  background-repeat: no-repeat;
+  animation: wz-titilar 7s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes wz-aurora {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50%  { transform: translate3d(2.5%, -1.8%, 0) rotate(2deg) scale(1.05); }
+  100% { transform: translate3d(-2%, 2%, 0) rotate(-1.5deg) scale(1.02); }
+}
+@keyframes wz-titilar { from { opacity: .55; } to { opacity: 1; } }
+
+/* ── LA TARJETA: vidrio con borde de gradiente y halo ── */
+#wizard-container > .wizard-card {
+  width: min(560px, 94vw);
+  max-width: min(560px, 94vw); /* mata el max-width:480px de sao.css: el cascade es de dos armas */
+  max-height: calc(100dvh - 24px);
+  padding: clamp(18px, 3.4vw, 34px);
+  border: 1px solid transparent;
+  border-radius: 22px;
+  background:
+    linear-gradient(var(--wz-vidrio-alto), var(--wz-vidrio-alto)) padding-box,
+    linear-gradient(135deg, rgba(244, 180, 26, 0.72), rgba(79, 210, 255, 0.30) 42%, rgba(120, 90, 255, 0.22) 68%, rgba(244, 180, 26, 0.42)) border-box;
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow:
+    0 26px 90px rgba(0, 0, 0, 0.62),
+    0 0 70px rgba(79, 210, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 180, 26, 0.5) transparent;
+}
+#wizard-container > .wizard-card::before,
+#wizard-container > .wizard-card::after { width: 30px; height: 30px; }
+@media (min-width: 1100px) {
+  /* el mar ancho merece espacio: dos columnas donde antes había scroll infinito */
+  #wizard-container > .wizard-card { width: min(980px, 92vw); max-width: min(980px, 92vw); }
+}
+
+/* ── EL HERO COMPACTO: una mirada, no un ensayo ── */
+#wizard-container .wizard-intro { margin-bottom: 14px; text-align: center; }
+#wizard-container .wizard-intro .eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 14px; border-radius: 999px;
+  border: 1px solid rgba(79, 210, 255, 0.35);
+  background: rgba(79, 210, 255, 0.08);
+  color: #a9e7ff; font-size: .72rem; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+}
+#wizard-container .wizard-intro .eyebrow::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--wz-cian); box-shadow: 0 0 10px var(--wz-cian);
+  animation: wz-pulso 2.4s ease-in-out infinite;
+}
+@keyframes wz-pulso { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.72); } }
+#wizard-container .wizard-intro h2 {
+  margin: 12px 0 6px; font-family: 'Anton', system-ui, sans-serif;
+  font-size: clamp(1.7rem, 5.6vw, 2.6rem); letter-spacing: .04em;
+  background: linear-gradient(100deg, #fff 20%, var(--wz-oro-claro) 55%, var(--wz-oro) 80%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#wizard-container .wizard-intro .cine-lead { margin: 0 auto; max-width: 62ch; color: #d5dfef; }
+#wizard-container .wz-hero-details { margin: 12px auto 0; max-width: 640px; text-align: left; }
+#wizard-container .wz-hero-details summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px;
+  color: var(--wz-cian); font-size: .82rem; font-weight: 600; opacity: .85;
+}
+#wizard-container .wz-hero-details summary::-webkit-details-marker { display: none; }
+#wizard-container .wz-hero-details summary::before { content: "◇"; transition: transform .2s; }
+#wizard-container .wz-hero-details[open] summary::before { transform: rotate(45deg); }
+#wizard-container .wz-hero-details > div {
+  margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--wz-linea); background: var(--wz-vidrio);
+  color: #c6d2e6; font-size: .88rem;
+}
+
+/* ── EL RAIL DE FASES: hitos numerados unidos por un cable de luz ── */
+#wizard-container .wizard-progress {
+  position: relative; display: flex; justify-content: space-between;
+  gap: 6px; margin: 18px 0 20px;
+}
+#wizard-container .wizard-progress::before {
+  content: ""; position: absolute; left: 4%; right: 4%; top: 21px; height: 2px;
+  background: linear-gradient(90deg, rgba(244,180,26,.5), rgba(79,210,255,.4), rgba(244,180,26,.5));
+  opacity: .35; pointer-events: none;
+}
+#wizard-container .fase-paso {
+  position: relative; z-index: 1; flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: .74rem; font-weight: 700; color: #8fa0bd; letter-spacing: .02em;
+  transition: color .2s;
+}
+#wizard-container .fase-paso::before {
+  content: attr(data-stepNav);
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--wz-linea); background: var(--wz-vidrio);
+  font-size: .95rem; font-weight: 800; color: #a9b8d4;
+  transition: all .22s ease;
+}
+#wizard-container .fase-paso::after { content: none; }
+#wizard-container .fase-paso:hover { color: #dfe8f6; }
+#wizard-container .fase-paso.active { color: #fff; }
+#wizard-container .fase-paso.active::before {
+  border-color: var(--wz-oro);
+  background: linear-gradient(140deg, var(--wz-oro-claro), var(--wz-oro));
+  color: #1b1204; transform: scale(1.08);
+  box-shadow: 0 0 22px rgba(244, 180, 26, 0.55), 0 0 8px rgba(244,180,26,.4);
+}
+#wizard-container .fase-paso.done::before {
+  content: "✓"; border-color: rgba(79, 210, 255, 0.65);
+  background: rgba(79, 210, 255, 0.13); color: var(--wz-cian);
+}
+@media (max-width: 560px) {
+  #wizard-container .wizard-progress { margin: 14px 0 16px; }
+  #wizard-container .fase-paso { font-size: .64rem; }
+  #wizard-container .fase-paso::before { width: 34px; height: 34px; font-size: .82rem; }
+  #wizard-container .wizard-progress::before { top: 17px; }
+}
+
+/* ── TRANSICIÓN DE FASES: entra navegado, no a los saltos ── */
+#wizard-container .wizard-step.active { animation: wz-fade-up .34s cubic-bezier(.22, 1, .36, 1); }
+@keyframes wz-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── ENCABEZADOS DE FASE: sello numerado + título con luz ── */
+#wizard-container .step-header h3 {
+  font-family: 'Anton', system-ui, sans-serif; font-weight: 400;
+  font-size: clamp(1.25rem, 3.4vw, 1.7rem); letter-spacing: .03em;
+  background: linear-gradient(100deg, #fff 30%, var(--wz-oro-claro));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#wizard-container .step-header .cine-narrativa { color: #b9c6dd; }
+
+/* ── FASE 1 · DOS COLUMNAS en mar ancho: cara a la izquierda, tela a la derecha ── */
+@media (min-width: 1100px) {
+  #wizard-container .fase-cara {
+    display: grid; grid-template-columns: 340px 1fr; gap: 26px; align-items: start;
+  }
+  #wizard-container .fase-cara .cara-preview {
+    position: sticky; top: 6px;
+    display: grid; justify-items: center; gap: 10px;
+    padding: 18px; border-radius: 16px;
+    border: 1px solid var(--wz-linea); background: var(--wz-vidrio);
+  }
+  #wizard-container .fase-cara .avatar-editor-preview { margin: 0; }
+  #wizard-container .fase-cara .fase-historia { grid-column: 2; }
+}
+#wizard-container .avatar-editor-preview {
+  display: grid; justify-items: center; gap: 8px;
+  padding: 14px; border-radius: 16px;
+  border: 1px solid var(--wz-linea); background: var(--wz-vidrio);
+}
+#wizard-container .avatar-editor-preview canvas {
+  border-radius: 12px; background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 26px rgba(79, 210, 255, 0.10), inset 0 0 18px rgba(0,0,0,.5);
+}
+#wizard-container .avatar-editor-preview span { color: #8fa0bd; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+
+/* inputs de vidrio con foco de instrumento */
+#wizard-container .wizard-form input[type="text"],
+#wizard-container .wizard-form input:not([type]),
+#wizard-container .wizard-form textarea,
+#wizard-container .wizard-form select {
+  background: rgba(6, 11, 24, 0.62); border: 1px solid var(--wz-linea);
+  border-radius: 11px; color: #f0f4fa; transition: border-color .18s, box-shadow .18s;
+}
+#wizard-container .wizard-form input:focus,
+#wizard-container .wizard-form textarea:focus,
+#wizard-container .wizard-form select:focus {
+  outline: none; border-color: var(--wz-oro);
+  box-shadow: 0 0 0 3px rgba(244, 180, 26, 0.16), 0 0 18px rgba(79, 210, 255, 0.14);
+}
+
+/* ── SWATCHES: fichas redondas con aro de selección ── */
+#wizard-container .swatch { border-radius: 999px; background: var(--wz-vidrio); border-color: var(--wz-linea); }
+#wizard-container .swatch:hover { border-color: rgba(79, 210, 255, 0.6); transform: translateY(-1px); }
+#wizard-container .swatch.selected {
+  border-color: var(--wz-oro); background: rgba(244, 180, 26, 0.14);
+  box-shadow: 0 0 0 1px var(--wz-oro) inset, 0 0 12px rgba(244, 180, 26, 0.25);
+}
+
+/* ── EL ANILLO DEL CARÁCTER: más aire, orbes de vidrio ── */
+#wizard-container .anillo-fase { display: grid; place-items: center; gap: 16px; }
+#wizard-container .anillo-svg { width: min(220px, 58vw); height: auto; filter: drop-shadow(0 0 26px rgba(79, 210, 255, 0.14)); }
+#wizard-container .anillo-rasgos { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 560px; }
+#wizard-container .rasgo-orbita {
+  padding: 9px 16px; border-radius: 14px; white-space: nowrap; /* el nombre no se parte: la órbita respira */
+  min-width: 88px; text-align: center;
+  border: 1px solid var(--wz-linea); background: var(--wz-vidrio);
+  transition: transform .18s, border-color .18s, box-shadow .18s, background .18s;
+}
+#wizard-container .rasgo-orbita strong { color: #eef3fb; font-size: .92rem; }
+#wizard-container .rasgo-orbita small { color: #8fa0bd; }
+#wizard-container .rasgo-orbita:hover { transform: translateY(-2px); border-color: rgba(79, 210, 255, 0.55); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+#wizard-container .rasgo-orbita.selected {
+  border-color: var(--wz-oro); background: rgba(244, 180, 26, 0.14);
+  box-shadow: 0 0 0 1px var(--wz-oro) inset, 0 0 16px rgba(244, 180, 26, 0.3);
+}
+#wizard-container .rasgo-orbita.selected strong { color: var(--wz-oro-claro); }
+
+/* ── EL DESTINO: monedas con aura y rueda de vidrio ── */
+#wizard-container .monedas-destino { display: flex; justify-content: center; gap: 14px; }
+#wizard-container .moneda {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, var(--wz-oro-claro), var(--wz-oro) 60%, #a97c0b);
+  box-shadow: 0 0 18px rgba(244, 180, 26, 0.4), inset 0 -3px 6px rgba(0,0,0,.35);
+}
+#wizard-container .moneda.gastada { background: rgba(255,255,255,.07); box-shadow: inset 0 0 8px rgba(0,0,0,.5); }
+#wizard-container .rueda-destino {
+  border: 1px solid var(--wz-linea); border-radius: 14px; background: var(--wz-vidrio);
+  padding: 14px; text-align: center;
+}
+
+/* ── LAS TARJETAS DE OPCIÓN: vidrio con alza y aro de oro ── */
+#wizard-container .option-card,
+#wizard-container .trait-card { border-color: var(--wz-linea); background: var(--wz-vidrio); }
+#wizard-container .option-card:hover,
+#wizard-container .trait-card:hover { transform: translateY(-2px); border-color: rgba(79, 210, 255, 0.5); }
+#wizard-container .option-card.selected,
+#wizard-container .trait-card.selected {
+  border-color: var(--wz-oro); background: rgba(244, 180, 26, 0.12);
+  box-shadow: 0 0 0 1px var(--wz-oro) inset, 0 0 16px rgba(244, 180, 26, 0.22);
+}
+
+/* ── LA TARJETA DEL ALMA: placa holográfica ── */
+#wizard-container .soul-card-preview {
+  background: linear-gradient(160deg, rgba(20,32,60,.92), rgba(10,18,38,.92));
+  border: 1px solid rgba(244, 180, 26, 0.4); border-radius: 18px;
+  box-shadow: 0 0 40px rgba(79, 210, 255, 0.08), inset 0 1px 0 rgba(255,255,255,.08);
+  position: relative; overflow: hidden;
+}
+#wizard-container .soul-card-preview::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(79, 210, 255, 0.05) 45%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── BOTONES: el oro manda, el vidrio acompaña ── */
+#wizard-container .button-primary {
+  background: linear-gradient(135deg, var(--wz-oro-claro), var(--wz-oro) 55%, #d99a0f);
+  border: 0; border-radius: 13px; color: #1b1204; font-weight: 800;
+  box-shadow: 0 8px 24px rgba(244, 180, 26, 0.32), inset 0 1px 0 rgba(255,255,255,.35);
+  transition: transform .16s, box-shadow .16s, filter .16s;
+}
+#wizard-container .button-primary:hover {
+  transform: translateY(-1px); filter: brightness(1.05);
+  box-shadow: 0 12px 32px rgba(244, 180, 26, 0.45), inset 0 1px 0 rgba(255,255,255,.4);
+}
+#wizard-container .button-primary:active { transform: translateY(0); filter: brightness(.97); }
+#wizard-container .button-secondary {
+  background: var(--wz-vidrio); border: 1px solid var(--wz-linea);
+  border-radius: 13px; color: #dfe8f6; transition: border-color .16s, transform .16s;
+}
+#wizard-container .button-secondary:hover { border-color: rgba(79, 210, 255, 0.5); transform: translateY(-1px); }
+#wizard-container .launch-button { animation: wz-cta 3.2s ease-in-out infinite; }
+@keyframes wz-cta {
+  0%, 100% { box-shadow: 0 8px 24px rgba(244,180,26,.32), 0 0 0 0 rgba(244,180,26,.28); }
+  50% { box-shadow: 0 8px 28px rgba(244,180,26,.45), 0 0 0 7px rgba(244,180,26,0); }
+}
+
+/* ── LA BARRA DE ACCIÓN: siempre a mano, vidrio flotante ── */
+#wizard-container .wizard-actions {
+  position: sticky; bottom: 0; z-index: 5;
+  margin: 16px calc(-1 * clamp(18px, 3.4vw, 34px)) calc(-1 * clamp(18px, 3.4vw, 34px));
+  padding: 12px clamp(18px, 3.4vw, 34px) max(12px, env(safe-area-inset-bottom, 12px));
+  background: linear-gradient(180deg, rgba(9,16,34,0) 0%, rgba(9,16,34,.88) 34%, rgba(9,16,34,.94) 100%);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(244, 180, 26, 0.22);
+}
+#wizard-container .wizard-actions .button { min-height: 46px; }
+@media (max-width: 560px) {
+  #wizard-container .wizard-actions { gap: 8px; }
+  #wizard-container .wizard-actions .button { flex: 1; padding-inline: 10px; }
+}
+
+/* ── ERRORES CON VOZ: chip de alerta, nunca una burbuja nativa ── */
+#wizard-container .wz-error {
+  margin-top: 6px; padding: 7px 12px; border-radius: 10px;
+  border: 1px solid rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.10);
+  color: #ffb4b4; font-size: .82rem; font-weight: 600;
+  animation: wz-fade-up .22s ease-out;
+}
+#wizard-container .wz-campo-error { border-color: rgba(255, 107, 107, 0.7) !important; box-shadow: 0 0 0 3px rgba(255,107,107,.14); }
+
+/* ── FASE 4 · dos columnas: decisiones a la izquierda, tu alma a la derecha ── */
+@media (min-width: 1100px) {
+  #wizard-container .fase-bandera { display: grid; grid-template-columns: 1fr 400px; gap: 26px; align-items: start; }
+  #wizard-container .fase-bandera .soul-card-preview { position: sticky; top: 6px; }
+}
+
+/* ── RESPETO AL QUE PREFIERE QUIETUD ── */
+@media (prefers-reduced-motion: reduce) {
+  #wizard-container *, #wizard-container *::before, #wizard-container *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

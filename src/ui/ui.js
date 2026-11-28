@@ -1412,7 +1412,10 @@ function showWizardStep(index) {
     step.classList.toggle("active", i === currentStep);
     step.setAttribute("aria-hidden", String(i !== currentStep));
   });
-  nav.forEach((paso, i) => paso.classList.toggle("active", i === currentStep));
+  nav.forEach((paso, i) => {
+    paso.classList.toggle("active", i === currentStep);
+    paso.classList.toggle("done", i < currentStep); // el cable de luz se enciende a tu paso
+  });
   if (byId("prev-step")) byId("prev-step").hidden = currentStep === 0;
   if (byId("next-step")) byId("next-step").hidden = currentStep === steps.length - 1;
   if (byId("submit-step")) byId("submit-step").hidden = currentStep !== steps.length - 1;
@@ -1425,6 +1428,17 @@ export function initWizard() {
   if (!form) return;
   configureWizardLayout(form);
   selectedTraits = [];
+  // EL ENTER NO ZARPA A MEDIAS: en una fase que no sea la última, Enter avanza
+  // de fase (captura antes del submit global de main.js). La prolijidad también
+  // es no perder tu personaje por una tecla.
+  form.addEventListener("submit", (event) => {
+    if (currentStep < [...document.querySelectorAll(".wizard-step")].length - 1) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const nxt = byId("next-step");
+      if (nxt && !nxt.hidden) nxt.click();
+    }
+  }, true);
   // ── validación con voz del juego: nada de burbujas nativas en inglés ──
   const mostrarError = (campo, mensaje) => {
     const label = campo?.closest("label");

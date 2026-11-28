@@ -537,7 +537,13 @@ export function renderHud(character){
     // PRIMERA VEZ EN EL UNIVERSO: el códice abre su pestaña "Cómo se juega" —
     // la guía con puertas reales a cada panel. El botón ? la reabre siempre.
     // (la bandera vive en localStorage ANTES de abrir: el paint corre cada segundo)
-    try{if(!localStorage.getItem("one_guia_v1")){localStorage.setItem("one_guia_v1","1");globalThis.__codexTab="guia";openPanel("codex")}}catch(e){/*sin localStorage: la ? sigue ahí*/}
+    try{if(!localStorage.getItem("one_guia_v1")){localStorage.setItem("one_guia_v1","1");globalThis.__codexTab="guia";
+      // LA GUÍA NO TAPA EL MUNDO EN EL SEGUNDO CERO: la izada y el despertar
+      // respiran 45 s primero — el mar enseña por sí mismo. Si el jugador ya
+      // abrió un panel solo, su curiosidad es mejor maestra y la guía se calla.
+      const tGuia=setTimeout(()=>{try{openPanel("codex")}catch(e){}},45000);
+      document.addEventListener("click",(e)=>{if(e.target.closest("[data-hud-panel]"))clearTimeout(tGuia)},{capture:true,once:true});
+    }}catch(e){/*sin localStorage: la ? sigue ahí*/}
   }
   const hour=Math.floor(minute/60);root.dataset.atmosphere=character?.travel?.climate==="calm-belt"?"mist":hour>=19||hour<6?"night":"day";
   // la luz del body la gobierna el mundo vivo (mundo/ui.js); el HUD solo aporta el mist de la Franja de Calma
