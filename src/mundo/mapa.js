@@ -86,6 +86,25 @@
       cv.parentElement.appendChild(nombre);
       MAPA._cineNombre = nombre;
     }
+    // ── VER o CAMINAR: el interruptor del capitán (desarmado = mirar) ──
+    if (cv.parentElement && !cv.parentElement.querySelector('#mil-caminar')) {
+      const caminar = document.createElement('button');
+      caminar.type = 'button';
+      caminar.id = 'mil-caminar';
+      caminar.textContent = '🚶 Caminar';
+      caminar.setAttribute('aria-pressed', 'false');
+      caminar.setAttribute('aria-label', 'Modo caminar: con este modo armado, tocar tu isla mueve a tu capitán; desarmado, tocar abre tu carta');
+      caminar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        MAPA._modoCaminar = !MAPA._modoCaminar;
+        caminar.textContent = MAPA._modoCaminar ? '🚶 Caminando — tocá tu isla' : '🚶 Caminar';
+        caminar.setAttribute('aria-pressed', String(!!MAPA._modoCaminar));
+        caminar.classList.toggle('armado', !!MAPA._modoCaminar);
+      });
+      caminar.hidden = true;
+      cv.parentElement.appendChild(caminar);
+      MAPA._btnCaminar = caminar;
+    }
     // el joystick se jubiló: el dedo manda — arrastre mueve, pinza acerca, rueda fija
 
     // ── interacción: arrastre, rueda, y PINZA con dos dedos centrada en el punto medio ──
@@ -223,15 +242,21 @@
   };
 
   MAPA.clickEn = function (wx, wy) {
-    // tu capitán camina: toque sobre TU isla con zoom cercano = caminar hasta el punto
+    // VER no es CAMINAR: dos intenciones, dos herramientas. El tap sobre TU isla
+    // abre tu carta (inspección, lugares) — caminar solo con el modo 🚶 armado.
+    // Antes TODO tap te mandaba a caminar y ni siquiera podías abrir tu propia carta.
     const u = MAPA._sim && MAPA._sim.user;
     if (u && u.isl && cam.z >= DETALLE_Z && !MAPA._sim._fusionAtSea) {
       const propia = D.ISLA[u.isl];
       if (propia && dist(wx, wy, propia.x, propia.y) < propia.r * 1.15) {
-        MAPA._caminar = {
-          x: clamp((wx - propia.x) / (propia.r * 0.7), -1, 1),
-          y: clamp((wy - propia.y) / (propia.r * 0.5), -1, 1)
-        };
+        if (MAPA._modoCaminar) {
+          MAPA._caminar = {
+            x: clamp((wx - propia.x) / (propia.r * 0.7), -1, 1),
+            y: clamp((wy - propia.y) / (propia.r * 0.5), -1, 1)
+          };
+          return;
+        }
+        selIsl = propia; onSel && onSel(propia); // mirar: tu carta abre, tu pie no se mueve
         return;
       }
     }
@@ -1141,6 +1166,11 @@
 
   function avatarMundo(sim, t) {
     const u = sim && sim.user;
+    // el interruptor 🚶 existe SOLO con tu isla bajo los pies y zoom de diorama
+    // (avatarMundo corre desde las DOS rutas de render: la condición no puede vivir fuera)
+    if (MAPA._btnCaminar) {
+      MAPA._btnCaminar.hidden = !Boolean(u && u.isl && !sim._fusionAtSea && !(u.plan && u.plan.x1 != null) && cam.z >= DETALLE_Z);
+    }
     if (!u) return;
     // EN EL MAR TU BARCO TE REPRESENTA: rumbo real, tu bandera, tu nombre.
     // Antes el capitán DESAPARECÍA al zarpar — el mundo se quedaba sin protagonista.
@@ -1163,44 +1193,124 @@
     if (cam.z >= DETALLE_Z) {
       // sombra + mini capitán en la MISMA tinta del mundo: outline, luz del norte,
       // ojos y sonrisa — proporción de héroe (algo más alto que una casa, nunca gigante)
-      const s = 1.15 * clamp(cam.z / 2.6, 1, 2.0);
-      const O = 'rgba(30,22,12,0.55)';
-      // TU apariencia del wizard manda: piel, ropa, pelo y cabeza — el capitán eres TÚ
+      // TU apariencia del wizard manda — y ahora de VERDAD: la raza cambia el cuerpo,
+      // la vestimenta elegida dibuja su propia silueta, el abrigo va encima.
       const AP = u._apariencia || {};
+      const RAZA = AP.race || 'human';
+      const s = 1.15 * clamp(cam.z / 2.6, 1, 2.0) * (RAZA === 'giant' ? 1.32 : RAZA === 'tontatta' ? 0.72 : 1);
+      const O = 'rgba(30,22,12,0.55)';
       const PIEL = { 'Clara': '#f2d5b8', 'Bronceada': '#d4a97f', 'Oscura': '#9c6b42' };
-      const piel = PIEL[AP.skin] || '#e8c8a0';
+      const piel = (RAZA === 'fishman') ? '#7fb3c9' : (PIEL[AP.skin] || '#e8c8a0');
       const ROPA = { 'Escarlata': '#c0392b', 'Rojo': '#b03a3a', 'Azul': '#2c5f9e', 'Celeste': '#5a9bd4', 'Turquesa': '#2e9e8f', 'Verde': '#3e8e4f', 'Amarillo': '#d9b451', 'Cobre': '#b06a3b', 'Marrón': '#7a4a2a', 'Vino': '#7a2a3a', 'Rosa': '#d478a0', 'Violeta': '#7a4a9e', 'Negro': '#2b2b33', 'Blanco': '#e8e4da' };
-      const ropa = ROPA[AP.outfitColor] || '#c0392b';
+      const DEFECTO_OUTFIT = { 'chaleco-sol': '#c0392b', 'uniforme-justicia': '#2c5f9e', 'chaqueta-viento': '#3e8e4f', 'abrigo-travesia': '#2b2b33', 'cuero-loguetown': '#7a4a2a', 'kimono-wano': '#b03a3a', 'manto-voluntad': '#2c5f9e', 'gabardina-colmillo': '#1c1c22' };
+      const ropa = ROPA[AP.outfitColor] || DEFECTO_OUTFIT[AP.outfit] || '#c0392b';
+      const coatC = (AP.coat && AP.coat !== 'Ninguno') ? (ROPA[AP.coat] || '#2b2b33') : null;
       const PELO = { 'Negro': '#1c1c22', 'Moreno': '#4a2c17', 'Rubio': '#d9b451', 'Rojo': '#a03520', 'Blanco': '#dcdcd4' };
       const pelo = PELO[AP.hair] || null;
+      const OJOS = { 'Marrón': '#5a3a20', 'Azul': '#2c5f9e', 'Verde': '#3e8e4f', 'Gris': '#8f9aa8' };
+      const ojosC = OJOS[AP.eyes] || '#2b1c10';
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(px + 0.2 * s, py + 0.5 * s, 2.1 * s, 0.85 * s, 0, 0, 7);
       ctx.fillStyle = 'rgba(6,26,48,0.35)';
       ctx.fill();
       ctx.restore();
-      // pantalón azul corto + botas con puntas: las piernas alternan al caminar
-      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s + pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, 1.15 * s);
+      // pantalón azul corto + botas con puntas: las piernas alternan al caminar (longlimb: más largas)
+      const altoPant = (RAZA === 'longlimb') ? 1.5 : 1.15;
+      ctx.fillStyle = '#3a5a8c'; ctx.fillRect(px - 1 * s + pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, altoPant * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.22 * s, py - 1.9 * s + bob, 0.95 * s, altoPant * s);
       ctx.fillStyle = '#4a3120'; ctx.fillRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.fillRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
       ctx.strokeStyle = O; ctx.lineWidth = 0.35;
       ctx.strokeRect(px - 1.1 * s + pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s); ctx.strokeRect(px + 0.05 * s - pasoX * 0.3 * s, py - 0.85 * s + bob, 1.05 * s, 0.85 * s);
-      // torso: TU color de ropa con luz del norte y dos botones
-      ctx.fillStyle = ropa; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
-      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 0.4 * s);
-      ctx.strokeStyle = O; ctx.strokeRect(px - 1.1 * s, py - 3.7 * s + bob, 2.2 * s, 1.85 * s);
-      ctx.fillStyle = 'rgba(30,22,12,0.5)'; ctx.fillRect(px - 0.2 * s, py - 3.35 * s + bob, 0.4 * s, 0.4 * s); ctx.fillRect(px - 0.2 * s, py - 2.55 * s + bob, 0.4 * s, 0.4 * s);
-      // brazos con puños: la piel que ELEGISTE en el creador
-      ctx.fillStyle = piel; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, 1.55 * s);
-      ctx.fillStyle = '#d4a97f'; ctx.fillRect(px - 1.6 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s); ctx.fillRect(px + 1.1 * s, py - 2.05 * s + bob, 0.5 * s, 0.5 * s);
-      // cara: TU piel, y tu pelo si vas a pelo; ojos y la sonrisa del que ya eligió su mar
+      // alas del cielo: detrás del cuerpo, blancas, de la raza que cayó del Mar Blanco
+      if (RAZA === 'sky') {
+        ctx.fillStyle = 'rgba(240,244,250,0.9)';
+        ctx.beginPath(); ctx.moveTo(px - 1.2 * s, py - 3.6 * s + bob); ctx.lineTo(px - 2.6 * s, py - 5.4 * s + bob); ctx.lineTo(px - 1.1 * s, py - 4.9 * s + bob); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px + 1.2 * s, py - 3.6 * s + bob); ctx.lineTo(px + 2.6 * s, py - 5.4 * s + bob); ctx.lineTo(px + 1.1 * s, py - 4.9 * s + bob); ctx.closePath(); ctx.fill();
+      }
+      // torso: LA VESTIMENTA QUE ELEGISTE dibuja su propia silueta (ya no un chaleco genérico)
+      const TX = px - 1.1 * s, TY = py - 3.7 * s + bob, TW = 2.2 * s, TH = 1.85 * s;
+      const OUTFIT = AP.outfit || 'chaleco-sol';
+      if (OUTFIT === 'uniforme-justicia') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW, TH);
+        ctx.fillStyle = '#e8e4da'; ctx.fillRect(TX, TY, TW * 0.3, 0.5 * s); ctx.fillRect(TX + TW * 0.7, TY, TW * 0.3, 0.5 * s); // hombreras
+        ctx.fillStyle = '#f6e05e'; for (let i = 0; i < 3; i++) ctx.fillRect(px - 0.15 * s, TY + 0.45 * s + i * 0.55 * s, 0.3 * s, 0.3 * s); // botones dorados
+        ctx.strokeStyle = O; ctx.lineWidth = 0.35; ctx.strokeRect(TX, TY, TW, TH);
+      } else if (OUTFIT === 'chaqueta-viento') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW, TH);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px - 0.08 * s, TY, 0.16 * s, TH); // cierre al medio
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY - 0.35 * s, TW, 0.4 * s); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(TX, TY - 0.35 * s, TW, 0.14 * s); // cuello alzado
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH);
+      } else if (OUTFIT === 'abrigo-travesia') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW, TH + 0.95 * s); // largo: cubre el pantalón
+        ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(px - 0.35 * s, TY, 0.7 * s, TH + 0.95 * s); // abertura central
+        ctx.fillStyle = 'rgba(30,22,12,0.5)'; for (let i = 0; i < 3; i++) ctx.fillRect(px - 0.1 * s, TY + 0.3 * s + i * 0.6 * s, 0.2 * s, 0.22 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH + 0.95 * s);
+      } else if (OUTFIT === 'kimono-wano') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW, TH + 0.4 * s);
+        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(TX, TY, TW * 0.45, TH + 0.4 * s); // solapa cruzada a la usanza de Wano
+        ctx.fillStyle = '#f6e05e'; ctx.fillRect(TX, TY + TH - 0.15 * s, TW, 0.42 * s); // obi dorado
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH + 0.4 * s);
+      } else if (OUTFIT === 'cuero-loguetown') {
+        ctx.fillStyle = '#3a3a44'; ctx.fillRect(TX, TY, TW, TH); // remera oscura debajo
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW * 0.3, TH); ctx.fillRect(TX + TW * 0.7, TY, TW * 0.3, TH); // cuero abierto
+        ctx.fillStyle = '#4a3120'; ctx.fillRect(TX, TY + TH - 0.45 * s, TW, 0.45 * s); ctx.fillStyle = '#f6e05e'; ctx.fillRect(px - 0.25 * s, TY + TH - 0.42 * s, 0.5 * s, 0.38 * s); // cinturón con hebillas
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH);
+      } else if (OUTFIT === 'manto-voluntad') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX - 0.75 * s, TY, TW + 1.5 * s, TH + 1.2 * s); // la capa es MÁS ancha que el cuerpo
+        ctx.fillStyle = '#e8e4da'; ctx.fillRect(TX, TY + 0.2 * s, TW, TH - 0.2 * s); // camisa clara
+        ctx.fillStyle = '#f6e05e'; ctx.fillRect(px - 0.3 * s, TY, 0.6 * s, 0.25 * s); // broche
+        ctx.strokeStyle = O; ctx.strokeRect(TX - 0.75 * s, TY, TW + 1.5 * s, TH + 1.2 * s);
+      } else if (OUTFIT === 'gabardina-colmillo') {
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW, TH + 0.95 * s);
+        ctx.fillStyle = ropa; ctx.fillRect(TX - 0.15 * s, TY - 0.5 * s, 0.6 * s, 0.55 * s); ctx.fillRect(TX + TW - 0.45 * s, TY - 0.5 * s, 0.6 * s, 0.55 * s); // cuello parado
+        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(px - 0.3 * s, TY, 0.6 * s, TH + 0.95 * s);
+        ctx.fillStyle = '#4a3120'; ctx.fillRect(TX, TY + TH - 0.5 * s, TW, 0.5 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH + 0.95 * s);
+      } else { // chaleco-sol y desconocidos: camisa + chaleco abierto a los costados
+        ctx.fillStyle = '#e8e4da'; ctx.fillRect(TX, TY, TW, TH);
+        ctx.fillStyle = ropa; ctx.fillRect(TX, TY, TW * 0.32, TH); ctx.fillRect(TX + TW * 0.68, TY, TW * 0.32, TH);
+        ctx.fillStyle = 'rgba(30,22,12,0.5)'; ctx.fillRect(px - 0.2 * s, TY + 0.35 * s, 0.4 * s, 0.4 * s); ctx.fillRect(px - 0.2 * s, TY + 1.15 * s, 0.4 * s, 0.4 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(TX, TY, TW, TH);
+      }
+      // EL ABRIGO ENCIMA si elegiste color propio: solapas largas que caen sobre el torso
+      if (coatC) {
+        ctx.fillStyle = coatC; ctx.fillRect(TX - 0.4 * s, TY, 0.72 * s, TH + 1.05 * s); ctx.fillRect(TX + TW - 0.32 * s, TY, 0.72 * s, TH + 1.05 * s);
+        ctx.strokeStyle = O; ctx.strokeRect(TX - 0.4 * s, TY, 0.72 * s, TH + 1.05 * s); ctx.strokeRect(TX + TW - 0.32 * s, TY, 0.72 * s, TH + 1.05 * s);
+      }
+      // brazos con puños: la piel que ELEGISTE (y longlimb los estira de verdad)
+      const ALTO_BRAZO = (RAZA === 'longlimb') ? 2.3 : 1.55;
+      ctx.fillStyle = piel; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + bob, 0.5 * s, ALTO_BRAZO * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + bob, 0.5 * s, ALTO_BRAZO * s);
+      ctx.fillStyle = piel; ctx.fillRect(px - 1.6 * s, py - 3.5 * s + ALTO_BRAZO * s + bob, 0.5 * s, 0.5 * s); ctx.fillRect(px + 1.1 * s, py - 3.5 * s + ALTO_BRAZO * s + bob, 0.5 * s, 0.5 * s);
+      // cara: TU piel y TU mirada; el pelo sale si vas a pelo; la sonrisa manda
       ctx.fillStyle = piel; ctx.fillRect(px - 0.85 * s, py - 5 * s + bob, 1.7 * s, 1.35 * s);
       if (pelo && (AP.accessory === 'Ninguno' || AP.accessory === 'Bandana')) {
         ctx.fillStyle = pelo; ctx.fillRect(px - 0.9 * s, py - 5.3 * s + bob, 1.8 * s, 0.55 * s);
         ctx.fillRect(px - 0.95 * s, py - 4.95 * s + bob, 0.25 * s, 0.8 * s);
         ctx.fillRect(px + 0.7 * s, py - 4.95 * s + bob, 0.25 * s, 0.8 * s);
       }
-      ctx.fillStyle = '#2b1c10'; ctx.fillRect(px - 0.55 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s); ctx.fillRect(px + 0.2 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s);
-      ctx.fillRect(px - 0.15 * s, py - 3.95 * s + bob, 0.3 * s, 0.16 * s);
+      // TU raza se ve en la cara: branquias, tercer ojo, pelaje de mink
+      if (RAZA === 'fishman') {
+        ctx.strokeStyle = 'rgba(20,40,60,0.55)'; ctx.lineWidth = 0.3;
+        ctx.beginPath(); ctx.moveTo(px - 0.65 * s, py - 3.6 * s + bob); ctx.lineTo(px - 0.65 * s, py - 3.35 * s + bob); ctx.moveTo(px - 0.3 * s, py - 3.6 * s + bob); ctx.lineTo(px - 0.3 * s, py - 3.35 * s + bob); ctx.moveTo(px + 0.3 * s, py - 3.6 * s + bob); ctx.lineTo(px + 0.3 * s, py - 3.35 * s + bob); ctx.stroke();
+      }
+      if (RAZA === 'threeeye') {
+        ctx.fillStyle = '#e8e4da'; ctx.fillRect(px - 0.18 * s, py - 5.15 * s + bob, 0.36 * s, 0.22 * s);
+        ctx.fillStyle = ojosC; ctx.fillRect(px - 0.05 * s, py - 5.1 * s + bob, 0.1 * s, 0.14 * s);
+      }
+      if (RAZA === 'mink') {
+        const pelaje = pelo || '#c9a86a';
+        ctx.fillStyle = pelaje;
+        ctx.beginPath(); ctx.moveTo(px - 0.9 * s, py - 5.2 * s + bob); ctx.lineTo(px - 0.75 * s, py - 6.3 * s + bob); ctx.lineTo(px - 0.35 * s, py - 5.25 * s + bob); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(px + 0.9 * s, py - 5.2 * s + bob); ctx.lineTo(px + 0.75 * s, py - 6.3 * s + bob); ctx.lineTo(px + 0.35 * s, py - 5.25 * s + bob); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = ojosC; ctx.fillRect(px - 0.55 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s); ctx.fillRect(px + 0.2 * s, py - 4.6 * s + bob, 0.35 * s, 0.45 * s);
+      ctx.fillStyle = '#2b1c10'; ctx.fillRect(px - 0.15 * s, py - 3.95 * s + bob, 0.3 * s, 0.16 * s);
+      // los detalles que ELEGISTE: aretes, cicatriz, collar o aro de metal
+      const det = AP.detail || 'Ninguno';
+      if (det === 'Aretes') { ctx.fillStyle = '#f6e05e'; ctx.fillRect(px - 1 * s, py - 4.2 * s + bob, 0.18 * s, 0.18 * s); ctx.fillRect(px + 0.82 * s, py - 4.2 * s + bob, 0.18 * s, 0.18 * s); }
+      if (det === 'Cicatriz') { ctx.strokeStyle = 'rgba(176,58,58,0.85)'; ctx.lineWidth = 0.22; ctx.beginPath(); ctx.moveTo(px - 0.5 * s, py - 4.95 * s + bob); ctx.lineTo(px + 0.1 * s, py - 4.1 * s + bob); ctx.stroke(); }
+      if (det === 'Collar') { ctx.fillStyle = '#f6e05e'; ctx.fillRect(px - 0.5 * s, TY + 0.15 * s, 0.2 * s, 0.2 * s); ctx.fillRect(px - 0.1 * s, TY + 0.1 * s, 0.2 * s, 0.2 * s); ctx.fillRect(px + 0.3 * s, TY + 0.15 * s, 0.2 * s, 0.2 * s); }
+      if (det === 'Aro de metal') { ctx.strokeStyle = 'rgba(246,224,94,0.7)'; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.arc(px, TY + TH / 2, 1.4 * s, 0, 7); ctx.stroke(); }
       // cabeza: el sombrero que ELEGISTE — paja, bandana, tricornio, gorra, capucha o tu pelo
       const acc = AP.accessory || 'Sombrero de paja';
       if (acc === 'Sombrero de paja') {
@@ -2204,6 +2314,13 @@
   MAPA.render = function (sim, t) {
     if (!ctx || !ancho || !alto) return; // el mapa puede iniciar oculto (canvas sin medir): no pintar hasta el refit
     MAPA._sim = sim; // las marcas de isla (secretos, cubos) leen el estado del mundo
+    // al zarpar el modo caminar se desarma solo (la condición fina vive en avatarMundo)
+    if (MAPA._btnCaminar && MAPA._btnCaminar.hidden && MAPA._modoCaminar) {
+      MAPA._modoCaminar = false;
+      MAPA._btnCaminar.textContent = '🚶 Caminar';
+      MAPA._btnCaminar.setAttribute('aria-pressed', 'false');
+      MAPA._btnCaminar.classList.remove('armado');
+    }
     pasaZoom(t); // la lupa persigue su objetivo ANTES de calcular la mezcla del globo
     actualizaCine(); // el HUD se retira solo al acercar (modo inmersión), antes de cualquier retorno
     const g = globoF();

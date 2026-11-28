@@ -15,7 +15,7 @@ test("avatar config is persisted and legacy appearance remains compatible", () =
   delete character.avatarConfig;
   character.appearance = { skin: "Oscura" };
   ensureAdvancedSystems(character);
-  assert.equal(character.avatarConfig.outfit, "Rojo");
+  assert.equal(character.avatarConfig.outfit, "chaleco-sol"); // default VÁLIDO (antes caía "Rojo", que no es id de vestimenta)
   assert.equal(character.avatarConfig.skin, "Oscura");
 });
 

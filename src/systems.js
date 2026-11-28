@@ -45,8 +45,9 @@ export function ensureAdvancedSystems(character) {
   character.avatarConfig = {
     skin: avatar.skin || "Clara", hair: avatar.hair || "Negro",
     accessory: avatar.accessory || "Ninguno", eyes: avatar.eyes || "Marrón",
-    outfit: avatar.outfit || "Rojo", detail: avatar.detail || "Ninguno",
-    coat: avatar.coat || "Ninguno"
+    outfit: avatar.outfit || "chaleco-sol", outfitColor: avatar.outfitColor || "", detail: avatar.detail || "Ninguno",
+    coat: avatar.coat || "Ninguno",
+    race: avatar.race || character.race || "human" // la raza viaja CON la cara (antes se borraba cada tick)
   };
   character.appearance = { ...character.avatarConfig };
   character.avatarActivity ??= "idle";

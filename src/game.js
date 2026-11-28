@@ -80,7 +80,8 @@ export function createCharacter({ name, username = "@usuario", faction = "Pirata
     skin: appearance.skin || "Clara", hair: appearance.hair || "Negro",
     accessory: appearance.accessory || "Ninguno", eyes: appearance.eyes || "Marrón",
     outfit: appearance.outfit || "chaleco-sol", outfitColor: appearance.outfitColor || "", detail: appearance.detail || "Ninguno",
-    coat: appearance.coat || "Ninguno"
+    coat: appearance.coat || "Ninguno",
+    race: appearance.race || race || "human"
   };
   const character = {
     version: 3,
@@ -140,7 +141,8 @@ function normalize(character) {
     skin: avatar.skin || "Clara", hair: avatar.hair || "Negro",
     accessory: avatar.accessory || "Ninguno", eyes: avatar.eyes || "Marrón",
     outfit: avatar.outfit || "chaleco-sol", outfitColor: avatar.outfitColor || "", detail: avatar.detail || "Ninguno",
-    coat: avatar.coat || "Ninguno"
+    coat: avatar.coat || "Ninguno",
+    race: avatar.race || character.race || "human"
   };
   character.appearance = { ...character.avatarConfig };
   character.avatarActivity ??= "idle";
