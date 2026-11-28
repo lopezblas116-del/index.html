@@ -949,3 +949,40 @@ body.reduced-motion #mil-almas-ui .mil-soul-card:not(.oculto){ animation: none; 
 #mil-caminar[hidden]{ display: none; }
 @media (max-width:600px){ #mil-caminar{ bottom: calc(96px + env(safe-area-inset-bottom)); right: 10px; padding: 7px 12px; font-size: 11.5px; } }
 @media (prefers-reduced-motion: reduce){ #mil-caminar{ backdrop-filter: none; } }
+
+/* ══ CARTA EN DOS CAPAS: breve al click, Isla Viva con "Ver Isla" ══ */
+.mil-hook{ font-family: Georgia, 'Times New Roman', serif; font-style: italic; color: rgba(232,228,218,.92);
+  font-size: .92rem; line-height: 1.45; margin: 10px 2px 12px; padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--oro-500, #d6a741); }
+#pi-cta{ display: grid; gap: 8px; margin-top: 6px; }
+#pi-ver{ min-height: 46px; border-radius: 12px; cursor: pointer;
+  border: 1px solid rgba(246,196,69,.75); background: linear-gradient(180deg, rgba(244,180,26,.24), rgba(232,145,45,.14));
+  color: #ffe9a8; font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; font-size: .9rem; box-shadow: 0 0 0 1px rgba(246,196,69,.15), 0 6px 18px rgba(244,180,26,.12);
+  transition: box-shadow .15s, background .15s, transform .1s; }
+#pi-ver:hover{ background: linear-gradient(180deg, rgba(244,180,26,.36), rgba(232,145,45,.2)); box-shadow: 0 0 18px rgba(244,180,26,.28); }
+#pi-ver:active{ transform: translateY(1px); }
+#pi-cta #pi-viajar{ width: 100%; min-height: 40px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.06); color: #efe6d2;
+  font-weight: 700; font-size: .82rem; letter-spacing: .03em; }
+#pi-cta #pi-viajar:hover:not(:disabled){ border-color: #f6c445; background: rgba(244,180,26,.12); }
+#pi-cta #pi-viajar:disabled{ opacity: .45; cursor: not-allowed; }
+#pi-llena{ max-height: min(52vh, 430px); overflow-y: auto; padding-right: 4px; }
+#pi-volver-carta{ margin-bottom: 10px; }
+/* los tonos de los lugares ganan insignia: el icono viste el color del sistema */
+.mil-lugar.tono-oro .mil-lugar-icono{ background: rgba(214,167,65,.2); box-shadow: inset 0 0 0 1px rgba(214,167,65,.45); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.tono-vida .mil-lugar-icono{ background: rgba(198,90,74,.2); box-shadow: inset 0 0 0 1px rgba(198,90,74,.45); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.tono-tierra .mil-lugar-icono{ background: rgba(138,158,90,.2); box-shadow: inset 0 0 0 1px rgba(138,158,90,.45); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.tono-peligro .mil-lugar-icono{ background: rgba(176,69,58,.22); box-shadow: inset 0 0 0 1px rgba(176,69,58,.5); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.tono-mar .mil-lugar-icono{ background: rgba(74,134,176,.2); box-shadow: inset 0 0 0 1px rgba(74,134,176,.45); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.tono-arcano .mil-lugar-icono{ background: rgba(138,106,176,.2); box-shadow: inset 0 0 0 1px rgba(138,106,176,.45); border-radius: 8px; padding: 2px 5px; }
+.mil-lugar.a-distancia{ opacity: .5; filter: saturate(.35); }
+/* la Isla Viva: el panel acompaña al diorama, el mapa protagoniza */
+body.mil-isla-viva #pop-isla{ width: min(360px, calc(100% - 24px)); }
+@media (max-width:640px){
+  body.mil-isla-viva #pop-isla{ top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); max-height: 46vh; }
+  #pi-llena{ max-height: 34vh; }
+}
+@media (prefers-reduced-motion: reduce){
+  #pi-ver{ transition: none; }
+}

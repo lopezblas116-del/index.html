@@ -94,12 +94,44 @@ import { getMapIslands } from '../map.js';
     if (abierta) UI.marcarLeidas(); else pintaBadges();
   };
 
+  // ── LA FRASE QUE VENDE LA ISLA: armada SOLO con datos reales del mundo
+  //    (tema, amo vigente, frente abierto, ocultación). Nada inventado: es la
+  //    presentación dramática que separa esta isla de las demás. ──
+  const HOOK_TEMA = {
+    verde: 'el verde de esta tierra no pide permiso a nadie', bosque: 'los árboles viejos no cuentan lo que vieron caer',
+    tropical: 'el calor del puerto esconde apuestas más calientes', ciudad: 'las calles tienen memoria, y deudas',
+    desierto: 'la arena guarda monedas de capitanes sin nombre', nieve: 'bajo la nieve, el hielo conserva promesas rotas',
+    jungla: 'lo que la jungla toma, la jungla no lo devuelve', industrial: 'el humo de las fábricas paga mejor que la pesca',
+    futurista: 'aquí el futuro llegó antes que la ley', mar: 'el puerto vive del mar y muere por él',
+    fortaleza: 'los muros altos cobran alquileres altos', oscuro: 'de noche aquí nadie camina solo',
+    rocosa: 'los acantilados devuelven los gritos de los que saltaron', puerto: 'todo pasa primero por este muelle',
+    blanco: 'una isla sin sombra no puede esconder nada… dicen', japon: 'las tradiciones pesan más que los cañones',
+    dulce: 'el azúcar quema más que la pólvora', prision: 'los candados no distinguen culpables',
+    gobierno: 'aquí la justicia se mide en plumas y sellos', burbujas: 'las burbujas suben; los secretos bajan',
+    nubes: 'quemar una isla de cielo la vuelve leyenda'
+  };
+  UI.hookDe = function (i) {
+    const partes = [];
+    const aqui = sim.user && !sim._fusionAtSea && sim.user.isl === i.id;
+    if (aqui) partes.push('Tu puerto: tu gente, tus precios, tus deudas.');
+    const tem = HOOK_TEMA[i.tema] || 'una isla que no está en ninguna carta oficial';
+    partes.push(tem.charAt(0).toUpperCase() + tem.slice(1) + '.');
+    const jefe = D.JEFES && D.JEFES[i.id];
+    const vive = jefe ? (sim.agents || []).some((a) => a.jefe && a.isl === i.id && a.state !== 'retirado') : false;
+    if (jefe && vive) partes.push('Manda ' + jefe.nombre + ' aquí: no le sonríen dos veces.');
+    else if (jefe) partes.push(jefe.nombre + ' ya no manda: la tierra respira libre.');
+    const fr = (sim.guerra && sim.guerra.frentes || []).find((f) => f.isl === i.id);
+    if (fr) partes.push('Hay cañones al fondo: el frente está abierto.');
+    if (i.oculta) partes.push('No aparece en ninguna carta oficial.');
+    return partes.join(' ');
+  };
+
   // ── Popover de isla ──
   // Parte ESTÁTICA (título, región, encuentros, viaje): solo al abrir o cambiar de isla.
   let islaAbierta = null; // la isla cuyo popover está abierto
   UI.abrirIsla = function (i) {
     const pop = $('pop-isla');
-    if (!i) { pop.classList.add('oculto'); islaAbierta = null; document.body.classList.remove('mil-pop-open'); return; }
+    if (!i) { pop.classList.add('oculto'); islaAbierta = null; document.body.classList.remove('mil-pop-open'); document.body.classList.remove('mil-isla-viva'); return; }
     pop.classList.remove('oculto');
     document.body.classList.add('mil-pop-open'); // el chrome cede el paso a la carta (móvil)
     const cambio = !islaAbierta || islaAbierta.id !== i.id;
@@ -209,14 +241,56 @@ import { getMapIslands } from '../map.js';
         };
       }
     }
-    // LA CARTA POR CAPAS: la isla se VE primero (lugares, gente, ambiente); cada
-    // lugar se abre recién al pedirlo — un panel por lugar, nada apilado.
-    UI.renderLugares(i);
+    // LA CARTA POR CAPAS: el click abre la CARTA BREVE (quién es esta isla + un
+    // CTA). La Isla Viva completa (lugares, gente, encuentros) se abre SOLO con
+    // "Ver Isla" — el jugador elige cuándo entrar. En re-llamadas (acciones que
+    // refrescan el pop) el estado de la capa se conserva.
+    const breve = $('pi-breve'), llena = $('pi-llena');
+    if (breve && llena) {
+      if (cambio) {
+        breve.classList.remove('oculto');
+        llena.classList.add('oculto');
+        document.body.classList.remove('mil-isla-viva');
+        $('pi-hook').textContent = UI.hookDe(i);
+        UI.renderLugares(i);
+      }
+      const ver = $('pi-ver');
+      if (ver && !ver._vivo) {
+        ver._vivo = true;
+        ver.addEventListener('click', () => { if (islaAbierta) UI.verIsla(islaAbierta); });
+      }
+      const volver = $('pi-volver-carta');
+      if (volver && !volver._vivo) {
+        volver._vivo = true;
+        volver.addEventListener('click', UI.volverCartaBreve);
+      }
+    } else {
+      UI.renderLugares(i); // DOM viejo sin capas: la carta completa siempre
+    }
     const lugarCaja = $('pi-lugar');
     if (lugarCaja) lugarCaja.classList.add('oculto');
     const cartaCaja = $('pi-carta');
     if (cartaCaja) cartaCaja.classList.remove('oculto');
     UI.pintaPopDinamico(i);
+  };
+
+  // CAPA 2 — LA ISLA VIVA: la cámara se adentra (lo pediste) y el sub-panel
+  // con lugares/encuentros/gente toma la escena. Nada mueve al avatar: mirar es mirar.
+  UI.verIsla = function (i) {
+    if (!i) return;
+    document.body.classList.add('mil-isla-viva');
+    const breve = $('pi-breve'), llena = $('pi-llena');
+    if (breve) breve.classList.add('oculto');
+    if (llena) llena.classList.remove('oculto');
+    if (typeof MAPA.enfocarIsla === 'function') MAPA.enfocarIsla(i);
+    UI.renderLugares(i);
+    UI.pintaPopDinamico(i);
+  };
+  UI.volverCartaBreve = function () {
+    document.body.classList.remove('mil-isla-viva');
+    const breve = $('pi-breve'), llena = $('pi-llena');
+    if (breve) breve.classList.remove('oculto');
+    if (llena) llena.classList.add('oculto');
   };
 
   // Parte VIVA del pop: portada (control, qué se cuenta de la isla, ambiente) y
@@ -399,6 +473,12 @@ import { getMapIslands } from '../map.js';
     if (jefe) lineas.push('Un pescador jura que vio a ' + sim.nm(jefe) + ' desembarcar al alba. Mejor no mirarle la cara.');
     const carga = sim.cargas && sim.cargas.length ? sim.cargas[0] : null;
     if (carga && carga.bien) lineas.push('Zarpó un convoy cargado de ' + carga.bien + ' esta mañana. Hay ojos que lo siguen.');
+    // la apuesta personal: si tu cartel ronda a los buscados, la taberna lo sabe
+    const yo = sim.user;
+    if (yo && yo.bounty > 0 && ABt && ABt.buscados.length) {
+      const rival = ABt.buscados[0];
+      if (rival && (rival.b || 0) < yo.bounty) lineas.push('Tu cartel (' + belis(yo.bounty) + ') ya cubre al de ' + rival.n + ' — en este puerto hay quien cobra dos cabezas con una sola bala.');
+    }
     if (lineas.length && ale() < 30) lineas.push('…pero la boca que lo contó ya había corrido tres rones.');
     return lineas.length ? lineas : ['En la taberna solo se habla del viento: nada digno de copla.'];
   };

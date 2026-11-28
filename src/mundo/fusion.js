@@ -123,14 +123,23 @@ function installWorldUi() {
     <section id="pop-isla" class="mil-panel mil-island-pop oculto" aria-label="Carta de isla">
       <button id="pop-cerrar" type="button" class="mil-close" aria-label="Cerrar isla">×</button>
       <div id="pi-carta">
-        <h2 id="pi-titulo"></h2><p id="pi-region"></p><div id="pi-control"></div>
-        <div id="pi-frente"></div><div id="pi-evento"></div>
-        <div id="pi-lugares"></div>
-        <div id="pi-distante"></div>
-        <h3>En la isla ahora</h3><div id="pi-encuentros"></div>
-        <p id="pi-disc"></p>
-        <div id="pi-charlas"></div>
-        <button id="pi-viajar" type="button" class="oculto">⛵ Pedir a tu avatar zarpar aquí</button>
+        <div id="pi-breve">
+          <h2 id="pi-titulo"></h2><p id="pi-region"></p><div id="pi-control"></div>
+          <p id="pi-hook" class="mil-hook"></p>
+          <div id="pi-cta">
+            <button id="pi-ver" type="button" class="mil-cta-ver">🔍 Ver Isla</button>
+            <button id="pi-viajar" type="button" class="oculto">⛵ Pedir a tu avatar zarpar aquí</button>
+          </div>
+        </div>
+        <div id="pi-llena" class="oculto">
+          <button id="pi-volver-carta" type="button" class="mil-volver">← Carta breve</button>
+          <div id="pi-frente"></div><div id="pi-evento"></div>
+          <div id="pi-lugares"></div>
+          <div id="pi-distante"></div>
+          <h3>En la isla ahora</h3><div id="pi-encuentros"></div>
+          <p id="pi-disc"></p>
+          <div id="pi-charlas"></div>
+        </div>
       </div>
       <div id="pi-lugar" class="oculto">
         <button id="pi-volver" type="button" class="mil-volver">← Carta de isla</button>

@@ -124,7 +124,7 @@
         if (pings.length > 30) pings.splice(0, pings.length - 30);
       } catch (e) { /* un ping perdido no tumba nada */ }
     };
-    MAPA.init($('mapa'), (i) => { if (i && typeof MAPA.enfocarIsla === 'function') MAPA.enfocarIsla(i); UI.abrirIsla(i); });
+    MAPA.init($('mapa'), (i) => UI.abrirIsla(i)); // el click abre la CARTA breve: la cámara se adentra SOLO con "Ver Isla"
     wire();
     UI.renderHeader(); UI.renderFeed(true);
     arrancaTimer();

@@ -1410,15 +1410,118 @@
       ctx.strokeStyle = 'rgba(190,235,255,0.55)'; ctx.lineWidth = 1.6; ctx.stroke();
       ctx.restore();
     }
+    pintaVidaMar(i, cx, cy, r, t); // espuma que respira + aura del tema: el agua también actúa
     ctx.save();
     ctx.translate(0, bobIsla(i, t));
     if (i._hs !== 1) {
       ctx.translate(cx, cy); ctx.scale(i._hs, i._hs); ctx.translate(-cx, -cy);
     }
     dibujaIsla(i, off, t);
+    pintaVidaIsla(i, cx, cy, r, t); // aves en órbita, humo de chimeneas, el hito de la isla
     ctx.restore();
   }
   MAPA.pintaIslaConVida = pintaIslaConVida;
+
+  // ══ LA VIDA DE LA ISLA: efectos vivos alrededor del sprite cacheado ══
+  // El sprite es arte quieto por diseño (pre-render LRU); la vida va ENCIMA por frame:
+  // espuma que respira, el color del tema tiñendo el agua, gaviotas, humo de chimeneas
+  // y un hito por familia de tema — la isla deja de ser un dibujo quieto.
+  const AURA_TEMA = { verde: '90,160,90', bosque: '70,120,70', tropical: '240,180,80', ciudad: '160,170,190', desierto: '224,190,110', nieve: '190,225,255', jungla: '60,140,80', industrial: '120,120,130', futurista: '120,200,230', mar: '110,180,220', fortaleza: '140,130,150', oscuro: '120,80,150', rocosa: '150,130,110', puerto: '230,200,140', blanco: '230,235,245', japon: '200,90,80', dulce: '240,160,190', prision: '120,110,110', gobierno: '210,180,100', burbujas: '160,220,230', nubes: '220,230,250' };
+  function pintaVidaMar(i, cx, cy, r, t) {
+    const h0 = hIsla(i, 900) * 6.2832; // fase propia: las islas no respiran al unísono
+    // espuma que respira: dos anillos que crecen y se desvanecen hacia la playa
+    for (let f = 0; f < 2; f++) {
+      const fase = (t / 2400 + f * 0.5 + h0 / 6.2832) % 1;
+      const rf = r * (1.06 + fase * 0.3);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rf, rf * 0.78, 0, 0, 7);
+      ctx.strokeStyle = 'rgba(230,245,255,' + (0.5 * (1 - fase)).toFixed(3) + ')';
+      ctx.lineWidth = 1.6 + fase * 1.2;
+      ctx.stroke();
+    }
+    // el color del tema tiñe el agua: la isla anuncia su clima antes de pisarse
+    const tono = AURA_TEMA[i.tema] || '110,180,220';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r * 1.32, r * 1.02, 0, 0, 7);
+    ctx.strokeStyle = 'rgba(' + tono + ',0.34)';
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+  }
+  function pintaVidaIsla(i, cx, cy, r, t) {
+    const h0 = hIsla(i, 900) * 6.2832;
+    // gaviotas del puerto: dos a veces, una a veces — nunca un rebaño previsible
+    const nAves = hIsla(i, 910) > 0.25 ? 2 : 1;
+    for (let a = 0; a < nAves; a++) {
+      const fase = t / (2600 + a * 900) + h0 + a * 3.1;
+      const ax = cx + Math.cos(fase) * r * 1.5, ay = cy + Math.sin(fase) * r * 0.55 - r * 1.15 - Math.sin(t / 700 + a) * 1.5;
+      const bat = Math.sin(t / 120 + a * 2) * 1.6;
+      ctx.strokeStyle = 'rgba(28,36,52,0.75)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(ax - 2.6, ay + bat); ctx.lineTo(ax, ay); ctx.lineTo(ax + 2.6, ay + bat);
+      ctx.stroke();
+    }
+    // a zoom de diorama: humo de chimeneas (y faroles encendidos de noche) + el hito
+    if (cam.z < DETALLE_Z) return;
+    const casas = (layoutIsla(i).casas || []).slice(0, 3);
+    const noche = esNoche();
+    for (let q = 0; q < casas.length; q++) {
+      const c = casas[q];
+      for (let k = 0; k < 3; k++) {
+        const fase = (t / 2000 + q * 0.33 + k * 0.11 + hIsla(i, 920 + q)) % 1;
+        const hx = cx + c.x + k * 1.4 + fase * 2.2;
+        const hy = cy + c.wy - fase * 7;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 0.9 + fase * 1.5, 0, 7);
+        ctx.fillStyle = 'rgba(226,232,240,' + (0.4 * (1 - fase)).toFixed(3) + ')';
+        ctx.fill();
+      }
+      if (noche) { // la noche calienta: halo ámbar sobre cada chimenea
+        ctx.beginPath();
+        ctx.arc(cx + c.x, cy + c.wy, 3.2, 0, 7);
+        ctx.fillStyle = 'rgba(246,200,90,' + (0.16 + Math.sin(t / 300 + q) * 0.05).toFixed(3) + ')';
+        ctx.fill();
+      }
+    }
+    // EL HITO: una firma por familia de tema — la silueta que se recuerda al zarpar
+    const hx2 = cx + (hIsla(i, 930) - 0.5) * r * 0.9, hy2 = cy - r * (0.34 + hIsla(i, 931) * 0.16);
+    const tema = i.tema || 'verde';
+    const O = 'rgba(30,22,12,0.5)';
+    if (tema === 'japon' || tema === 'dulce') { // pagoda de tres techos (o torre de dulces)
+      ctx.fillStyle = tema === 'japon' ? '#b03a3a' : '#d478a0';
+      for (let p = 0; p < 3; p++) {
+        const w = 7 - p * 1.8;
+        ctx.fillRect(hx2 - w / 2, hy2 - p * 4, w, 2.2);
+        ctx.fillRect(hx2 - (w - 3) / 2, hy2 - p * 4 + 2.2, w - 3, 2);
+      }
+      ctx.strokeStyle = O; ctx.lineWidth = 0.3; ctx.strokeRect(hx2 - 3.5, hy2 - 8.6, 7, 10);
+    } else if (tema === 'nieve' || tema === 'blanco') { // pináculos de hielo
+      ctx.fillStyle = 'rgba(225,242,255,0.92)';
+      for (let p = 0; p < 3; p++) {
+        const bx = hx2 + (p - 1) * 4.2, alto = 7 + hIsla(i, 940 + p) * 5;
+        ctx.beginPath(); ctx.moveTo(bx - 2.4, hy2 + 4); ctx.lineTo(bx, hy2 + 4 - alto); ctx.lineTo(bx + 2.4, hy2 + 4); ctx.closePath(); ctx.fill();
+      }
+    } else if (tema === 'industrial' || tema === 'futurista') { // chimenea con franjas / antena latiendo
+      ctx.fillStyle = '#5a5a64'; ctx.fillRect(hx2 - 2, hy2 - 9, 4, 13);
+      ctx.fillStyle = '#b03a3a'; ctx.fillRect(hx2 - 2, hy2 - 9, 4, 2); ctx.fillRect(hx2 - 2, hy2 - 5, 4, 2);
+      ctx.strokeStyle = O; ctx.lineWidth = 0.3; ctx.strokeRect(hx2 - 2, hy2 - 9, 4, 13);
+      if (tema === 'futurista') { ctx.fillStyle = 'rgba(120,220,255,' + (0.5 + Math.sin(t / 260) * 0.4).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(hx2, hy2 - 11, 1.4, 0, 7); ctx.fill(); }
+    } else if (tema === 'gobierno' || tema === 'fortaleza' || tema === 'prision') { // torre con estandarte
+      ctx.fillStyle = tema === 'prision' ? '#5f5f66' : '#6e7a8a'; ctx.fillRect(hx2 - 2.5, hy2 - 10, 5, 14);
+      ctx.fillStyle = tema === 'gobierno' ? '#d6c46a' : '#2b2f3a'; ctx.fillRect(hx2 - 3.5, hy2 - 12, 7, 2.6);
+      ctx.fillStyle = '#8a2b22'; ctx.fillRect(hx2 + 2.5, hy2 - 11, 4.5, 2.4);
+      ctx.strokeStyle = O; ctx.lineWidth = 0.3; ctx.strokeRect(hx2 - 2.5, hy2 - 10, 5, 14);
+    } else if (tema === 'tropical' || tema === 'verde' || tema === 'jungla' || tema === 'bosque') { // palmera alta
+      ctx.fillStyle = '#6e4a2a'; ctx.fillRect(hx2 - 0.9, hy2 - 9, 1.8, 13);
+      ctx.fillStyle = '#3e8e4f';
+      for (let p = 0; p < 4; p++) { const ang = (p / 4) * 3.1416 - 3.1416 / 2 + 0.4; ctx.fillRect(hx2 + Math.cos(ang) * 3.6 - 1.6, hy2 - 9 + Math.sin(ang) * 2.4 - 1.4, 3.2, 1.4); }
+      ctx.strokeStyle = O; ctx.lineWidth = 0.3; ctx.strokeRect(hx2 - 0.9, hy2 - 9, 1.8, 13);
+    } else { // la torre del reloj del puerto para todos los demás temas
+      ctx.fillStyle = '#8a7a5e'; ctx.fillRect(hx2 - 2.2, hy2 - 8, 4.4, 12);
+      ctx.beginPath(); ctx.arc(hx2, hy2 - 8, 2.6, 0, 7); ctx.fillStyle = '#e8e4da'; ctx.fill();
+      ctx.strokeStyle = O; ctx.stroke();
+    }
+  }
 
   // ── hover: isla bajo el cursor (resalta y pone el cursor de mano) ──
   const islaEn = (wx, wy) => {
