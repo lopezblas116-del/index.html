@@ -76,6 +76,8 @@ export function maybeCaptureAtAuction(character, random = Math.random) {
   if (random() >= 0.35 * (captureRiskModifier || 1)) return false;
   const ransom = 200 + Math.floor(random() * 501);
   character.captured = { island: island.name, ransom, day: character.world.day };
+  // EL ESPEJO DEL CAPITÁN: la subasta clandestina se cuenta en el mar
+  globalThis.JUEGO?.sim?.encarcelarUsuario?.(island.name, ransom);
   log(character, `⛓️ ${character.name} es capturado en ${island.name} y vendido en una subasta clandestina. Rescate: ฿${ransom} o infiltración de la tripulación.`);
   return true;
 }

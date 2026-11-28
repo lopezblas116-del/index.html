@@ -1,7 +1,8 @@
 import { newsLocation } from "../map.js";
 import { ensureAdvancedSystems } from "../systems.js";
 import { avatarEmotion, drawPixelAvatar, npcAppearanceFor } from "../island_renderer.js";
-import { aggregateSmartFeed, formatMaritimeTimestamp, maritimeHeadline } from "../event_dispatcher.js";
+import { aggregateSmartFeed, entradasDelSim, formatMaritimeTimestamp, maritimeHeadline } from "../event_dispatcher.js";
+import { instalarEspejo } from "../espejo_capitan.js";
 import { animateCount } from "../vfx_engine.js";
 import { isBiographyValid } from "../character_creation.js";
 import { getLoreByKey } from "../world_lore.js";
@@ -121,12 +122,14 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
     ...globalEvents.filter((entry) => entry.type !== "global_chat"),
     ...(world.news ?? [])
   ];
+  // EL DIARIO DEL MAR: los latidos del mundo vivo entran a la gaceta con su sello
+  const feedSim = entradasDelSim(globalThis.JUEGO?.sim?.feed ?? [], { limite: 60 });
   const eventosMiMar = marDelJugador ? fuentesMundo.filter((entry) => {
     const reg = marDeTexto(entry.text, mapaMares);
     return !reg || reg === marDelJugador || isPersonalNews(entry, character);
   }) : fuentesMundo;
   const sections = [
-    { key: "mimar", label: nombreMar ? `Mi mar · ${nombreMar}` : "Mi mar", items: aggregateSmartFeed(eventosMiMar, { location: character.location?.island || "", name: character.name }), empty: "En tu mar reina la calma… por ahora. Navegá para que el mundo te cuente cosas." },
+    { key: "mimar", label: nombreMar ? `Mi mar · ${nombreMar}` : "Mi mar", items: aggregateSmartFeed([...eventosMiMar, ...feedSim.filter((e) => !e.mar || e.mar === marDelJugador)], { location: character.location?.island || "", name: character.name }), empty: "En tu mar reina la calma… por ahora. Navegá para que el mundo te cuente cosas." },
     { key: "important", label: "Lo importante", items: aggregateSmartFeed([
       ...globalEvents.filter((entry) => entry.type !== "global_chat"),
       ...(world.news ?? []),
@@ -139,6 +142,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         coordinates: boss.secret_location,
         location: boss.hideout || boss.name
       })),
+      ...feedSim.filter((e) => e.imp >= 5),
       ...(shared?.fallen_captains ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island })),
       ...(world.pantheon ?? []).map((entry) => ({ text: `${entry.name} · ${entry.faction || "Viajero"} · ${entry.cause || "Legado del mar"}`, location: entry.location || entry.island }))
     ].filter((entry) => !isPersonalNews(entry, character)), { location: character.location?.island || "", name: character.name }), empty: "No hay noticias importantes todavía." },
@@ -146,6 +150,7 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
       ...globalEvents.filter((entry) => entry.type !== "global_chat"),
       ...(world.news ?? [])
     ].filter((entry) => isPersonalNews(entry, character)).concat(
+      feedSim.filter((e) => isPersonalNews(e, character)),
       Number(character.bounty) > 0 ? [{ type: "bounty", location: character.location?.island, text: `SE BUSCA · ${character.name} · ฿${number(character.bounty)} Berries` }] : []
     ), { location: character.location?.island || "", name: character.name }), empty: "Tu bitácora aún no registra titulares propios." }
   ];
@@ -241,6 +246,16 @@ export function renderNewspaper(container, character, onInvestigate, onSuggest) 
         pursue.disabled = character.status === "dead";
         pursue.addEventListener("click", () => onSuggest(location));
         detail.append(pursue);
+      }
+      if (entry?.type === "nemesis-orden") {
+        // EL TRONO TE ESPERA: la orden del espejo navega de verdad — redirige tu rumbo
+        const reclamo = document.createElement("button");
+        reclamo.type = "button";
+        reclamo.className = "one-hud-action";
+        reclamo.textContent = "Reclamar tu trono";
+        reclamo.disabled = character.status === "dead";
+        reclamo.addEventListener("click", () => onSuggest(location));
+        detail.append(reclamo);
       }
       const coordinates = document.createElement("p");
       // Sin coordenadas crudas: el jugador no las escribe nunca. La zona se fija por nombre
@@ -408,6 +423,7 @@ function renderTerminalLog(list, entries, characterName, location = "") {
 export function renderGame(character) {
   if (!character) return;
   const recienZarpado = document.body.classList.contains("wizard-active"); // solo el PRIMER zarpe, no reanudar
+  instalarEspejo(character); // EL ESPEJO DEL CAPITÁN: el mundo y tu partida se espejan
   ensureAdvancedSystems(character);
   showGame();
   // EL ZARPE TIENE LLEGADA: recién al crear (no al reanudar), la cámara entrega a TU
@@ -1426,8 +1442,38 @@ export function initWizard() {
   wizardInitialized = true;
   const form = byId("character-form");
   if (!form) return;
+  // EL BORRADOR SOBREVIVE: recargar a mitad de la creación no te quita la cara
+  // de tu pirata. Los campos se restauran ANTES del layout (los swatches leen
+  // los valores al construirse); los rasgos, después (son estado del módulo).
+  const CLAVE_BORRADOR = "one_wizard_borrador";
+  let borrador = null;
+  try {
+    const bruto = localStorage.getItem(CLAVE_BORRADOR);
+    if (bruto) {
+      borrador = JSON.parse(bruto);
+      for (const [nombre, valor] of Object.entries(borrador?.campos ?? {})) {
+        const campo = form.elements.namedItem(nombre);
+        if (campo && nombre !== "race" && nombre !== "originSea") { try { campo.value = valor; } catch { /* un select con valor muerto no corta el zarpe */ } }
+      }
+    }
+  } catch { /* modo privado: sin borrador, sin drama */ }
   configureWizardLayout(form);
-  selectedTraits = [];
+  selectedTraits = (borrador?.rasgos ?? []).filter((t) => TRAITS.some((x) => x.id === t)).slice(0, 2);
+  const guardarBorrador = (() => {
+    let t = null;
+    return () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        try {
+          const campos = {};
+          for (const el of form.elements) if (el.name && el.type !== "submit" && el.type !== "hidden") campos[el.name] = el.value;
+          localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ campos, rasgos: selectedTraits, paso: currentStep }));
+        } catch { /* sin storage no hay borrador */ }
+      }, 400);
+    };
+  })();
+  form.addEventListener("input", guardarBorrador);
+  if (borrador?.paso) showWizardStep(Math.min(3, Math.max(0, Number(borrador.paso) || 0)));
   // EL ENTER NO ZARPA A MEDIAS: en una fase que no sea la última, Enter avanza
   // de fase (captura antes del submit global de main.js). La prolijidad también
   // es no perder tu personaje por una tecla.
@@ -1437,6 +1483,8 @@ export function initWizard() {
       event.stopImmediatePropagation();
       const nxt = byId("next-step");
       if (nxt && !nxt.hidden) nxt.click();
+    } else {
+      try { localStorage.removeItem("one_wizard_borrador"); } catch { /* sin storage */ }
     }
   }, true);
   // ── validación con voz del juego: nada de burbujas nativas en inglés ──

@@ -15,6 +15,7 @@ import { rollLineageRace } from '../races.js';
     this.t = 6 * 60;              // arranca un día 1 a las 06:00
     this.agents = []; this.crews = []; this.ships = []; this.storms = [];
     this.feed = []; this.archive = []; this.evId = 0;
+    this.espejo = null;            // EL ESPEJO DEL CAPITÁN: la capa jugable escucha al mundo
     this.pop = {};                 // islaId -> [agentIds]
     this.charlaMem = {};           // islaId -> {parejaKey: count}
     this.frutasLibres = [];        // {k, isl}
@@ -209,6 +210,9 @@ import { rollLineageRace } from '../races.js';
     // EL MUNDO SE VE: cada evento notifica a los testigos del mapa (pings, humo,
     // burbujas) — lo importante pasa VISUALMENTE, no solo en la bitácora.
     if (this.onEvento) { try { this.onEvento(rec, vars, opts); } catch (e) { /* un testigo roto no tumba el mundo */ } }
+    // EL ESPEJO DEL CAPITÁN: una sola ranura, siempre el personaje jugable vigente.
+    // Lo que el mundo le hace a tu agente, tu partida lo sabe al instante.
+    if (this.espejo) { try { this.espejo(rec, vars, opts); } catch (e) { /* un espejo roto no tumba el mundo */ } }
   };
 
   // ── Fuerza y combate ──
@@ -930,23 +934,58 @@ import { rollLineageRace } from '../races.js';
   // frente de reconquista POR SU CUENTA. Tu victoria de ayer puede ser la
   // guerra de hoy — el mundo no perdona.
   Sim.prototype.nemesisRetorna = function (a) {
-    const isl = D.ISLA[a.homeIsl];
+    const trono = a.homeIsl || a.birthIsl; // el trono: la casa propia — o la cuna (TU agente nace en su isla y su trono es esa arena)
+    const isl = D.ISLA[trono];
     if (!isl) return false;
-    const ctrl = this.control[a.homeIsl];
+    const ctrl = this.control[trono];
     if (ctrl === 'tirano') return false; // su trono sigue suyo
-    if ((this.guerra && (this.guerra.frentes || []).some((f) => f.isl === a.homeIsl))) return false; // ya hay pelea ahí
-    this.llegarIsla(a, a.homeIsl); // vuelve a casa por decisión propia
+    if ((this.guerra && (this.guerra.frentes || []).some((f) => f.isl === trono))) return false; // ya hay pelea ahí
+    this.llegarIsla(a, trono); // vuelve a casa por decisión propia
     let crew = this.crewOf(a);
     if (!crew) {
-      crew = { id: this.crews.length, name: 'Los Piratas del ' + this.rng.pick(D.CREW_ANIMAL) + ' Renacidos', fac: a.fac === 'pir' ? 'pir' : a.fac, cap: a.id, mem: [a.id], allies: [], wars: [], ship: this.ships.length, base: a.homeIsl, born: this.t, nemesis: true };
-      this.ships.push({ id: this.ships.length, crew: crew.id, isl: a.homeIsl, dest: null, state: 'puerto', t0: 0, dur: 0, hull: 100, x: 0, y: 0, plan: null });
+      crew = { id: this.crews.length, name: 'Los Piratas del ' + this.rng.pick(D.CREW_ANIMAL) + ' Renacidos', fac: a.fac === 'pir' ? 'pir' : a.fac, cap: a.id, mem: [a.id], allies: [], wars: [], ship: this.ships.length, base: trono, born: this.t, nemesis: true };
+      this.ships.push({ id: this.ships.length, crew: crew.id, isl: trono, dest: null, state: 'puerto', t0: 0, dur: 0, hull: 100, x: 0, y: 0, plan: null });
       this.crews.push(crew);
       a.crew = crew.id; a.rank = 3;
     }
     a.insignias['nemesis'] = 'nemesis';
     if (!this.guerra) this.guerra = { frentes: [], prox: this.t + 900 };
-    this.guerra.frentes.push({ isl: a.homeIsl, atacante: crew.id, defensor: ctrl || 'libre', tipo: 'asalto', moral: 14, rey: a.id, nom: 'El Retorno de ' + a.name, desc: a.name + ' fugó de prisión y vuelve a reclamar ' + isl.n + '.' });
+    this.guerra.frentes.push({ isl: trono, atacante: crew.id, defensor: ctrl || 'libre', tipo: 'asalto', moral: 14, rey: a.id, nom: 'El Retorno de ' + a.name, desc: a.name + ' fugó de prisión y vuelve a reclamar ' + isl.n + '.' });
     this.ev('nemesis', { a: this.nm(a), isla: isl.n, crew: crew.name, esJugador: !!a.user, destino: ctrl || 'libre' }, { ids: [a.id], impAdd: 2 });
+    return true;
+  };
+
+  // ── EL ESPEJO DEL CAPITÁN (lado mundo): tu captura jugable deja rastro en el mar ──
+  // Antes: tu personaje despertaba encadenado en Impel Down y tu AGENTE seguía
+  // navegando libre por el mapa — dos mundos que no se hablaban. Ahora el mundo
+  // VE tu captura: testigos, cuerno, feed y la deuda que viene después.
+  Sim.prototype.encarcelarUsuario = function (islaNombre, rescate) {
+    const u = this.user; if (!u) return false;
+    if (u.state === 'prision' || u.state === 'calabozo') return false; // ya está dentro: idempotente
+    let islId = 'impel';
+    if (islaNombre && islaNombre !== 'Impel Down') islId = Object.keys(D.ISLA).find((id) => D.ISLA[id].n === islaNombre) || islId;
+    const eraPrision = (Number(u.bounty) || 0) >= 3e7;
+    u.state = eraPrision ? 'prision' : 'calabozo';
+    if (D.ISLA[islId]) this.mover(u, islId);
+    u.stateSince = this.t;
+    u.duracion = eraPrision ? this.rng.int(720, 1800) : this.rng.int(120, 360);
+    u.insignias['cadena'] = 'cadena';
+    const captor = this.agents.find((x) => x.fac === 'mar' && x.state === 'libre');
+    this.ev(eraPrision ? 'arresto_gran' : 'arresto', { a: captor ? this.nm(captor) : 'La Marina', b: this.nm(u), isla: (D.ISLA[islId] || {}).n || String(islaNombre || 'la cárcel'), por: rescate ? ('Rescate fijado en ' + fmtBelis(rescate)) : 'la justicia alcanza a todos', recompensa: fmtBelis(u.bounty), esJugador: true }, { ids: [u.id] });
+    return true;
+  };
+
+  // ── EL ESPEJO (lado mundo): tu fuga jugable también es noticia — y tu trono te espera ──
+  Sim.prototype.liberarUsuario = function () {
+    const u = this.user; if (!u) return false;
+    if (u.state !== 'prision' && u.state !== 'calabozo') return false; // no estaba preso
+    const eraPrision = u.state === 'prision';
+    u.state = 'libre'; u.lowUntil = this.t + (eraPrision ? 720 : 180);
+    delete u.insignias['cadena'];
+    u.insignias['fuga'] = eraPrision ? 'fuga' : u.insignias['fuga'];
+    this.ev('fuga', { a: this.nm(u), isla: this.isl(u).n, esJugador: true }, { ids: [u.id] });
+    if (eraPrision && u.isl === 'impel' && D.ISLA['logue']) this.llegarIsla(u, 'logue'); // Impel Down no tiene rutas: lo sueltan en Logue Town
+    this.nemesisRetorna(u); // EL TRONO TE ESPERA: tu bandera renace en tu isla de origen
     return true;
   };
 
@@ -961,7 +1000,7 @@ import { rollLineageRace } from '../races.js';
         if (eraPrision && a.isl === 'impel' && D.ISLA['logue']) this.llegarIsla(a, 'logue'); // Impel Down no tiene rutas: lo sueltan en Logue Town
         // EL NÉMESIS NO SE OLVIDA: un jefe fugado no vuelve "a la vida civil" —
         // vuelve POR SU TRONO. Esto convierte cada arresto tuyo en una deuda futura.
-        if (eraPrision && a.jefe && a.homeIsl) this.nemesisRetorna(a);
+        if (eraPrision && (a.jefe || a.user) && (a.homeIsl || a.birthIsl)) this.nemesisRetorna(a); // el trono también es del jugador
       }
       return;
     }

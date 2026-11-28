@@ -117,6 +117,8 @@ export function seaEncounter(character, random = Math.random) {
       character.captured = { island: "Impel Down", ransom, day: character.world.day, intentos: 0 };
       character.location = { island: "Impel Down", atSea: false, region: "Calm Belt", scenePosition: createScenePosition("impel", character.id) };
       character.avatarActivity = "prisoner";
+      // EL ESPEJO DEL CAPITÁN: tu captura es noticia — el mundo ve tu cadena
+      globalThis.JUEGO?.sim?.encarcelarUsuario?.("Impel Down", ransom);
       log(character, `⛓️ ${character.name} cae ante la Marina y despierta encadenado en el Nivel 4 de Impel Down. Rescate: ฿${ransom}; la fuga, tarde o temprano, se intenta sola.`);
       return { enemy, captured: true };
     }

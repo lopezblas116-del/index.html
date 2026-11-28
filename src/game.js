@@ -787,6 +787,8 @@ function prisonTick(character) {
   const prob = clamp(0.05 + fuerza * 0.006 + capture.intentos * 0.05, 0.05, 0.5);
   if (Math.random() < prob) {
     delete character.captured;
+    // EL ESPEJO DEL CAPITÁN: tu fuga es noticia — y tu trono renace en el mar
+    globalThis.JUEGO?.sim?.liberarUsuario?.();
     character.location = { island: "Loguetown", atSea: false, scenePosition: createScenePosition("loguetown", character.id) };
     character.stats.health = Math.max(12, Math.round(character.stats.maxHealth * 0.2));
     character.avatarActivity = "idle";

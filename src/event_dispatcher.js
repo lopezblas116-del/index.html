@@ -73,6 +73,28 @@ function berryReward(entry) {
   return amount ? Number(amount.replace(/[.,]/g, "")) || 0 : 0;
 }
 
+// EL DIARIO DEL MAR: la simulación del mundo vivo narra con su propia voz
+// (sim.feed) — acá se traduce al formato de la gaceta. Cada latido sabe en qué
+// mar ocurrió (rec.reg) y cuánto pesa (rec.imp): la Bitácora filtra por región
+// para "Mi mar" y por importancia para "Lo importante". El tiempo del sim corre
+// en minutos desde las 06:00 del día 1: floor(t/1440)+1 es el día gaceta.
+export function entradasDelSim(feed = [], { mar = null, minImportancia = 0, limite = 80 } = {}) {
+  const dia = (t) => Math.floor((Number(t) || 0) / 1440) + 1;
+  return (feed || [])
+    .slice(-limite * 3) // margen para que los filtros no vacíen el diario
+    .map((rec) => ({
+      type: "mundo",
+      text: String(rec.txt || ""),
+      day: dia(rec.t),
+      mar: rec.reg || null, // el id del mar donde ocurrió — la gaceta filtra por canon
+      imp: Number(rec.imp) || 0,
+      key: rec.key || "",
+    }))
+    .filter((e) => e.text && e.imp >= minImportancia)
+    .filter((e) => mar == null || !e.mar || e.mar === mar)
+    .slice(-limite);
+}
+
 export function aggregateSmartFeed(entries, { location = "", name = "", limit = 80 } = {}) {
   const aggregated = [];
   let previousKey;
