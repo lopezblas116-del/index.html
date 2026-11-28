@@ -1205,6 +1205,63 @@ import { rollLineageRace } from '../races.js';
     this.onMuerte && this.onMuerte(a, heredero, causa);
   };
 
+  // ── LA VOZ DEL CAPITÁN: el susurro ya no contesta con un aviso genérico ──
+  // El vínculo retiene más que el sistema: tu capitán responde EN PRIMERA
+  // PERSONA, teñido por su lealtad, su ingenio, su humor, su sueño y su salud.
+  Sim.prototype.vozSusurro = function (a, k, obe, reinterpret) {
+    const r = this.rng;
+    const leal = (a.ocultos && a.ocultos.lealtad) || 5;
+    let pool;
+    if (reinterpret) {
+      pool = ['Voy a mi manera, capi: mismo objetivo, otro rumbo.', 'Eso mejor por el flanco — ya lo vas a ver.', 'Cambiá de asiento: esta sale mi versión.'];
+    } else if (obe && leal >= 7) {
+      pool = ['Voy, capi. Confiá en mí.', 'Hecho. Enseguida.', 'Contá conmigo para esto.'];
+    } else if (obe && leal <= 3) {
+      pool = ['Si vos lo decís… va.', 'Mmm. Bien. Pero no me convencés del todo.', 'Va, va. Capricho del destino.'];
+    } else if (obe) {
+      pool = k === 'tesoro' ? ['¿Oro? Ahí voy.', 'Cofre que aparece, cofre que se abre.'] : k === 'entrenar' ? ['El hierro se forja caliente. Voy.', 'Nadie nace fuerte: allá voy.'] : k === 'taberna' ? ['Una ronda y vuelve la fe.', 'A la taberna, que el mundo espera.'] : ['Voy.', 'Dale.', 'Suena bien, capi.'];
+    } else if ((Number(a.hp) || 50) < 35) {
+      pool = ['Estoy hecho pedazos, capi. Dame una hora.', 'Hoy no puedo ni levantar el ancla.'];
+    } else if (a.anim === 'Irritado') {
+      pool = ['Estoy hasta acá. Hoy no.', 'Preguntáme mañana. Hoy, no.'];
+    } else if (a.sueno === 'libertad' && (k === 'pelea' || k === 'zarpar')) {
+      pool = ['El mar lo sigo cuando quiero, no cuando me lo ordenan.', 'Yo decido mi rumbo, capi. Esa es la idea.'];
+    } else {
+      pool = ['No, capi. Ese plan nos hunde.', 'Hoy no. Pensemos otro camino.', 'Me niego. Buscá otro.'];
+    }
+    return pool[r.int(0, pool.length - 1)];
+  };
+
+  // ── TU PRÓXIMO PASO: el sim lee el mundo y propone UNA cosa concreta ──
+  // Retención joven: una meta por vez, con cierre. Vive en la Bitácora (se lee
+  // al tocar); la pantalla NO se llena de consejos que nadie pidió.
+  Sim.prototype.rumboDelDia = function () {
+    const u = this.user;
+    if (!u || !u.isl || !D.ISLA[u.isl]) return null;
+    const ev = this.evento;
+    const frente = ((this.guerra && this.guerra.frentes) || []).find((f) => f.isl === u.isl);
+    if (ev) return { k: 'evento', txt: 'Entrá al evento' + (ev.isl && D.ISLA[ev.isl] ? ' en ' + D.ISLA[ev.isl].n : '') + ': los héroes cobran fama y berries al cerrar.' };
+    if (frente) return { k: 'frente', txt: 'Hay frente abierto en tu puerto: presentate en el pop de la isla y cobrá tu parte.' };
+    const ABx = globalThis.AB;
+    if (u.cargo && Object.keys(u.cargo).length) {
+      const kk = Object.keys(u.cargo)[0];
+      const p = ABx ? ABx.precio(this, u.isl, kk) : null;
+      if (p != null) return { k: 'vender', txt: 'Vendé tu ' + kk + ' en este puerto: vale ฿' + Math.round(p).toLocaleString('es') + ' (pagaste ฿' + Math.round(u.cargo[kk].costo).toLocaleString('es') + ').' };
+    }
+    if (ABx && this.mercados && this.mercados[u.isl]) {
+      const vecinas = D.ISLAS.filter((i) => i.juego && i.reg === D.ISLA[u.isl].reg && i.id !== u.isl).slice(0, 5);
+      let mejor = null;
+      for (const v of vecinas) {
+        for (const bk of Object.keys(this.mercados[u.isl])) {
+          const aca = ABx.precio(this, u.isl, bk), alla = ABx.precio(this, v.id, bk);
+          if (aca != null && alla != null && alla - aca > (mejor ? mejor.g : 400)) mejor = { bk, v, aca, alla, g: alla - aca };
+        }
+      }
+      if (mejor) return { k: 'comercio', txt: 'Comprá ' + mejor.bk + ' acá (฿' + Math.round(mejor.aca).toLocaleString('es') + ') y vendé en ' + mejor.v.n + ' (฿' + Math.round(mejor.alla).toLocaleString('es') + '): ' + Math.round(mejor.g).toLocaleString('es') + ' de margen.' };
+    }
+    return { k: 'explorar', txt: 'Explorá una isla que tu Atlas no conoce: la Bitácora se escribe pisando tierra.' };
+  };
+
   // ── Susurros del jugador ──
   Sim.prototype.probObediencia = function (a, k) {
     let p = 0.35 + a.ocultos.obed * 0.045 + (a.ocultos.lealtad - 5) * 0.02;
@@ -1224,16 +1281,16 @@ import { rollLineageRace } from '../races.js';
     if (!obedece && a.stats.ing >= 7 && this.rng.chance(0.35)) {
       a.wh = { k: 'reinterpret', until: this.t + 60, fx: { pasear: 1.4, taberna: 1.6 } };
       this.ev('reinterpret', { a: this.nm(a), corta, esJugador: true }, { ids: [a.id] });
-      return { ok: true, obe: false, reinterpret: true };
+      return { ok: true, obe: false, reinterpret: true, voz: this.vozSusurro(a, k, false, true) };
     }
     if (!obedece) {
       this.ev('susurroNo', { a: this.nm(a), esJugador: true }, { ids: [a.id] });
       a.nextThink = this.t + 3;
-      return { ok: true, obe: false };
+      return { ok: true, obe: false, voz: this.vozSusurro(a, k, false, false) };
     }
     a.wh = { k, until: this.t + 240, fx: (sus && sus.fx) || {} };
     a.nextThink = this.t + 1;
-    return { ok: true, obe: true };
+    return { ok: true, obe: true, voz: this.vozSusurro(a, k, true, false) };
   };
 
   // ── Paso principal ──
@@ -1300,6 +1357,9 @@ import { rollLineageRace } from '../races.js';
     this.user = a;
     this.descubiertas[birth] = a.id;
     this.ev('primera', { a: this.nm(a), isla: D.ISLA[birth].n, esJugador: true }, { ids: [a.id] });
+    // LOS PRIMEROS 90 SEGUNDOS: acabás de abrir los ojos — el mundo suelta su
+    // primer evento EN tu isla casi de inmediato
+    try { if (globalThis.AB && globalThis.AB.citaPrimerEvento) globalThis.AB.citaPrimerEvento(this); } catch (e) { /* la cita no tumba el despertar */ }
     this.publicarCarteles(true);
     return a;
   };

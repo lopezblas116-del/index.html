@@ -690,11 +690,39 @@ import { getMapIslands } from '../map.js';
     $('ft-susurros').querySelectorAll('button.sus').forEach(b => {
       b.addEventListener('click', () => {
         const r = sim.doWhisper(a, b.dataset.k);
-        UI.toast(r.reinterpret ? 'Reinterpreta tu consejo a su manera…' : r.obe ? 'Te ha hecho caso.' : 'No te ha hecho caso.');
+        UI.toast('«' + a.name + '»: "' + (r.voz || (r.obe ? 'Voy.' : 'Hoy no, capi.')) + '"');
         UI.renderSusurros();
         UI.abrirFicha(a);
       });
     });
+  };
+
+  // ── LA ESCENA DEL HEREDERO: el sombrero pasa a la siguiente mano ──
+  // Pantalla completa, un nombre que se apaga y otro que despierta. Se va sola
+  // a los 10 s o con un tap; jamás bloquea el mundo detrás.
+  UI.escenaHeredero = function (viejo, heredero, causa) {
+    if (typeof document === 'undefined') return;
+    try {
+      const antes = document.getElementById('mil-escena');
+      if (antes) antes.remove();
+      const ov = document.createElement('div');
+      ov.id = 'mil-escena';
+      ov.innerHTML =
+        '<div class="mil-escena-caja">' +
+        '<div class="mil-escena-sombrero">🎩</div>' +
+        '<p class="mil-escena-muerte">☠ ' + esc(viejo && viejo.name || 'El capitán') + ' se fue</p>' +
+        (causa ? '<p class="mil-escena-causa">' + esc(String(causa)) + '</p>' : '') +
+        '<p class="mil-escena-luz">El sombrero pasa a la siguiente mano.</p>' +
+        '<p class="mil-escena-heredero">' + esc(heredero && heredero.name || 'Un heredero') + ' despierta en una playa del sur</p>' +
+        '<button type="button" class="one-hud-action">Continuar la historia</button>' +
+        '</div>';
+      const cerrar = () => { ov.classList.add('mil-escena-salida'); setTimeout(() => { if (ov.isConnected) ov.remove(); }, 450); };
+      ov.querySelector('button').addEventListener('click', cerrar);
+      ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+      document.body.append(ov);
+      setTimeout(() => { if (ov.isConnected) cerrar(); }, 10000);
+      UI.toast('«' + (viejo && viejo.name || '') + '» se fue. «' + (heredero && heredero.name || '') + '» recoge su bandera.');
+    } catch (e) { /* la escena no tumba la muerte */ }
   };
 
   UI.toast = function (txt) {
@@ -743,6 +771,11 @@ import { getMapIslands } from '../map.js';
       chips.append(b);
     });
     caja.append(chips);
+    // TU PRÓXIMO PASO: el mundo lee la situación y propone UNA cosa concreta
+    try {
+      const rumbo = sim && sim.rumboDelDia && sim.rumboDelDia();
+      if (rumbo) caja.insertAdjacentHTML('beforeend', '<div class="mil-rumbo"><b>🧭 Tu próximo paso</b><span>' + esc(rumbo.txt) + '</span></div>');
+    } catch (e) { /* un rumbo perdido no tumba la bitácora */ }
     const html = lista.map(e => {
       const cls = e.imp >= 6 ? 'imp-alta' : e.imp >= 4 ? 'imp-media' : '';
       const mar = e.reg && D.NOMBRE_MAR[e.reg] ? '<span class="fmar">' + esc(D.NOMBRE_MAR[e.reg]) + '</span>' : '';
@@ -796,7 +829,7 @@ import { getMapIslands } from '../map.js';
       b.textContent = x.n + ' ' + Math.round(sim.probObediencia(a, x.k) * 100) + '%';
       b.addEventListener('click', () => {
         const r = sim.doWhisper(a, x.k);
-        UI.toast(r.reinterpret ? 'Reinterpreta tu consejo a su manera…' : r.obe ? 'Te ha hecho caso.' : 'No te ha hecho caso.');
+        UI.toast('«' + a.name + '»: "' + (r.voz || (r.obe ? 'Voy.' : 'Hoy no, capi.')) + '"');
         b.textContent = x.n + ' ' + Math.round(sim.probObediencia(a, x.k) * 100) + '%';
       });
       sus.append(b);

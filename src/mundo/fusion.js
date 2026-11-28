@@ -393,7 +393,7 @@ function sendWhisper(text) {
   if (!text?.trim() || !sim?.user) return null;
   const kind = window.PUENTE?.clasificarSusurro(text) || "explorar";
   const result = sim.doWhisper(sim.user, kind);
-  window.UI?.toast(result.reinterpret ? "El mundo reinterpretó tu susurro." : result.obe ? "El mundo recibió tu susurro." : "El mundo decidió por su cuenta.");
+  window.UI?.toast(result.voz ? "«" + (sim.user?.name || "Tu capitán") + "»: " + result.voz : result.obe ? "El mundo recibió tu susurro." : "El mundo decidió por su cuenta.");
   window.JUEGO.guardar(true);
   return result;
 }

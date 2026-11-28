@@ -500,3 +500,23 @@ body.wizard-active #mil-chip { display: none !important; }
 .mil-guia-ico{ font-size:17px; flex:0 0 auto; }
 .mil-guia-tit{ flex:1 1 auto; }
 .mil-guia-cuerpo{ padding:0 14px 12px 39px; color:#c9d6e8; font:600 13px/1.55 Manrope,system-ui,sans-serif; }
+
+
+/* ── MUNDO VIVO: tu próximo paso + la escena del heredero ── */
+.mil-rumbo{ margin:10px 0 4px; padding:10px 12px; border:1px solid rgba(246,196,69,.5); border-radius:12px;
+  background:linear-gradient(160deg, rgba(42,58,96,.55), rgba(14,24,50,.85)); }
+.mil-rumbo b{ display:block; color:#f6c445; font:800 12px/1.2 Manrope,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+.mil-rumbo span{ display:block; margin-top:4px; color:#e9ddbb; font:600 13.5px/1.5 Manrope,system-ui,sans-serif; }
+#mil-escena{ position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at 50% 42%, rgba(20,28,54,.92), rgba(4,8,20,.97));
+  animation:milEscenaEntra .5s ease both; }
+#mil-escena.mil-escena-salida{ animation:milEscenaSale .45s ease both; }
+@keyframes milEscenaEntra{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes milEscenaSale{ from{ opacity:1 } to{ opacity:0 } }
+.mil-escena-caja{ text-align:center; padding:28px 34px; max-width:min(88vw,420px); }
+.mil-escena-sombrero{ font-size:clamp(44px,10vw,64px); line-height:1; animation:milSombreroPasa 2.6s ease-in-out infinite alternate; }
+@keyframes milSombreroPasa{ from{ transform:translateY(0) rotate(-6deg) } to{ transform:translateY(10px) rotate(7deg) } }
+.mil-escena-muerte{ margin:14px 0 2px; color:#e8d9b8; font:800 clamp(20px,5vw,26px)/1.25 Manrope,system-ui,sans-serif; letter-spacing:.02em; }
+.mil-escena-causa{ margin:2px 0 0; color:#b39a6b; font:700 13px/1.4 Manrope,system-ui,sans-serif; }
+.mil-escena-luz{ margin:16px 0 4px; color:#f6c445; font:700 clamp(15px,4vw,18px)/1.4 Manrope,system-ui,sans-serif; font-style:italic; }
+.mil-escena-heredero{ margin:4px 0 18px; color:#cfe0f2; font:600 14px/1.5 Manrope,system-ui,sans-serif; }

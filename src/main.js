@@ -1,3 +1,4 @@
+import "./mundo/sonido.js"; // el mundo suena: síntesis propia, cero assets
 import {
   SAVE_KEY, PULSE_MS, coliseoFight, confrontFugitive, createCharacter, createHeir,
   loadGame, resolveAutonomousBranch, resolveBranch, saveGame, setAutonomyPaused, simulateOffline, suggestSail

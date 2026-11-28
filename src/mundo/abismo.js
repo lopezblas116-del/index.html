@@ -41,8 +41,16 @@
     if (!sim.guerra) sim.guerra = { frentes: [], prox: (sim.t || 0) + 900 };
     if (sim.evento === undefined) sim.evento = null;
     if (sim._evProx === undefined) sim._evProx = (sim.t || 0) + 1200;
+  if (sim._primerEvento === undefined) sim._primerEvento = true;
   }
   AB.ensure = ensure;
+  // LOS PRIMEROS 90 SEGUNDOS: se dispara con el DESPERTAR del capitán (no con
+  // el init del mundo, que corre antes de que existas). El primer evento sale
+  // ya y en tu isla — el juego busca al jugador, no al revés.
+  AB.citaPrimerEvento = function (sim) {
+    sim._evProx = (sim.t || 0) + 75;
+    sim._primerEvento = true;
+  };
 
   // ── precio: stock bajo y demanda alta encarecen; feria y hambruna muerden ──
   function precio(sim, islId, k) {
@@ -328,12 +336,18 @@
   function lanzarEvento(sim) {
     // una sola llamada a ini por evento: el rng es semillado, llamarlo dos
     // veces daría islas distintas (y duelos nulos)
-    const candidatos = [];
+    let candidatos = [];
     for (const e of EVENTOS) {
       const d = e.ini(sim);
       if (d !== null && d !== undefined) candidatos.push([e, d]);
     }
     if (!candidatos.length) { sim._evProx = sim.t + 600; return; }
+    // el primer evento del juego pasa DONDE ESTÁS: no en otra punta del mapa
+    if (sim._primerEvento && sim.user && sim.user.isl) {
+      const enMiIsla = candidatos.filter(([e, d]) => d && d.isl === sim.user.isl);
+      if (enMiIsla.length) candidatos = enMiIsla;
+      sim._primerEvento = false;
+    }
     const [e, datos] = candidatos[sim.rng.int(0, candidatos.length - 1)];
     const ISLA = D().ISLA;
     sim.evento = { k: e.k, nom: e.nom, isl: datos.isl || null, reg: datos.reg || null, hasta: sim.t + e.dur, datos, heroes: [] };
@@ -421,6 +435,7 @@
     u.cargo[k] = c;
     m[k].sto = Math.max(0, m[k].sto - 5); // tu compra mueve el precio
     m[k].dem = Math.min(100, m[k].dem + 2);
+    try { if (globalThis.SONIDO) globalThis.SONIDO.play('moneda'); } catch (e) { /* un sonido roto no tumba la compra */ }
     return { ok: true, msg: 'Comprado ' + k + ' a ฿' + p.toLocaleString('es') + '.' };
   }
 
@@ -439,6 +454,7 @@
     if (ganancia >= 1500) {
       sim.ev('mercadoGanancia', { a: sim.nm(u), isla: D().ISLA[u.isl].n, bien: (BIENES.find((x) => x.k === k) || {}).n }, { ids: [u.id], esJugador: true });
     }
+    try { if (globalThis.SONIDO) globalThis.SONIDO.play('moneda'); } catch (e) { /* un sonido roto no tumba la venta */ }
     return { ok: true, msg: (ganancia >= 0 ? 'Vendido por ฿' + p.toLocaleString('es') + ' (ganancia ฿' + ganancia.toLocaleString('es') + ').' : 'Vendido por ฿' + p.toLocaleString('es') + ' (pérdida ฿' + (-ganancia).toLocaleString('es') + ').') };
   }
 

@@ -642,6 +642,7 @@
     const pc = ATM.posicionCapitan(sim);
     if (!pc || !Number.isFinite(pc.x) || !Number.isFinite(pc.y)) return false;
     MAPA.volar(pc.x, pc.y, Math.max(MAPA.cam.z, pc.mar ? 1.6 : 2.3), 900);
+    try { if (G.SONIDO) G.SONIDO.play('ping'); } catch (e) { /* un ping mudo no tumba nada */ }
     const ahora = performance.now();
     sim._pings = (sim._pings || []).filter((q) => ahora - q.t0 < 6500);
     sim._pings.push({ x: pc.x, y: pc.y, t0: ahora, key: 'capitan' });
@@ -726,6 +727,24 @@
       for (const s of sim.storms) {
         mctx.fillStyle = 'rgba(255,96,60,0.9)';
         mctx.beginPath(); mctx.arc(ex + s.x * sx, ex + s.y * sy, 2.4, 0, 7); mctx.fill();
+      }
+    }
+    // EL MUNDO VIVO EN LA BRÚJULA: ✦ donde hay evento, ⚔ donde hay frente —
+    // ahora sabés dónde mirar sin abrir panel alguno
+    const latidoMini = Math.sin(t / 260);
+    if (sim.evento && sim.evento.isl && D.ISLA[sim.evento.isl]) {
+      const iEv = D.ISLA[sim.evento.isl];
+      mctx.fillStyle = 'rgba(255,214,120,' + (0.75 + latidoMini * 0.25) + ')';
+      mctx.font = 'bold 9px system-ui, sans-serif';
+      mctx.fillText('✦', ex + iEv.x * sx - 3, ex + iEv.y * sy + 3);
+    }
+    if (sim.guerra && sim.guerra.frentes) {
+      for (const f of sim.guerra.frentes) {
+        if (!f.isl || !D.ISLA[f.isl]) continue;
+        const iF = D.ISLA[f.isl];
+        mctx.fillStyle = 'rgba(255,110,80,' + (0.75 + latidoMini * 0.25) + ')';
+        mctx.font = 'bold 9px system-ui, sans-serif';
+        mctx.fillText('⚔', ex + iF.x * sx - 3.5, ex + iF.y * sy + 3);
       }
     }
     // islas: oro las del juego, espuma las demás

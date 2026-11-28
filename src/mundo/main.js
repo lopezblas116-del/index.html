@@ -93,7 +93,12 @@
   J.borrar = function () { try { localStorage.removeItem(CLAVE); } catch (e) {} };
 
   // ── Reanudar/crear el mundo ──
-  const onMuerteHandler = (viejo, heredero) => { UI.toast('«' + viejo.name + '» se fue. «' + heredero.name + '» recoge su bandera.'); UI.cerrarFicha(); };
+  // LA ESCENA DEL HEREDERO: la muerte es un MOMENTO, no una línea de bitácora
+  const onMuerteHandler = (viejo, heredero, causa) => {
+    try { if (globalThis.SONIDO) globalThis.SONIDO.play('heredero'); } catch (e) { /* sin sonido igual hay escena */ }
+    UI.escenaHeredero(viejo, heredero, causa);
+    UI.cerrarFicha();
+  };
   J.nuevo = function () {
     J.borrar();
     J.sim = new Sim(Math.floor(Math.random() * 90000) + 1000);
@@ -111,6 +116,16 @@
     J.sim.onEvento = function (rec, vars) {
       try {
         if (!rec.imp || rec.imp < 4) return;
+        // VOZ SONORA DEL MUNDO: los momentos grandes suenan (mayores o TUYOS)
+        try {
+          const S = globalThis.SONIDO;
+          if (S && (rec.imp >= 6 || (vars && vars.esJugador))) {
+            if (rec.key === 'heredero' || rec.key === 'despierta') S.play('heredero');
+            else if (/derrota|naufragio|arresto|robo/.test(rec.key)) S.play('fallo');
+            else if (/cartel|sube|supernova|nivel|primera|mercadoGanancia/.test(rec.key)) S.play('nivel');
+            else S.play('evento');
+          }
+        } catch (e2) { /* un sonido perdido no tumba los testigos */ }
         const nIsla = vars && (vars.isla || vars.dest);
         const isl = nIsla ? D.ISLAS.find((x) => x.n === nIsla) : null;
         let x = isl ? isl.x : null, y = isl ? isl.y : null;

@@ -96,6 +96,19 @@ function regionDelPersonaje(character) {
   return null;
 }
 export function renderNewspaper(container, character, onInvestigate, onSuggest) {
+  // TU PRÓXIMO PASO: el mundo vivo lee la situación y propone UNA cosa concreta,
+  // con cierre. Vive acá (se lee al abrir la Bitácora): la pantalla no se llena
+  // de consejos que nadie pidió.
+  try {
+    const rumbo = globalThis.JUEGO?.sim?.rumboDelDia?.();
+    if (rumbo) {
+      const paso = document.createElement("div");
+      paso.className = "mil-rumbo";
+      paso.innerHTML = "<b>🧭 Tu próximo paso</b><span></span>";
+      paso.querySelector("span").textContent = rumbo.txt;
+      container.append(paso);
+    }
+  } catch { /* un rumbo perdido no tumba la gaceta */ }
   const world = character.world ?? {};
   const shared = world.shared?.world;
   const globalEvents = shared?.global_events ?? [];

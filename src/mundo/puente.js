@@ -49,7 +49,7 @@
       if (!texto || !G.JUEGO.sim || !G.JUEGO.sim.user) return;
       const k = PUENTE.clasificarSusurro(texto);
       const r = G.JUEGO.sim.doWhisper(G.JUEGO.sim.user, k);
-      G.UI.toast(r.reinterpret ? 'Reinterpreta tu consejo a su manera…' : r.obe ? 'Te ha hecho caso.' : 'No te ha hecho caso.');
+      G.UI.toast('«' + G.JUEGO.sim.user.name + '»: "' + (r.voz || (r.obe ? 'Voy.' : 'Hoy no, capi.')) + '"');
       input.value = '';
     });
   };
