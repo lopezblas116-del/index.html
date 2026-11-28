@@ -123,3 +123,88 @@ test("SONIDO: en node (sin AudioContext) toca en silencio y el mute persiste", (
   SONIDO.toggle(); // dejarlo como estaba
   assert.equal(SONIDO.mudo(), antes);
 });
+
+// ── SISTEMA NÉMESIS: el tirano fugado vuelve por su trono ──
+import "../src/mundo/atmosfera.js";
+const { ATM } = globalThis;
+
+function fakeSimNemesis(control, frentes = []) {
+  const fake = Object.create(Sim.prototype);
+  fake.t = 5000;
+  fake.control = control;
+  fake.guerra = { frentes };
+  fake.crews = []; fake.ships = [];
+  fake.rng = { pick: () => 'Bestia' };
+  fake.crewOf = () => null;
+  fake.llegarIsla = (ag, isl) => { ag.isl = isl; fake._vuelto = isl; };
+  fake.nm = (ag) => ag.name;
+  fake.ev = (k, vars, opts) => { fake._ev = { k, vars, opts }; };
+  return fake;
+}
+const jefeFugado = () => ({ id: 7, name: 'Kaido Falso', jefe: true, homeIsl: 'foosha', crew: -1, fac: 'pir', user: false, insignias: {} });
+
+test("nemesisRetorna: el jefe fugado funda bandera, vuelve a casa y abre su frente de reconquista", () => {
+  const fake = fakeSimNemesis({ foosha: 'ley' });
+  const a = jefeFugado();
+  const ok = Sim.prototype.nemesisRetorna.call(fake, a);
+  assert.equal(ok, true);
+  assert.equal(fake._vuelto, 'foosha', "vuelve a su trono, no a la vida civil");
+  assert.equal(a.crew, 0, "bandera nueva sin peaje");
+  assert.equal(fake.crews[0].nemesis, true, "crew marcada como némesis");
+  const f = fake.guerra.frentes[0];
+  assert.equal(f.isl, 'foosha');
+  assert.equal(f.defensor, 'ley');
+  assert.equal(f.tipo, 'asalto');
+  assert.equal(f.rey, 7, "el frente sabe quién reclama el trono");
+  assert.ok(/Retorno/.test(f.nom));
+  assert.equal(fake._ev.k, 'nemesis');
+  assert.equal(fake._ev.opts.impAdd, 2);
+  assert.equal(a.insignias['nemesis'], 'nemesis', "insignia El Retorno");
+});
+
+test("nemesisRetorna: si su trono sigue suyo o ya hay pelea ahí, no abre nada", () => {
+  const fake = fakeSimNemesis({ foosha: 'tirano' });
+  assert.equal(Sim.prototype.nemesisRetorna.call(fake, jefeFugado()), false);
+  const fake2 = fakeSimNemesis({ foosha: 'libre' }, [{ isl: 'foosha', moral: 10 }]);
+  assert.equal(Sim.prototype.nemesisRetorna.call(fake2, jefeFugado()), false);
+  assert.equal(fake2.guerra.frentes.length, 1, "frente original intacto");
+  assert.equal(fake2.crews.length, 0, "sin bandera nueva");
+});
+
+test("nemesisRetorna: sin homeIsl o isla desconocida, no tumba nada", () => {
+  const fake = fakeSimNemesis({});
+  assert.equal(Sim.prototype.nemesisRetorna.call(fake, { jefe: true, crew: -1, id: 1, name: 'x', insignias: {} }), false, "sin homeIsl: nada que reclamar");
+  const fake2 = fakeSimNemesis({ ningunSitio: 'ley' });
+  assert.equal(Sim.prototype.nemesisRetorna.call(fake2, { jefe: true, homeIsl: 'ningunSitio', crew: -1, id: 2, name: 'y', insignias: {} }), false, "isla que no existe en ISLA");
+});
+
+test("nemesisRetorna: control indefinido se normaliza a 'libre' (sin crash en resolverFrente)", () => {
+  const fake = fakeSimNemesis({}); // sin control asignado
+  const a = jefeFugado();
+  assert.equal(Sim.prototype.nemesisRetorna.call(fake, a), true);
+  assert.equal(fake.guerra.frentes[0].defensor, 'libre');
+});
+
+test("marcaCerca: el toque cerca del ✦ aterriza en esa isla; lejos vuela a coordenadas", () => {
+  const DI = { W: 800, H: 400, ISLA: { evia: { id: 'evia', n: 'Evia', x: 400, y: 200 }, frona: { id: 'frona', n: 'Frona', x: 100, y: 300 } } };
+  // píxel de Evia en la brújula: ex=3 + 400*(142/800)=74, 3 + 200*(76/400)=41
+  const golpecito = ATM.marcaCerca(75, 42, { evento: { isl: 'evia' }, guerra: { frentes: [] } }, DI);
+  assert.ok(golpecito && golpecito.tipo === 'evento' && golpecito.isl === 'evia', JSON.stringify(golpecito));
+  assert.equal(ATM.marcaCerca(140, 78, { evento: { isl: 'evia' }, guerra: { frentes: [] } }, DI), null, "lejos: el clic vuela libre");
+  // ⚔ frente: píxel de Frona ≈ (20.75, 60) — el evento NO tapa al frente
+  const frente = ATM.marcaCerca(21, 60, { evento: { isl: 'evia' }, guerra: { frentes: [{ isl: 'frona' }] } }, DI);
+  assert.ok(frente && frente.tipo === 'frente' && frente.isl === 'frona', JSON.stringify(frente));
+  // sin DI ni datos: null sin tirar
+  assert.equal(ATM.marcaCerca(0, 0, null, null), null);
+});
+
+test("los titulares del némesis existen en D.TXT y son fuertes (cuerno garantizado)", () => {
+  const { D } = globalThis;
+  for (const k of ['nemesis', 'nemesisGana']) {
+    const t = D.TXT[k];
+    assert.ok(t, `falta el titular ${k}`);
+    assert.ok(t.imp >= 5, `${k} imp=${t.imp}: sin impacto no suena el cuerno`);
+    assert.ok(/\{a\}/.test(t.t) && /\{isla\}/.test(t.t), `${k} nombra al protagonista y su isla`);
+  }
+  assert.ok(D.INSIGNIAS.nemesis, "insignia El Retorno registrada");
+});

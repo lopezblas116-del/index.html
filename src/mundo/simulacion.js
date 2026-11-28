@@ -923,6 +923,33 @@ import { rollLineageRace } from '../races.js';
     }
   };
 
+  // ── SISTEMA NÉMESIS: el tirano fugado vuelve por su trono ──
+  // La promesa del diseño: los jefes derrotados y encarcelados NO se olvidan.
+  // Al fugarse de prisión navegan de vuelta a su isla de origen, alzan bandera
+  // nueva (sin el peaje de ฿200k: el trono es suyo de nacimiento) y abren un
+  // frente de reconquista POR SU CUENTA. Tu victoria de ayer puede ser la
+  // guerra de hoy — el mundo no perdona.
+  Sim.prototype.nemesisRetorna = function (a) {
+    const isl = D.ISLA[a.homeIsl];
+    if (!isl) return false;
+    const ctrl = this.control[a.homeIsl];
+    if (ctrl === 'tirano') return false; // su trono sigue suyo
+    if ((this.guerra && (this.guerra.frentes || []).some((f) => f.isl === a.homeIsl))) return false; // ya hay pelea ahí
+    this.llegarIsla(a, a.homeIsl); // vuelve a casa por decisión propia
+    let crew = this.crewOf(a);
+    if (!crew) {
+      crew = { id: this.crews.length, name: 'Los Piratas del ' + this.rng.pick(D.CREW_ANIMAL) + ' Renacidos', fac: a.fac === 'pir' ? 'pir' : a.fac, cap: a.id, mem: [a.id], allies: [], wars: [], ship: this.ships.length, base: a.homeIsl, born: this.t, nemesis: true };
+      this.ships.push({ id: this.ships.length, crew: crew.id, isl: a.homeIsl, dest: null, state: 'puerto', t0: 0, dur: 0, hull: 100, x: 0, y: 0, plan: null });
+      this.crews.push(crew);
+      a.crew = crew.id; a.rank = 3;
+    }
+    a.insignias['nemesis'] = 'nemesis';
+    if (!this.guerra) this.guerra = { frentes: [], prox: this.t + 900 };
+    this.guerra.frentes.push({ isl: a.homeIsl, atacante: crew.id, defensor: ctrl || 'libre', tipo: 'asalto', moral: 14, rey: a.id, nom: 'El Retorno de ' + a.name, desc: a.name + ' fugó de prisión y vuelve a reclamar ' + isl.n + '.' });
+    this.ev('nemesis', { a: this.nm(a), isla: isl.n, crew: crew.name, esJugador: !!a.user, destino: ctrl || 'libre' }, { ids: [a.id], impAdd: 2 });
+    return true;
+  };
+
   // ── Comportamiento: qué hace cada personaje ──
   Sim.prototype.piensa = function (a) {
     if (a.state === 'calabozo' || a.state === 'prision') {
@@ -932,6 +959,9 @@ import { rollLineageRace } from '../races.js';
         a.insignias['fuga'] = (eraPrision && a.user) ? 'fuga' : a.insignias['fuga'];
         this.ev('fuga', { a: this.nm(a), isla: this.isl(a).n, esJugador: !!a.user }, { ids: [a.id] });
         if (eraPrision && a.isl === 'impel' && D.ISLA['logue']) this.llegarIsla(a, 'logue'); // Impel Down no tiene rutas: lo sueltan en Logue Town
+        // EL NÉMESIS NO SE OLVIDA: un jefe fugado no vuelve "a la vida civil" —
+        // vuelve POR SU TRONO. Esto convierte cada arresto tuyo en una deuda futura.
+        if (eraPrision && a.jefe && a.homeIsl) this.nemesisRetorna(a);
       }
       return;
     }

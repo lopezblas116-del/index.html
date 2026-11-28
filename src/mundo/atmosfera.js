@@ -116,7 +116,7 @@
     const pings = sim._pings || [];
     const ICONOS = {
       tesoro: ['💰', '255,214,120'], combate: ['⚔️', '255,130,100'],
-      social: ['✨', '195,155,255'], fama: ['🏴', '255,214,120'], aviso: ['📰', '225,238,250'], capitan: ['🎯', '246,224,94']
+      social: ['✨', '195,155,255'], fama: ['🏴', '255,214,120'], aviso: ['📰', '225,238,250'], capitan: ['🎯', '246,224,94'], nemesis: ['🏴', '255,110,80'], nemesisGana: ['👑', '246,224,94']
     };
     const tipoDe = { monedas: 'tesoro', reliquia: 'tesoro', hallazgo: 'tesoro', secreto: 'tesoro', cava: 'tesoro', cuboHallado: 'tesoro', cuboAzul: 'tesoro', cuboDorado: 'tesoro', cubosFin: 'tesoro', rutaFinal: 'tesoro', hito: 'tesoro', pozoFin: 'tesoro', derrota: 'combate', robo: 'combate', robo_pilla: 'combate', arresto: 'combate', arresto_gran: 'combate', naufragio: 'combate', fuga: 'combate', rescate: 'combate', funda: 'social', recluta: 'social', abandona: 'social', nuevoCap: 'social', amistad: 'social', rivalidad: 'social', heredero: 'social', despierta: 'social', nivel: 'social', habilidad: 'social', festival: 'social', cartel: 'fama', sube: 'fama', supernova: 'fama', emperador: 'fama', reymar: 'fama', flota: 'fama', primera: 'fama', fruta: 'social' };
     for (const p of pings) {
@@ -632,6 +632,29 @@
     };
   };
 
+  // ── pure: qué testigo del mundo (✦ evento, ⚔ frente, 🏴 némesis) está bajo
+  // el toque en la brújula. Umbral 11px: el dedo acierta, no apunta.
+  ATM.marcaCerca = function (mx, my, sim, DI) {
+    const D2 = DI || G.D;
+    if (!D2 || !D2.ISLA || !D2.W || !D2.H) return null;
+    const ex = 3, iw = MINI_W - ex * 2, ih = MINI_H - ex * 2;
+    const sx = iw / D2.W, sy = ih / D2.H;
+    const golpea = (isl) => Math.hypot(ex + isl.x * sx - mx, ex + isl.y * sy - my) <= 11;
+    if (sim && sim.evento && sim.evento.isl && D2.ISLA[sim.evento.isl] && golpea(D2.ISLA[sim.evento.isl])) {
+      const i = D2.ISLA[sim.evento.isl];
+      return { x: i.x, y: i.y, isl: i.id, n: i.n, tipo: 'evento' };
+    }
+    if (sim && sim.guerra && sim.guerra.frentes) {
+      for (const f of sim.guerra.frentes) {
+        if (f.isl && D2.ISLA[f.isl] && golpea(D2.ISLA[f.isl])) {
+          const i = D2.ISLA[f.isl];
+          return { x: i.x, y: i.y, isl: i.id, n: i.n, tipo: 'frente' };
+        }
+      }
+    }
+    return null;
+  };
+
   // ── UBICAR A TU CAPITÁN: un tap en la brújula y el mar te lo señala ──
   // El amigo del capitán probó y no encontraba su avatar: la brújula mostraba el
   // mundo, pero no a VOS. Vuela a tu posición real (tierra o mar) y suelta un
@@ -656,7 +679,7 @@
     mini.id = 'mil-minimapa';
     mini.width = MINI_W * MINI_ESC; mini.height = MINI_H * MINI_ESC;
     mini.setAttribute('aria-label', 'Minimapa del mundo: haz clic para volar a ese punto');
-    mini.title = 'Minimapa del MUNDO ENTERO · islas, tormentas y tu posición — clic para volar a ese punto';
+    mini.title = 'Minimapa del MUNDO ENTERO · ✦ evento · ⚔ frente · tu capitán latiendo — tocá una marca para adentrarte en ella';
     // rótulo permanente: el cuadrado se explica solo (nadie adivina qué es)
     const etiqueta = document.createElement('span');
     etiqueta.className = 'mil-minimapa-etiqueta';
@@ -667,10 +690,15 @@
     mini.style.cssText = 'position:absolute;left:12px;bottom:12px;width:' + MINI_W + 'px;height:' + MINI_H +
       'px;z-index:6;border-radius:10px;cursor:pointer;transition:opacity .4s ease;box-shadow:0 10px 26px rgba(0,0,0,0.45);border:1px solid rgba(244,193,26,0.45);';
     mini.addEventListener('click', (e) => {
-      const MAPA = G.MAPA, D = G.D;
+      const MAPA = G.MAPA, D = G.D, simAhora = G.JUEGO && G.JUEGO.sim;
       const r = mini.getBoundingClientRect();
-      const wx = clamp((e.clientX - r.left) / (MINI_W / D.W), 0, D.W);
-      const wy = clamp((e.clientY - r.top) / (MINI_H / D.H), 0, D.H);
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      // ✦ y ⚔ SON botón: tocá cerca de una marca y la cámara se adentra en esa
+      // isla a zoom de diorama — el mundo vivo se visita, no se adivina
+      const marca = ATM.marcaCerca(mx, my, simAhora, D);
+      if (marca) { MAPA.volar(marca.x, marca.y, Math.max(MAPA.cam.z, 2.3), 900); return; }
+      const wx = clamp(mx / (MINI_W / D.W), 0, D.W);
+      const wy = clamp(my / (MINI_H / D.H), 0, D.H);
       MAPA.volar(wx, wy, Math.max(MAPA.cam.z, 1.35), 750);
     });
     cvDe().parentElement.appendChild(mini);

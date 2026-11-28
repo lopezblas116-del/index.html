@@ -81,6 +81,8 @@
     emperador: { t: '{a} es uno de los Cuatro Emperadores del Nuevo Mundo.', imp: 8 },
     juicio: { t: 'Juicio público en {isla}: {a} responde por sus carteles.', imp: 5 },
     fuga: { t: '{a} sale de prisión con una historia que nadie le va a creer entera.', imp: 4 },
+    nemesis: { t: 'El cuerno suena en {isla}: {a} fugó de prisión y vuelve por su trono con {crew} entera.', imp: 5 },
+    nemesisGana: { t: '{a} recupera su trono en {isla}. La bandera de {crew} ondea de nuevo, y esta vez nadie la baja.', imp: 5 },
     amistad: { t: '{a} y {b} se hacen amigos en {isla}.', imp: 2 },
     rivalidad: { t: '{a} y {b} se empiezan a odiar en {isla}. Empieza bien: con insultos.', imp: 2 },
     fruta: { t: '{a} encontró {fruta} y la comió entera. Ya no sabe nadar.', imp: 6 },

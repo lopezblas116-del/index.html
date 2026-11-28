@@ -391,6 +391,7 @@ import { getMapIslands } from '../map.js';
     arrestos: { n: 'Mano firme', r: 'oro', d: 'Diez arrestos.' },
     cien: { n: 'Cien días de mar', r: 'negro', d: 'Cien días en el mundo.' },
     fuga: { n: 'Fuga imposible', r: 'negro', d: 'Salió del fondo de Impel Down.' },
+    nemesis: { n: 'El Retorno', r: 'negro', d: 'Fugó de prisión y vino por su trono. Y lo recuperó.' },
     fruta: { n: 'Fruta maldita', r: 'negro', d: 'Comió una Fruta del Diablo. Ya no sabe nadar.' },
     descifrador: { n: 'Descifrador', r: 'negro', d: 'Reunió los cuatro rojos.' },
     final: { n: 'El final del mar', r: 'negro', d: 'Llegó a la Isla JAJAJA.' },

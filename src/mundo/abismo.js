@@ -198,7 +198,15 @@
       const cap = c && sim.byId(c.cap);
       sim.liberarIsla(f.isl, cap ? [cap] : []);
     } else if (f.tipo === 'asalto' && ctrl === 'libre') {
-      sim.tiranoNuevo([isl]);
+      // NÉMESIS VICTORIOSO: el trono vuelve a SU dueño legítimo (f.rey), no a
+      // un tirano genérico — la reconquista es PERSONAL, no un rebarajo de mapa
+      const rey = f.rey ? sim.byId(f.rey) : null;
+      if (rey && rey.homeIsl === f.isl) {
+        sim.control[f.isl] = 'tirano';
+        sim.ev('nemesisGana', { a: sim.nm(rey), isla: isl.n, crew: nomAt }, { ids: [rey.id], impAdd: 2 });
+      } else {
+        sim.tiranoNuevo([isl]);
+      }
       const c = sim.crews[f.atacante];
       if (c) (c.mem || []).forEach((id) => { const a = sim.byId(id); if (a) a.bounty += 6e6; });
     } else if (f.tipo === 'asalto' && ctrl === 'ley') {

@@ -122,6 +122,7 @@
           if (S && (rec.imp >= 6 || (vars && vars.esJugador))) {
             if (rec.key === 'heredero' || rec.key === 'despierta') S.play('heredero');
             else if (/derrota|naufragio|arresto|robo/.test(rec.key)) S.play('fallo');
+            else if (/nemesis/.test(rec.key)) S.play('cuerno'); // EL CUERNO DEL RETORNO
             else if (/cartel|sube|supernova|nivel|primera|mercadoGanancia/.test(rec.key)) S.play('nivel');
             else S.play('evento');
           }
